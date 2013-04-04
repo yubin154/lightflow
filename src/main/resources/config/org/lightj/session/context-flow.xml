@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd 
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd 
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+	<bean id="flowFactory" class="org.lightj.session.FlowSessionFactory" factory-method="getInstance" />
+	
+	<bean id="sessionDataManager" class="org.lightj.session.dal.SessionDataManagerImpl" factory-method="getInstance" />
+	
+	<bean id="sessionMetaDataManager" class="org.lightj.session.dal.SessionMetaDataManagerImpl" factory-method="getInstance" />
+	
+	<bean id="sessionStepLogManager" class="org.lightj.session.dal.SessionStepLogManagerImpl" factory-method="getInstance" />
+
+	<bean id="sessionDataFactory" class="org.lightj.session.dal.SessionDataFactory" factory-method="getInstance">
+		<property name="dataManager" ref="sessionDataManager"></property>
+		<property name="metaDataManager" ref="sessionMetaDataManager"></property>
+		<property name="stepLogManager" ref="sessionStepLogManager"></property>
+	</bean>
+	
+</beans>

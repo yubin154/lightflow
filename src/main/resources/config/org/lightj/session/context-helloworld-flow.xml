@@ -1,0 +1,45 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd 
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd 
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+	<bean id="flowFactory" class="org.lightj.session.FlowSessionFactory" factory-method="getInstance" />
+	
+	<bean id="simpleLocatable" class="org.lightj.dal.SimpleLocatable" scope="prototype" />
+	
+	<bean id="asyncTaskStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildAsyncTaskStep" scope="prototype"/>
+	
+	<bean id="sessionJoinStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildJoinStep" scope="prototype"/>
+	
+	<bean id="delayStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildDelayStep" scope="prototype"/>
+
+	<bean id="retryStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildRetryStep" scope="prototype"/>
+
+	<bean id="buildTimeoutStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildTimeoutStep" scope="prototype"/>
+	
+	<bean id="actorStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildActorStep" scope="prototype"/>
+
+	<bean id="actorPollStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildActorPollStep" scope="prototype"/>
+
+	<bean id="actorBatchStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildActorBatchStep" scope="prototype"/>
+
+	<bean id="helloWorldFlow" factory-bean="flowFactory" factory-method="createSession">
+		<constructor-arg index="0" type="java.lang.Class" value="org.lightj.example.session.HelloWorldFlow"></constructor-arg>
+		<constructor-arg index="1" type="org.lightj.dal.Locatable" ref="simpleLocatable"/>
+		<constructor-arg index="2" type="org.lightj.dal.Locatable" ref="simpleLocatable"/>
+		<property name="asyncTaskStep" ref="asyncTaskStep"/>
+		<property name="sessionJoinStep" ref="sessionJoinStep" />
+		<property name="delayStep" ref="delayStep" />
+		<property name="retryStep" ref="retryStep" />
+		<property name="timeoutStep" ref="buildTimeoutStep" />
+		<property name="actorStep" ref="actorStep" />
+		<property name="actorPollStep" ref="actorPollStep" />
+		<property name="actorBatchStep" ref="actorBatchStep" />
+		
+	</bean>
+	
+</beans>
