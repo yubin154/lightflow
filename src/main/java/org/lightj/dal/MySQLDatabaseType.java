@@ -1,6 +1,6 @@
 package org.lightj.dal;
 
-public class MySQLDatabaseType extends BaseDatabaseType {
+public class MySQLDatabaseType extends RdbmsDatabaseType {
 
 	/**
 	 * 

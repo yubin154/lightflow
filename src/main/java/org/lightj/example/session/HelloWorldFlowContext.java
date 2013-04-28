@@ -10,8 +10,14 @@ import org.lightj.session.FlowContext;
  */
 public class HelloWorldFlowContext extends FlowContext {
 	
+	// private context
 	private String goodHost = "http://www.ebay.com";
 	private String badHost = "http://asdfewerasdfk";
+	private boolean injectFailure = false;
+	private boolean controlledFailure = true;
+	private boolean pauseOnError = false;
+	
+	// persisted context
 	@CtxProp
 	private int batchCount;
 	@CtxProp
@@ -22,6 +28,8 @@ public class HelloWorldFlowContext extends FlowContext {
 	private int retryCount;
 	@CtxProp
 	private int timeoutCount;
+	@CtxProp
+	private int errorStepCount;
 	public int getTaskCount() {
 		return taskCount;
 	}
@@ -78,6 +86,33 @@ public class HelloWorldFlowContext extends FlowContext {
 	}
 	public synchronized void incBatchCount() {
 		this.batchCount++;
+	}
+	public boolean isInjectFailure() {
+		return injectFailure;
+	}
+	public void setInjectFailure(boolean injectFailure) {
+		this.injectFailure = injectFailure;
+	}
+	public int getErrorStepCount() {
+		return errorStepCount;
+	}
+	public void setErrorStepCount(int errorStepCount) {
+		this.errorStepCount = errorStepCount;
+	}
+	public synchronized void incErrorStepCount() {
+		this.errorStepCount++;
+	}
+	public boolean isControlledFailure() {
+		return controlledFailure;
+	}
+	public void setControlledFailure(boolean controlledFailure) {
+		this.controlledFailure = controlledFailure;
+	}
+	public boolean isPauseOnError() {
+		return pauseOnError;
+	}
+	public void setPauseOnError(boolean pauseOnError) {
+		this.pauseOnError = pauseOnError;
 	}
 
 }

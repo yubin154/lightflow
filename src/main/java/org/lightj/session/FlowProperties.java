@@ -49,10 +49,4 @@ public @interface FlowProperties {
 	 */
 	boolean killNonRecoverable()	default true;
 	
-	/**
-	 * default error step
-	 * @return
-	 */
-	String errorStep()		default "";
-	
-}
+	}

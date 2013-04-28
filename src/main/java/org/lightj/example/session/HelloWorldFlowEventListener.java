@@ -31,13 +31,13 @@ public class HelloWorldFlowEventListener implements IFlowEventListener {
 	}
 
 	public void handleError(Throwable t, FlowSession session) {
-		if (l != null && c != null) {
-			ConcurrentUtil.signalAll(l, c);
-		}
+//		if (l != null && c != null) {
+//			ConcurrentUtil.signalAll(l, c);
+//		}
 	}
 
 	public void handleFlowEvent(FlowEvent event, FlowSession session) {
-		if (event == FlowEvent.stop) {
+		if (event == FlowEvent.stop || event == FlowEvent.pause) {
 			if (l != null && c != null) {
 				ConcurrentUtil.signalAll(l, c);
 			}

@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -14,7 +15,7 @@ import org.lightj.util.Log4jProxy;
 public abstract class BaseModule implements Initializable {
 	
 	/** logger */
-	static Log4jProxy logger = Log4jProxy.getInstance(BaseModule.class);
+	static Logger logger = LoggerFactory.getLogger(BaseModule.class);
 
 	/**
 	 * dependencies to other modules

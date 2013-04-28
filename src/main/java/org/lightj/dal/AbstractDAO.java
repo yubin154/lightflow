@@ -25,8 +25,9 @@ import java.util.Date;
 import java.util.List;
 
 import org.lightj.Constants;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -46,8 +47,7 @@ import org.lightj.util.StringUtil;
 public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 
 	// logger
-	protected static Log4jProxy log = Log4jProxy.getInstance(AbstractDAO.class.getName()); 
-	protected static Log4jProxy cat = log;
+	protected static Logger logger = LoggerFactory.getLogger(AbstractDAO.class); 
 	
 	// db table to java object mapping information
 	protected Class<T> doKlass;
@@ -92,7 +92,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			register(doKlass, tableName, db, sequence, colNames, colTypes, getters, setters);
 		}
 		catch (NoSuchMethodException e) {
-			log.error("AbstractDAO.register(), java method is invalid, " + e.getMessage());
+			logger.error("AbstractDAO.register(), java method is invalid, " + e.getMessage());
 			throw new IllegalArgumentException(e.getMessage());
 		}
 	}
@@ -249,7 +249,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			data = doKlass.newInstance();
 		}
 		catch (Exception e) {
-			log.error("Exception finding by id " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception finding by id " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		}
 		initUnique(data, colNames[0], i);
@@ -289,10 +289,10 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			pstmt.setLong(1, data.getPrimaryKey());
 			pstmt.executeUpdate();
 		} catch (SQLException sqle) {
-			log.error("SQLException deleting " + doKlass.getName() + " because " + sqle.getMessage());
+			logger.error("SQLException deleting " + doKlass.getName() + " because " + sqle.getMessage());
 			throw new DataAccessException(sqle);
 		} catch (Exception e) {
-			log.error("Reflection exception deleting " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Reflection exception deleting " + doKlass.getName() + " because " + e.getMessage());
 		} finally {
 			ConnectionHelper.cleanupDBResources(null, pstmt, conn);
 		}
@@ -338,7 +338,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			}
 			return rst;
 		} catch (Exception e) {
-			log.error("Exception instantiating " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception instantiating " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		} finally {
 			ConnectionHelper.cleanupDBResources(rs, pstmt, conn);
@@ -387,7 +387,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 				throw new DataAccessException("Data is not unique");
 			}
 		} catch (Exception e) {
-			log.error("Exception instantiating " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception instantiating " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		} finally {
 			ConnectionHelper.cleanupDBResources(rs, pstmt, conn);
@@ -407,7 +407,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			sql.append(query.toString());
 		}
 		//System.out.println(" ***********SQL Query in Search of Abstarct DAO>>"+sql.toString());
-		log.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
+		logger.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
 		return search(sql.toString(), query.getArgs(), query.getTop(),query.getFetchSize());
 	}
 	
@@ -418,7 +418,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 	 * @return
 	 */
 	public List<T> searchJoin(Query query) throws DataAccessException {
-		log.debug(this.getClass().getName() + ".search(...) is executing " + query.toString());
+		logger.debug(this.getClass().getName() + ".search(...) is executing " + query.toString());
 		return search(query.toString(), query.getArgs(), query.getTop(),query.getFetchSize());
 	}
 	
@@ -458,7 +458,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 				rst.add(data);
 			}
 		} catch (Exception e) {
-			log.error("Exception searching " + doKlass.getName() + " because " + e.getMessage()  + " for sql " + sql);
+			logger.error("Exception searching " + doKlass.getName() + " because " + e.getMessage()  + " for sql " + sql);
 			throw new DataAccessException(e);
 		} finally {
 			ConnectionHelper.cleanupDBResources(rs, pstmt, conn);
@@ -490,14 +490,14 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			for (int i = 1, len = args.size(); i <= len; i++) {
 				pstmt.setObject(i, args.get(i - 1));
 			}
-			log.debug("aggregate(...) executing " + query.debugString());
+			logger.debug("aggregate(...) executing " + query.debugString());
 			rs = pstmt.executeQuery();
 			if (rs.next()) {
 				rst = rs.getLong(1);
 			}
 		}
 		catch (SQLException sqle) {
-			log.error("Exception aggregating because " + sqle.getMessage());
+			logger.error("Exception aggregating because " + sqle.getMessage());
 			throw new DataAccessException(sqle);
 		} finally {
 			ConnectionHelper.cleanupDBResources(rs, pstmt, conn);
@@ -519,7 +519,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			return data;
 		}
 		catch (Exception e) {
-			log.error("Exception instantiating " + doKlass.getName() + " from resultset because " + e.getMessage());
+			logger.error("Exception instantiating " + doKlass.getName() + " from resultset because " + e.getMessage());
 			throw new DataAccessException(e);
 		}
 	}
@@ -566,22 +566,22 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			for (int i = 1, size = args.size(); i <= size; i++ ) {
 				stmt.setObject(i, args.get(i-1));
 			}
-			log.debug("search(...) is executing " + query.debugString());
+			logger.debug("search(...) is executing " + query.debugString());
 			rs = stmt.executeQuery();
 			while (rs.next()) {
 				rst.add(result2Object(rs, sqlType));
 			}
 		}
 		catch (SQLException sqle) {
-			log.error("Exception search4List " + klass.getName() + " with query " + query.debugString() + " because " + sqle.getMessage());
+			logger.error("Exception search4List " + klass.getName() + " with query " + query.debugString() + " because " + sqle.getMessage());
 			throw new DataAccessException(sqle);
 		}
 		catch (IOException ioe) {
-			log.error("Exception search4List " + klass.getName() + " with query " + query.debugString() + " because " + ioe.getMessage());
+			logger.error("Exception search4List " + klass.getName() + " with query " + query.debugString() + " because " + ioe.getMessage());
 			throw new DataAccessException(ioe);
 		}
 		catch (ClassNotFoundException cnf) {
-			log.error("Exception search4List, blob object not found " + klass.getName() + " with query " + query.debugString() + " because " + cnf.getMessage());
+			logger.error("Exception search4List, blob object not found " + klass.getName() + " with query " + query.debugString() + " because " + cnf.getMessage());
 			throw new DataAccessException(cnf);
 		}
 		finally {
@@ -604,7 +604,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 		}
 		}
 		catch (Exception e) {
-			log.error("Exception printing " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception printing " + doKlass.getName() + " because " + e.getMessage());
 			// ignore
 		}
 		return buf.toString();
@@ -634,7 +634,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			}
 		}
 		catch (Exception e) {
-			log.error("Exception comparing " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception comparing " + doKlass.getName() + " because " + e.getMessage());
 			throw new RuntimeException(e.getMessage());
 		}
 		return true;
@@ -659,7 +659,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 		if (lock) {
 			sql.append(" ").append("FOR UPDATE");
 		}
-		log.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
+		logger.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
 		final String sqlStr = sql.toString();
 		final List args = query.getArgs();
 		try {
@@ -725,11 +725,11 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			}
 		}
 		catch (Exception e) {
-			log.error("Exception locking " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception locking " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		}
 		catch (Throwable t) {
-			log.error("Exception locking " + doKlass.getName() + " because " + t.getMessage());
+			logger.error("Exception locking " + doKlass.getName() + " because " + t.getMessage());
 			throw new DataAccessException(t.getMessage());
 		}
 	}
@@ -773,7 +773,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 				try {
 					setters[0].invoke(data, new Object[] {Long.valueOf(dbEnum.getCurrentValue(sequence))});
 				} catch (Throwable t) {
-					cat.error(t);
+					logger.error("", t);
 				}
 			} 
 			else {
@@ -785,7 +785,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			afterInsert(data);
 
 		} catch (Exception e) {
-			log.error("Exception inserting " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception inserting " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		} finally {
 			ConnectionHelper.cleanupDBResources(null, pstmt, conn);
@@ -809,7 +809,7 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			pstmt.setLong(colNames.length, data.getPrimaryKey());
 			pstmt.executeUpdate();
 		} catch (Exception e) {
-			log.error("Exception updating " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception updating " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		} finally {
 			ConnectionHelper.cleanupDBResources(null, pstmt, conn);
@@ -864,11 +864,11 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 			setters[0].invoke(data, new Object[]{getNullValue(Integer.class)});
 		}
 		catch (IllegalAccessException e) {
-			log.error("Exception in afterDelete: " + this.getClass().getName() + " because " + e.getMessage());
+			logger.error("Exception in afterDelete: " + this.getClass().getName() + " because " + e.getMessage());
 			throw new RuntimeException(e.getMessage());
 		}
 		catch (InvocationTargetException e) {
-			log.error("Exception in afterDelete: " + this.getClass().getName() + " because " + e.getMessage());
+			logger.error("Exception in afterDelete: " + this.getClass().getName() + " because " + e.getMessage());
 			throw new RuntimeException(e.getMessage());
 		}
 	}
@@ -1031,4 +1031,11 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 		this.tablePrefix = tablePrefix;
 	}
 	
+	/**
+	 * create a new instance of query
+	 * @return
+	 */
+	public Query newQuery() {
+		return new Query();
+	}
 }

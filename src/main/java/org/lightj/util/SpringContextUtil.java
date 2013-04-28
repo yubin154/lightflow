@@ -1,27 +1,98 @@
 package org.lightj.util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
+/**
+ * 
+ *
+ */
 public class SpringContextUtil {
 	
+	/** contexts */
 	private static Map<String, ApplicationContext> ctxes = new HashMap<String, ApplicationContext>();
 	
-	public static ApplicationContext loadContext(String key, String xmlPath) {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext(xmlPath);
+	/**
+	 * load context
+	 * @param key
+	 * @param xmlPath
+	 * @return
+	 */
+	public synchronized static ApplicationContext loadContext(String key, String... xmlPaths) {
+		ClassPathXmlApplicationContext ctx = new ClassPathXmlApplicationContext(xmlPaths);
 		ctxes.put(key, ctx);
 		return ctx;
 	}
 	
+	/**
+	 * has key in context map
+	 * @param key
+	 * @return
+	 */
 	public static boolean hasContext(String key) {
 		return ctxes.containsKey(key);
 	}
 	
+	/**
+	 * get context by key
+	 * @param key
+	 * @return
+	 */
 	public static ApplicationContext getContext(String key) {
 		return ctxes.get(key);
 	}
+
+	/**
+	 * register context
+	 * @param key
+	 * @param context
+	 */
+	public synchronized static void registerContext(String key, ApplicationContext context) {
+		ctxes.put(key, context);
+	}
 	
+	/**
+	 * get bean
+	 * @param key
+	 * @param beanName
+	 * @return
+	 */
+	public static Object getBean(String key, String beanName) {
+		if (!ctxes.containsKey(key)) throw new IllegalArgumentException("application context " + key + " not exist");
+		return ctxes.get(key).getBean(beanName);
+	}
+	
+	/**
+	 * 
+	 * @param beanKlazz
+	 * @return
+	 */
+	public static <T> T getBean(String key, Class<T> beanKlazz) {
+		if (!ctxes.containsKey(key)) throw new IllegalArgumentException("application context " + key + " not exist");
+		return ctxes.get(key).getBean(beanKlazz);
+	}
+	
+	/**
+	 * get all registered bean type of a super class
+	 * @param beanBaseKlazz
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> List<Class<? extends T>> getBeansClass(String key, Class<T> beanBaseKlazz) {
+		if (!ctxes.containsKey(key)) throw new IllegalArgumentException("application context " + key + " not exist");
+		ApplicationContext ctx = ctxes.get(key);
+		List<Class<? extends T>> klazzes = new ArrayList<Class<? extends T>>(); 
+		for (String name : ctx.getBeanNamesForType(beanBaseKlazz)) {
+			if (beanBaseKlazz.isAssignableFrom(ctx.getType(name))) {
+				klazzes.add((Class<? extends T>) ctx.getType(name));
+			}
+		}
+		return klazzes;
+	}
+
 }

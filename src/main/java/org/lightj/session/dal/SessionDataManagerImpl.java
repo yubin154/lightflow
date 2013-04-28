@@ -4,13 +4,14 @@ import org.lightj.dal.AbstractDAO;
 import org.lightj.dal.BaseSequenceEnum;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.DataAccessRuntimeException;
+import org.lightj.dal.Query;
 
 /**
  * session data manager implementation
  * @author biyu
  *
  */
-public class SessionDataManagerImpl extends AbstractDAO<SessionDataImpl> implements ISessionDataManager<SessionDataImpl> {
+public class SessionDataManagerImpl extends AbstractDAO<SessionDataImpl> implements ISessionDataManager<SessionDataImpl, Query> {
 
 	private static final SessionDataManagerImpl me = new SessionDataManagerImpl();
 
@@ -51,7 +52,7 @@ public class SessionDataManagerImpl extends AbstractDAO<SessionDataImpl> impleme
 			data = doKlass.newInstance();
 		}
 		catch (Exception e) {
-			log.error("Exception finding by id " + doKlass.getName() + " because " + e.getMessage());
+			logger.error("Exception finding by id " + doKlass.getName() + " because " + e.getMessage());
 			throw new DataAccessException(e);
 		}
 		initUnique(data, "flow_key", key);

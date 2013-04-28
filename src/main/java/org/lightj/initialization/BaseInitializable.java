@@ -3,7 +3,8 @@ package org.lightj.initialization;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * initialize one particular resource or service
@@ -12,7 +13,7 @@ import org.lightj.util.Log4jProxy;
 public abstract class BaseInitializable implements Initializable {
 	
 	/** logger */
-	static Log4jProxy logger = Log4jProxy.getInstance(BaseInitializable.class);
+	static Logger logger = LoggerFactory.getLogger(BaseInitializable.class);
 	
 	/** time taken for init */
 	private static Map<String, Long> initTime = new HashMap<String, Long>();

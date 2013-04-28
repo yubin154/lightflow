@@ -27,4 +27,13 @@ public enum FlowState implements ILabelledValue {
 	}
 	public String getLabel() { return this.label; }
 	public String getValue() { return this.name(); }
+
+	public static FlowState valueOfIgnoreCase(String value) {
+		for(FlowState s : FlowState.values()) {
+			if(s.name().equalsIgnoreCase(value)) {
+				return s;
+			}
+		}
+		return null;
+	}
 }

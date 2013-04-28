@@ -14,6 +14,6 @@ public abstract class ExecutableTask<T extends FlowContext> extends Task<T> {
 		super(executeOptions);
 	}
 	
-	public abstract TaskResult execute(ActorRef exeuctingActor);
+	public abstract TaskResult execute(ActorRef exeuctingActor) throws TaskExecutionException;
 
 }

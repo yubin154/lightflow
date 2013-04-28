@@ -10,7 +10,7 @@ import org.lightj.initialization.ShutdownException;
  * @author biyu
  * 
  */
-public class HsqlDatabaseType extends BaseDatabaseType {
+public class HsqlDatabaseType extends RdbmsDatabaseType {
 
 	/**
 	 * 

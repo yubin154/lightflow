@@ -5,7 +5,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.lightj.Constants;
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -20,7 +21,7 @@ import org.lightj.util.Log4jProxy;
 public class LocatorUtil {
 
 	// Create Log4j logger instance for logging
-	private Log4jProxy cat = Log4jProxy.getInstance(this.getClass().getName());
+	private Logger logger = LoggerFactory.getLogger(LocatorUtil.class);
 
 	private static final LocatorUtil me = new LocatorUtil();
 
@@ -46,22 +47,22 @@ public class LocatorUtil {
 			Method m = returnClass.getDeclaredMethod("getInstance", Constants.NO_PARAMETER_TYPES);
 			locator = (Locator<? extends Locatable>) m.invoke(Constants.NO_OBJECT, Constants.NO_PARAMETER_VALUES);
 		} catch (SecurityException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			throw new InvalidObjectException("Security Exception Occured " + e.getMessage());
 		} catch (IllegalArgumentException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			throw new InvalidObjectException("Arguments are incorrect for reflection " + e.getMessage());
 		} catch (ClassNotFoundException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			throw new InvalidObjectException("Class not found for "	+ locatorClassName + " " + e.getMessage());
 		} catch (NoSuchMethodException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			throw new InvalidObjectException("Locator method getInstance not found " + e.getMessage());
 		} catch (IllegalAccessException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			throw new InvalidObjectException("Illegal access to the method getInstance " + e.getMessage());
 		} catch (InvocationTargetException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			throw new InvalidObjectException("Unable to invoke getInstance on "	+ locatorClassName + " " + e.getMessage());
 		}
 		Locatable locatable = locator.findByKey(locatableKey);

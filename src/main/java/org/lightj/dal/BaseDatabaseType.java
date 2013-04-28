@@ -2,10 +2,7 @@ package org.lightj.dal;
 
 import java.sql.Connection;
 
-import javax.sql.DataSource;
-
 import org.lightj.BaseTypeHolder;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 
 /**
@@ -15,22 +12,14 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
  * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
  */
 @SuppressWarnings({"serial"})
-public class BaseDatabaseType extends BaseTypeHolder implements IDatabaseSequencer {
+public abstract class BaseDatabaseType extends BaseTypeHolder implements IDatabaseSequencer {
 	
 	/** sequencer associated with this db */
 	private IDatabaseSequencerType sequencer;
 
-	/** information to create data source */
-	private String driverClass;
-	private String url;
-	private String un;
-	private String pwd;
-	
 	/** if this database is shared among multiple instances */
 	private boolean shared = true;
 
-	private DataSource ds;
-	
 	/** constructor */
 	protected BaseDatabaseType(String name, IDatabaseSequencerType sequenerType) {
 		super(name);
@@ -38,55 +27,12 @@ public class BaseDatabaseType extends BaseTypeHolder implements IDatabaseSequenc
 	}
 	
 	/** initialization */
-	public synchronized void initialize() {
-		if (driverClass != null) {
-			this.ds = createDataSource();
-			ConnectionHelper.initDataSource(this, ds);
-		}
-	}
+	public abstract void initialize();
 	
 	/** shutdown */
 	public synchronized void shutdown() {
 	}
 	
-	private DataSource createDataSource() {
-		DriverManagerDataSource ds = new DriverManagerDataSource(url, un, pwd);
-		ds.setDriverClassName(driverClass);
-		return ds;
-	}
-	
-	public String getDriverClass() {
-		return driverClass;
-	}
-
-	public void setDriverClass(String driverClass) {
-		this.driverClass = driverClass;
-	}
-
-	public String getUrl() {
-		return url;
-	}
-
-	public void setUrl(String url) {
-		this.url = url;
-	}
-
-	public String getUn() {
-		return un;
-	}
-
-	public void setUn(String un) {
-		this.un = un;
-	}
-
-	public String getPwd() {
-		return pwd;
-	}
-
-	public void setPwd(String pwd) {
-		this.pwd = pwd;
-	}
-
 	public boolean isShared() {
 		return shared;
 	}

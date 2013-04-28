@@ -18,9 +18,6 @@ public class ExecuteOption {
 	/** retry delay */
 	private final long retryDelayMs;
 	
-	/** timeout at */
-	private final long timeoutAt;
-	
 	public ExecuteOption() {
 		this(0,0,0,0);
 	}
@@ -31,7 +28,6 @@ public class ExecuteOption {
 		this.timeoutInMs = timeoutInMs;
 		this.maxRetry = execRetry;
 		this.retryDelayMs = retryDelayMs;
-		this.timeoutAt = System.currentTimeMillis() + (timeoutInMs > 0 ? timeoutInMs : DEFAULT_TIMEOUT);
 	}
 
 	public ExecuteOption(long initialDelayMs, long timeoutInMs) 
@@ -43,7 +39,7 @@ public class ExecuteOption {
 		return timeoutInMs;
 	}
 	public long getTimeOutAt() {
-		return timeoutAt;
+		return System.currentTimeMillis() + (timeoutInMs > 0 ? timeoutInMs : DEFAULT_TIMEOUT);
 	}
 	public long getInitialDelayMs() {
 		return initialDelayMs;

@@ -1,6 +1,7 @@
 package org.lightj.session;
 
-import org.apache.log4j.Level;
+import java.util.logging.Level;
+
 import org.lightj.task.TaskResultEnum;
 
 public enum FlowResult {
@@ -71,18 +72,18 @@ public enum FlowResult {
 	public Level logLevel() {
 		switch(this) {
 		case InProgress:
-			return Level.DEBUG;
+			return Level.FINE;
 		case Success:
 			return Level.INFO;
 		case Warning:
 		case Canceled:
 		case Timeout:
-			return Level.WARN;
+			return Level.WARNING;
 		case Failed:
 		case Crashed:
-			return Level.ERROR;
+			return Level.SEVERE;
 		case Fatal:
-			return Level.FATAL;
+			return Level.SEVERE;
 		default:
 			return Level.OFF;			
 		}

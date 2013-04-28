@@ -12,9 +12,13 @@ import org.lightj.dal.BaseSequenceEnum;
 import org.lightj.dal.ConnectionHelper;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
-public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
+public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> implements IObjectLockDAO {
+	
+	static Logger logger = LoggerFactory.getLogger(ObjectLockDAO.class);
 
 	public ObjectLockDAO(BaseDatabaseType dbEnum) {
 		super();
@@ -25,7 +29,6 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 	
 	static final String SELECT_FORUPDATE = String.format("SELECT * FROM %s l WHERE l.lock_key=?", ObjectLockDO.TABLENAME);
 	static final String LOCK_EXCLUSIVE = String.format("UPDATE %s SET lock_count=lock_count+1 WHERE lock_key=? AND lock_count=0", ObjectLockDO.TABLENAME);
-	static final String LOCK_SHARED = String.format("UPDATE %s SET lock_count=lock_count+1 WHERE lock_key=? AND lock_count=0", ObjectLockDO.TABLENAME);
 	static final String UNLOCK = String.format("UPDATE %s SET lock_count=lock_count-1 WHERE lock_key=? AND lock_count>=1", ObjectLockDO.TABLENAME);
 	
 	/**
@@ -37,7 +40,7 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 	 * @throws DataAccessException
 	 * @throws SQLException
 	 */
-	public int lock(final String lockKey, final boolean isExclusive) throws DataAccessException
+	public int lock(final String lockKey) throws DataAccessException
 	{
 		Connection con = null;
 		PreparedStatement stmt = null;
@@ -55,7 +58,7 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 				lock.setLockCount(0);
 				insert(lock);
 			}
-			lockStmt = con.prepareStatement(isExclusive ? LOCK_EXCLUSIVE : LOCK_SHARED);
+			lockStmt = con.prepareStatement(LOCK_EXCLUSIVE);
 			lockStmt.setString(1, lockKey);
 			int rowAffected = lockStmt.executeUpdate();
 			return rowAffected;
@@ -75,7 +78,7 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 	 * @return
 	 * @throws DataAccessException
 	 */
-	public int unlock(final String lockKey) throws DataAccessException
+	public int unlock(final String lockKey)
 	{
 		Connection con = null;
 		PreparedStatement stmt = null;
@@ -87,10 +90,11 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 			return stmt.executeUpdate();
 			
 		} catch (SQLException e){
-			throw new DataAccessException("Failed to release lock on " + lockKey);
+			logger.error(e.getMessage(), e);
 		} finally{
 			ConnectionHelper.cleanupDBResources(rs, stmt, con);
 		}
+		return 0;
 	}
 
 	/**
@@ -99,35 +103,38 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 	 * @throws DataAccessException
 	 * @throws SQLException
 	 */
-	public void aquireSemaphore(final ObjectLockDO semaphoreDO) throws DataAccessException, SQLException{
+	public void aquireSemaphore(final String semaphore) throws DataAccessException {
 		//Connection conn = ConnectionHelper.getConnection(this.getDbEnum());
-		int numberOfRowsLocked = aquire (semaphoreDO);
-		log.debug(" numberOfRowsLocked returned when trying to lock the semaphore : " + numberOfRowsLocked);
+		int numberOfRowsLocked = aquire (semaphore);
+		logger.debug(" numberOfRowsLocked returned when trying to lock the semaphore : " + numberOfRowsLocked);
 		
 		if (numberOfRowsLocked == 0 ) {
-			Connection con = ConnectionHelper.getConnection(getDbEnum());
 			// SYNC Condition: all the threads will try to commit at the same time.
 			// which means that if there are 4 threads , 1 commit will succeed and 3 will fail, 
 			// in that case we will want to go aquire the lock again, so basically catch the exception 
 			// and try to aquire the lock until we get it.
+			Connection con = null;
 			try{
+				con = ConnectionHelper.getConnection(getDbEnum());
+				ObjectLockDO semaphoreDO = new ObjectLockDO();
+				semaphoreDO.setLockKey(semaphore);
 				insert(semaphoreDO); 
 				con.commit();
 				//commitTr(this.getDbEnum());
 				//
 			}catch (Exception e){
-				log.debug("Insert commit failed.This might be expected, this is the first time we are locking a semaphore on this object key with many threads");
-				//commit failed lets rollback right here the next call to acquire semaphore is going to create a new connection.
-				//rollback transaction manually.
-				//ConnectionHelper.rollbackTr(this.getDbEnum());
-				con.rollback();
+				logger.debug("Insert commit failed.This might be expected, this is the first time we are locking a semaphore on this object key with many threads");
+				if (con != null) {
+					ConnectionHelper.rollbackTr(null, null, con);
+				}
+				throw new DataAccessException(e);
 			} finally {
 				ConnectionHelper.cleanupDBResources(null, null, con);
 			}
 			
-			numberOfRowsLocked = aquire(semaphoreDO);
+			numberOfRowsLocked = aquire(semaphore);
 			
-			log.debug("Trying to acquire the lock for the second time numberOfRowsLocked returned when trying to lock the semaphore : " + numberOfRowsLocked);
+			logger.debug("Trying to acquire the lock for the second time numberOfRowsLocked returned when trying to lock the semaphore : " + numberOfRowsLocked);
 			if (numberOfRowsLocked == 0 ){
 				throw new DataAccessException ("I was not able to aquire the semaphore");
 			}
@@ -154,12 +161,12 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 	 * Select for update happens right here.
 	 * */
 	@SuppressWarnings("rawtypes")
-	private int aquire(ObjectLockDO semaphoreDO) throws DataAccessException{
+	private int aquire(String semaphore) throws DataAccessException{
 
 		Query query = new Query();
 		query.select("*");
 		query.from(ObjectLockDO.TABLENAME, "l");
-		query.or("l.lock_key","=",semaphoreDO.getLockKey());
+		query.or("l.lock_key","=",semaphore);
 
 		StringBuffer sql = new StringBuffer();
 		if (query.isFullQuery()) {
@@ -170,7 +177,7 @@ public class ObjectLockDAO extends AbstractDAO<ObjectLockDO> {
 		}
 		sql.append(" ").append("FOR UPDATE");
 
-		log.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
+		logger.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
 		
 		Connection con = null;
 		PreparedStatement stmt = null;

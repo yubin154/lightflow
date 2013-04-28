@@ -36,9 +36,9 @@ public class SessionStepLogManagerImpl extends AbstractDAO<SessionStepLogImpl> i
 					null, BaseSequenceEnum.SEQ_FLOW_STEP_ID, colNames, colTypes, 
 					findGetters(javaNames), findSetters(javaNames, colTypes));
 		} catch (SecurityException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 		} catch (NoSuchMethodException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 		}
 		// start drainer queue
 		drainer = SessionStepLogDrainer.newInstance(this);

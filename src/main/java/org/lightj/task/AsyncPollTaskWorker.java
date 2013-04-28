@@ -1,12 +1,9 @@
 package org.lightj.task;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.lightj.task.WorkerMessage.CallbackType;
+import org.lightj.util.StringUtil;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -28,12 +25,12 @@ import akka.japi.Function;
  * 
  *  @author biyu
  */
-@SuppressWarnings("rawtypes")
-public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor implements IWorker {
+@SuppressWarnings({"rawtypes", "unchecked"})
+public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	
 	/** task, poll option */
-	private final T task;
-	private final MonitorOption monitorOptions;
+	private T task;
+	private final AsyncPollMonitor monitor;
 	
 	/** intermediate result */
 	private TaskResult taskSubmissionResult;
@@ -43,24 +40,25 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 	
 	/** runtime */
 	private final SupervisorStrategy supervisorStrategy;
-	private final List<ActorRef> asyncPollWorkers = new ArrayList<ActorRef>();
 	private ActorRef asyncWorker = null;
+	private ActorRef pollWorker = null;
 
 	/** requester */
 	private ActorRef sender = null;
-	private boolean sentReply = false;
 	private volatile int tryCount = 0;
 	private volatile int pollTryCount = 0;
 	
 	/** any unfinished business */
-	private Cancellable timeoutMessageCancellable = null;
 	private Cancellable retryMessageCancellable = null;
 	private Cancellable pollMessageCancellable = null;
+
+	/** any unfinished operation and their schedule */
+	private Cancellable timeoutMessageCancellable = null;
 	private FiniteDuration timeoutDuration = null;
 
 	/** internal message type */
 	private enum InternalMessageType {
-		POLL_PROGRESS, OPERATION_TIMEOUT, PROCESS_REQUEST_RESULT, PROCESS_POLL_RESULT
+		RETRY_REQUEST, PROCESS_ON_TIMEOUT, POLL_PROGRESS, PROCESS_REQUEST_RESULT, PROCESS_POLL_RESULT
 	}
 
 	/**
@@ -69,11 +67,9 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 	 * @param monitorOptions
 	 * @param listener
 	 */
-	public AsyncPollTaskWorker(final T task, final MonitorOption monitorOptions) {
+	public AsyncPollTaskWorker(AsyncPollMonitor monitor) {
 		super();
-		
-		this.task = task;
-		this.monitorOptions = monitorOptions;
+		this.monitor = monitor;
 		
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
@@ -88,25 +84,30 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 	public void onReceive(Object message) throws Exception 
 	{
 		try {
-			if (message instanceof WorkerMessageType) {
-				switch ((WorkerMessageType) message) {
-				case PROCESS_REQUEST:
-					sender = getSender();
-					processRequest();
+			// This is original request from external sender
+			if (message instanceof ExecutableTask) {
+				
+				task = (T) message;
+				sender = getSender();
+				processRequest();
+				if (tryCount == 0) {
 					replyTask(CallbackType.created, task);
-					break;
 				}
+			
 			}
+			// Internal messages
 			else if (message instanceof InternalMessageType) {
+				
 				switch ((InternalMessageType) message) {
+				
+				case RETRY_REQUEST:
+					processRequest();
+					break;
+
 				case POLL_PROGRESS:
 					pollProgress();
 					break;
 
-				case OPERATION_TIMEOUT:
-					operationTimeout();
-					break;
-					
 				case PROCESS_REQUEST_RESULT:
 					processRequestResult();
 					break;
@@ -115,6 +116,7 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 					processPollResult();
 					break;
 				}
+				
 			} 
 			else if (message instanceof TaskResult) {
 				final TaskResult r = (TaskResult) message;
@@ -125,10 +127,7 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 			}
 		} 
 		catch (Exception e) {
-			final StringWriter sw = new StringWriter();
-			final PrintWriter pw = new PrintWriter(sw);
-			e.printStackTrace(pw);
-			replyError(TaskResultEnum.Failed, e.toString(), sw.toString());
+			retry(TaskResultEnum.Failed, e.toString(), StringUtil.getStackTrace(e));
 		}
 	}
 	
@@ -137,112 +136,123 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 	 */
 	private final void processRequest() 
 	{
-		asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
+		if (asyncWorker == null) {
+			asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
+				private static final long serialVersionUID = 1L;
 
-			public Actor create() {
-				return createRequestWorker(task);
-			}
-			
-		}));
+				public Actor create() {
+					return createRequestWorker(task);
+				}
+				
+			}));
+		}
 		
-		asyncWorker.tell(WorkerMessageType.PROCESS_REQUEST, getSelf());
-		asyncPollWorkers.add(asyncWorker);
+		asyncWorker.tell(task, getSelf());
 
-		// To handle cases where this operation takes extremely long, schedule a 'timeout' message to be sent to us
-		if (task.getExecOptions().hasTimeout() && timeoutMessageCancellable == null) {
+		// asynchronous, set timeout
+		if (tryCount == 0 && task.getExecOptions().hasTimeout()) {
 			timeoutDuration = Duration.create(task.getExecOptions().getTimeoutInMs(), TimeUnit.MILLISECONDS);
-			timeoutMessageCancellable = getContext().system().scheduler()
-					.scheduleOnce(timeoutDuration, getSelf(), InternalMessageType.OPERATION_TIMEOUT, getContext().system().dispatcher());
+			timeoutMessageCancellable = getContext()
+					.system()
+					.scheduler()
+					.scheduleOnce(timeoutDuration, getSelf(),
+							InternalMessageType.PROCESS_ON_TIMEOUT,
+							getContext().system().dispatcher());
 		}
 
 	}
 
+	/**
+	 * process request result
+	 */
 	private final void processRequestResult() {
 		
-		if (curResult.getStatus().isSuccess()) {
+		if (curResult.getStatus().isAnyError()) {
+			retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
+		}
+		else if (curResult.getStatus().isComplete()) {
 			taskSubmissionResult = curResult;
 			requestDone = true;
 			replyTask(CallbackType.submitted, task);
 			getSelf().tell(InternalMessageType.POLL_PROGRESS, getSelf());
 		}
-		else {
-			retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
-		}
 		
 	}
 	
+	/**
+	 * poll progress
+	 */
 	private final void pollProgress() {
 		
-		final ActorRef pollWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
+		if (pollWorker == null) {
+			pollWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
+				private static final long serialVersionUID = 1L;
 
-			public Actor create() {
-				return createPollWorker(task, taskSubmissionResult);
-			}
-			
-		}));
+				public Actor create() {
+					return createPollWorker(task, taskSubmissionResult);
+				}
+				
+			}));
+		}
 
-		pollWorker.tell(WorkerMessageType.PROCESS_REQUEST, getSelf());
+		ExecutableTask pollTask = monitor.createPollTask(task, curResult);
+		pollWorker.tell(pollTask, getSelf());
 		
 	}
 	
+	/**
+	 * process polling result
+	 */
 	private final void processPollResult() {
 
-		if (curResult.getStatus().isSuccess()) {
-			taskPollResult = curResult;
-			
-			TaskResult taskResult = processPollResult(taskPollResult);
-			boolean scheduleNextPoll = (taskResult == null || !taskResult.isComplete()); 
-			
-			if (scheduleNextPoll) {
-				// Schedule next poll
-				pollMessageCancellable = getContext()
-						.system()
-						.scheduler()
-						.scheduleOnce(Duration.create(monitorOptions.getMonitorIntervalMs(), TimeUnit.MILLISECONDS), getSelf(),
-								InternalMessageType.POLL_PROGRESS, getContext().system().dispatcher());
-			}
-			else {
-				reply(taskResult);
-			}
-			
-		}
-		else {
+		boolean scheduleNextPoll = true;
+		if (curResult.getStatus().isAnyError()) {
 			retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
 		}
+		else if (curResult.getStatus().isComplete()) {
+			TaskResult realResult = monitor.processPollResult(curResult);
+			taskPollResult = realResult;
+			scheduleNextPoll = (realResult == null || !realResult.isComplete()); 
+		}
+
+		if (scheduleNextPoll) {
+			// Schedule next poll
+			pollMessageCancellable = getContext()
+					.system()
+					.scheduler()
+					.scheduleOnce(Duration.create(monitor.getMonitorOption().getMonitorIntervalMs(), TimeUnit.MILLISECONDS), getSelf(),
+							InternalMessageType.POLL_PROGRESS, getContext().system().dispatcher());
+		}
+		else {
+			reply(taskPollResult);
+		}
 		
 	}
 
+	/**
+	 * worker response
+	 * @param r
+	 * @throws Exception
+	 */
 	private final void handleWorkerResponse(TaskResult r) throws Exception {
 		
-		if (r.getStatus().isAnyError()) {
-			retry(r.getStatus(), r.getMsg(), r.getStackTrace());
-		} 
-		else {
-			curResult = r;
-			getSelf().tell(requestDone ? InternalMessageType.PROCESS_POLL_RESULT : InternalMessageType.PROCESS_REQUEST_RESULT, getSelf());
-		}
+		curResult = r;
+		getSelf().tell(requestDone ? InternalMessageType.PROCESS_POLL_RESULT : InternalMessageType.PROCESS_REQUEST_RESULT, getSelf());
 		
 	}
-	
-	private final void operationTimeout() {
-		if (asyncWorker != null && !asyncWorker.isTerminated()) {
-			asyncWorker.tell(PoisonPill.getInstance(), null);
-		}
-		retry(TaskResultEnum.Timeout, String.format("OperationTimedout, took more than %d seconds", task.getExecOptions().getTimeoutInMs()/1000), null);
-	}
 
+	/**
+	 * handle retry
+	 * @param status
+	 * @param errorMessage
+	 * @param stackTrace
+	 */
 	private final void retry(final TaskResultEnum status, final String errorMessage, final String stackTrace) {
 		// Error response
 		boolean retried = false;
 		if (requestDone) {
-			if (pollTryCount++ < monitorOptions.getMaxRetry()) {
-				retryMessageCancellable = getContext()
-						.system()
-						.scheduler()
-						.scheduleOnce(Duration.create(monitorOptions.getRetryDelayMs(), TimeUnit.MILLISECONDS), getSelf(),
-								InternalMessageType.POLL_PROGRESS, getContext().system().dispatcher());
+			if (pollTryCount++ < monitor.getMonitorOption().getMaxRetry()) {
+				// noop, scheduled poll is same as retry
 				retried = true;
 			} 
 		}
@@ -252,14 +262,14 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 						.system()
 						.scheduler()
 						.scheduleOnce(Duration.create(task.getExecOptions().getRetryDelayMs(), TimeUnit.MILLISECONDS), getSelf(),
-								WorkerMessageType.PROCESS_REQUEST, getContext().system().dispatcher());
+								InternalMessageType.RETRY_REQUEST, getContext().system().dispatcher());
 				retried = true;
 			} 
 		}
 		if (!retried) {
 			// We have exceeded all retries, reply back to sender
 			// with the error message
-			replyError(status, "retry limit reached, last error: " + errorMessage, stackTrace);
+			replyError(status, (requestDone ? "request" : "poll") + " retry limit reached, last error: " + errorMessage, stackTrace);
 		}
 	}
 
@@ -274,37 +284,46 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 		if (pollMessageCancellable != null && !pollMessageCancellable.isCancelled()) {
 			pollMessageCancellable.cancel();
 		}
-		for (final ActorRef asyncWorker : asyncPollWorkers) {
-			if (asyncWorker != null && !asyncWorker.isTerminated()) {
-				asyncWorker.tell(PoisonPill.getInstance(), null);
-			}
+		if (asyncWorker != null && !asyncWorker.isTerminated()) {
+			asyncWorker.tell(PoisonPill.getInstance(), null);
+		}
+		if (pollWorker != null && !pollWorker.isTerminated()) {
+			pollWorker.tell(PoisonPill.getInstance(), null);
 		}
 	}
 	
+	/**
+	 * send non result callbacks
+	 * @param type
+	 * @param task
+	 */
 	private final void replyTask(CallbackType type, Task task) {
-		sender.tell(new WorkerMessage(type, task, null), getSelf());
+		if (!getContext().system().deadLetters().equals(sender)) {
+			sender.tell(new WorkerMessage(type, task, null), getSelf());
+		}
 	}
 
+	/**
+	 * send error result
+	 * @param state
+	 * @param msg
+	 * @param stackTrace
+	 */
 	private final void replyError(TaskResultEnum state, String msg, String stackTrace) {
-		if (!sentReply) {
-			TaskResult tr = task.createErrorResult(state, msg, stackTrace);
+		TaskResult tr = task.createErrorResult(state, msg, stackTrace);
+		if (!getContext().system().deadLetters().equals(sender)) {
 			sender.tell(new WorkerMessage(CallbackType.taskresult, task, tr), getSelf());
-			sentReply = true;
-
 		}
-
-		// Self-terminate
-		getSelf().tell(PoisonPill.getInstance(), null);
 	}
 	
+	/**
+	 * send result
+	 * @param taskResult
+	 */
 	private final void reply(final TaskResult taskResult) {
-		if (!sentReply) {
+		if (!getContext().system().deadLetters().equals(sender)) {
 			sender.tell(new WorkerMessage(CallbackType.taskresult, task, taskResult), getSelf());
-			sentReply = true;
 		}
-
-		// Self-terminate
-		getSelf().tell(PoisonPill.getInstance(), null);
 	}
 
 	@Override
@@ -312,26 +331,23 @@ public abstract class AsyncPollTaskWorker<T extends Task> extends UntypedActor i
 		return supervisorStrategy;
 	}
 	
-
+	/**
+	 * create poll process
+	 * @param task
+	 * @return
+	 */
+	public Actor createRequestWorker(T task) {
+		return new ExecutableTaskWorker();
+	}
+	
 	/**
 	 * create poll request based on result of the original request
 	 * @param task
 	 * @param result
 	 * @return
 	 */
-	public abstract Actor createPollWorker(T task, TaskResult result);
+	public Actor createPollWorker(T task, TaskResult result) {
+		return new ExecutableTaskWorker();
+	}
 	
-	/**
-	 * process poll result
-	 * @param result
-	 * @return
-	 */
-	public abstract TaskResult processPollResult(TaskResult result);
-
-	/**
-	 * create poll process
-	 * @param task
-	 * @return
-	 */
-	public abstract Actor createRequestWorker(T task);
 }

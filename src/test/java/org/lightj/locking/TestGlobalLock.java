@@ -3,6 +3,7 @@ package org.lightj.locking;
 import org.junit.Assert;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
+import org.lightj.dal.BaseDatabaseType;
 import org.lightj.dal.DatabaseModule;
 import org.lightj.dal.ITransactional;
 import org.lightj.example.dal.SampleDatabaseEnum;
@@ -12,11 +13,13 @@ import org.lightj.initialization.ShutdownException;
 
 
 public class TestGlobalLock extends BaseTestCase {
+	
+	static BaseDatabaseType db = SampleDatabaseEnum.LOCK;
 
 	@Test
 	public void testSemaphoreSuccess() throws Exception {
 		
-		ILockManager lockManager = new LockManagerImpl(SampleDatabaseEnum.LOCK);
+		ILockManager lockManager = new LockManagerImpl(db);
 		
 		lockManager.synchronizeObject(TestGlobalLock.class.getName(), 
 				new ITransactional() {
@@ -31,7 +34,7 @@ public class TestGlobalLock extends BaseTestCase {
 	
 	@Test
 	public void testSemaphoreFailure() throws Exception {
-		ILockManager lockManager = new LockManagerImpl(SampleDatabaseEnum.LOCK);
+		ILockManager lockManager = new LockManagerImpl(db);
 		
 		try {
 			lockManager.synchronizeObject(TestGlobalLock.class.getName(), 
@@ -52,9 +55,21 @@ public class TestGlobalLock extends BaseTestCase {
 		
 	}
 	
+	@Test
+	public void testLockSuccess() throws Exception {
+		
+		ILockManager lockManager = new LockManagerImpl(db);
+		String key = TestGlobalLock.class.getName();
+		lockManager.lock(key);
+		Assert.assertEquals(1, lockManager.getLockCount(key));
+		lockManager.unlock(key);
+		Assert.assertEquals(0, lockManager.getLockCount(key));
+			
+	}
+
 	public void testSemaphoreConcurrency() throws Exception {
 
-		final ILockManager lockManager = new LockManagerImpl(SampleDatabaseEnum.LOCK);
+		final ILockManager lockManager = new LockManagerImpl(db);
 		final int[] counter = new int[2];
 		
 		for (int i = 0; i < 10; i++) {
@@ -91,18 +106,6 @@ public class TestGlobalLock extends BaseTestCase {
 		Assert.assertEquals(9, counter[1]);
 	}
 
-	@Test
-	public void testLockSuccess() throws Exception {
-		
-		ILockManager lockManager = new LockManagerImpl(SampleDatabaseEnum.LOCK);
-		String key = TestGlobalLock.class.getName();
-		lockManager.lock(key, true);
-		Assert.assertEquals(1, lockManager.getLockCount(key));
-		lockManager.unlock(key);
-		Assert.assertEquals(0, lockManager.getLockCount(key));
-			
-	}
-
 	@Override
 	protected void afterInitialize(String home) throws InitializationException {
 	}
@@ -113,7 +116,7 @@ public class TestGlobalLock extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		return new BaseModule[] {new DatabaseModule().addDatabases(SampleDatabaseEnum.LOCK).getModule()};
+		return new BaseModule[] {new DatabaseModule().addDatabases(db).getModule()};
 	}
 
 }

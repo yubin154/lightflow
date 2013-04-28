@@ -1,49 +1,29 @@
 package org.lightj;
 
 import java.io.File;
-import java.net.MalformedURLException;
 
 import junit.framework.TestCase;
 
-import org.apache.log4j.xml.DOMConfigurator;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.InitializationProcessor;
 import org.lightj.initialization.ShutdownException;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class BaseTestCase extends TestCase {
 	
-	static Log4jProxy logger = Log4jProxy.getInstance(BaseTestCase.class);
+	static Logger logger = LoggerFactory.getLogger(BaseTestCase.class);
 	
 	private InitializationProcessor initializer = null;
 
-	/**
-	 * Helper method to initialize the test environment
-	 */
-	protected String getHome() {
-		String userDir = System.getProperty("user.dir");
-		return userDir;
-	}
+	public BaseTestCase() {}
 	
-	/**
-	 * helper method to initialize the test environment
-	 * @return
-	 */
-	protected String[] getProducts() {
-		return new String[] {"lightj"};
-	}
-	
-	/**
-	 * config root path relative to home
-	 * @return
-	 */
-	protected String getConfigRoot() {
-		return StringUtil.join(new String[] {"", "src", "main", "resources", "config", ""}, File.separator);
-	}
-	
-	public BaseTestCase() {
+	public String getConfigRoot() {
+		String home =  System.getProperty("user.dir");
+		String configDir = StringUtil.join(new String[] {"", "src", "main", "resources", "config", ""}, File.separator);
+		return home + configDir;
 	}
 	
 	/**
@@ -56,35 +36,20 @@ public abstract class BaseTestCase extends TestCase {
 	 * Prepare to run the test suite.
 	 * @throws InitializationException 
 	 */
-	protected void setUp() throws InitializationException {
+	protected void setUp() throws Exception {
 
-		String home = getHome();
-
-		String configRoot = home + getConfigRoot();
-		try {
-			RuntimeContext.setConfigRoot(new File(configRoot).toURI().toURL().toString());
-		} catch (MalformedURLException e) {
-			throw new InitializationException(e);
-		}
-		RuntimeContext.setProducts(getProducts());
-		RuntimeContext.setEnv("dev");
-		RuntimeContext.setBuild(Long.toString(System.currentTimeMillis()));
-
-		
-		// logging
-		System.setProperty("java.util.logging.config.file", configRoot + "logging.properties");
-		DOMConfigurator.configure(configRoot + "log4j.xml");
-
+		System.setProperty(RuntimeContext.LOG_CONFIG, getConfigRoot() + "logging.properties");
+		RuntimeContext.setClusterUuid("lightj", "dev", "corp", Long.toString(System.currentTimeMillis()));
 		if (getDependentModules() != null) {
 			logger.warn("Test case" + this.getName());
 			initializer = new InitializationProcessor(getDependentModules());
 			initializer.initialize();
 		}
 
-		afterInitialize(home);
+		afterInitialize(System.getProperty("user.dir"));
 	}
 	
-	protected void tearDown() throws ShutdownException {
+	protected void tearDown() throws Exception {
 		if (initializer != null) {
 			initializer.shutdown();
 		}

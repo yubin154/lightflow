@@ -1,5 +1,8 @@
 package org.lightj.session.step;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -7,9 +10,12 @@ import java.util.concurrent.ConcurrentMap;
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowResult;
+import org.lightj.task.ITaskListener;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
-import org.lightj.util.Log4jProxy;
+import org.lightj.task.TaskResultEnum;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -19,9 +25,9 @@ import org.lightj.util.Log4jProxy;
  *
  */
 @SuppressWarnings("rawtypes")
-public abstract class StepCallbackHandler<T extends FlowContext> extends StepExecution<T> {
+public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T> implements ITaskListener {
 	
-	static Log4jProxy logger = Log4jProxy.getLogger(StepCallbackHandler.class.getName());
+	static Logger logger = LoggerFactory.getLogger(StepCallbackHandler.class.getName());
 
 	/** callback types */
 	public static final int TYPE_CREATED		=	1;
@@ -35,6 +41,35 @@ public abstract class StepCallbackHandler<T extends FlowContext> extends StepExe
 	/** all results */
 	protected ConcurrentMap<String, TaskResult> results = new ConcurrentHashMap<String, TaskResult>();
 	
+	/**
+	 * map a result status to a flow step result
+	 */
+	protected HashMap<TaskResultEnum, StepExecution> mapOnResults = new HashMap<TaskResultEnum, StepExecution>();
+	
+	/**
+	 * constructor with no defaul transition
+	 * @param transition
+	 */
+	StepCallbackHandler() {
+		super(StepTransition.NOOP);
+	}
+
+	/**
+	 * constructor with no defaul transition
+	 * @param transition
+	 */
+	public StepCallbackHandler(String runTo) {
+		super(StepTransition.runToStep(runTo));
+	}
+
+	/**
+	 * constructor with no defaul transition
+	 * @param transition
+	 */
+	public StepCallbackHandler(Enum runTo) {
+		super(StepTransition.runToStep(runTo));
+	}
+
 	/**
 	 * construct a result handler with default transition
 	 * @param transition
@@ -52,7 +87,10 @@ public abstract class StepCallbackHandler<T extends FlowContext> extends StepExe
 			results.put(task.getTaskId(), result);
 			sessionContext.saveTaskResult(flowStep.getStepId(), task, result);
 		}
-		resumeFlowStep();
+		StepTransition trans = execute();
+		if (trans != null && trans.isEdge()) {
+			resumeFlowStep(trans);
+		}
 	}
 
 	/**
@@ -63,7 +101,10 @@ public abstract class StepCallbackHandler<T extends FlowContext> extends StepExe
 			callbacks.offer(new CallbackWrapper(TYPE_SUBMITTED, task));
 			sessionContext.addTask(flowStep.getStepId(), task);
 		}
-		resumeFlowStep();
+		StepTransition trans = execute();
+		if (trans != null && trans.isEdge()) {
+			resumeFlowStep(trans);
+		}
 	}
 
 	/**
@@ -74,7 +115,10 @@ public abstract class StepCallbackHandler<T extends FlowContext> extends StepExe
 			callbacks.offer(new CallbackWrapper(TYPE_CREATED, task));
 			sessionContext.addTask(flowStep.getStepId(), task);
 		}
-		resumeFlowStep();
+		StepTransition trans = execute();
+		if (trans != null && trans.isEdge()) {
+			resumeFlowStep(trans);
+		}
 	}
 
 	/**
@@ -84,7 +128,10 @@ public abstract class StepCallbackHandler<T extends FlowContext> extends StepExe
 		if (task != null) {
 			callbacks.offer(new CallbackWrapper(TYPE_COMPLETED, task));
 		}
-		resumeFlowStep();
+		StepTransition trans = execute();
+		if (trans != null && trans.isEdge()) {
+			resumeFlowStep(trans);
+		}
 	}
 
 	@Override
@@ -148,30 +195,180 @@ public abstract class StepCallbackHandler<T extends FlowContext> extends StepExe
 	 * @return
 	 * @throws FlowExecutionException
 	 */
-	public abstract StepTransition executeOnCompleted(Task task) throws FlowExecutionException;
+	public final synchronized StepTransition executeOnCompleted(Task task)
+			throws FlowExecutionException 
+	{
+		return processResults(results);
+	}
 	
+	/**
+	 * process all results from callbacks and determine where to go next
+	 * override this for custom logic
+	 */
+	public StepTransition processResults(Map<String, TaskResult> results) {
+		StepTransition transition = defResult;
+		TaskResult curRst = null;
+		for (Entry<String, TaskResult> entry : results.entrySet()) {
+			TaskResult result = entry.getValue();
+			TaskResultEnum status = result.getStatus();
+			if (mapOnResults.containsKey(status) && (curRst == null || result.isMoreSevere(curRst))) {
+				curRst = result;
+				transition = mapOnResults.get(status).execute();
+				transition.log(result.getMsg(), result.getStackTrace());
+			}
+		}
+		// if we want to move on when result comes back, find the next step
+		return transition;
+	}
+
 	/**
 	 * do the work when task submitted
 	 * @param task
 	 * @return
 	 * @throws FlowExecutionException
 	 */
-	public abstract StepTransition executeOnSubmitted(Task task) throws FlowExecutionException;
-	
+	public StepTransition executeOnSubmitted(Task task) throws FlowExecutionException {
+		StepTransition transition = StepTransition.newLog(task.getTaskId(), null);
+		return transition;
+	}
+
 	/**
 	 * do the work when task is created
 	 * @param task
 	 * @return
 	 * @throws FlowExecutionException
 	 */
-	public abstract StepTransition executeOnCreated(Task task) throws FlowExecutionException;
-	
+	public StepTransition executeOnCreated(Task task) throws FlowExecutionException {
+		return StepTransition.NOOP;
+	}
+
 	/**
 	 * do the work when task generates some result
+	 * move the flow to the transitions predefined in the result to transition map,
+	 * or to default transition if nothing matches
 	 * @param result
 	 * @return
 	 * @throws FlowExecutionException
 	 */
-	public abstract StepTransition executeOnResult(Task task, TaskResult result) throws FlowExecutionException;
+	public synchronized StepTransition executeOnResult(Task task, TaskResult result) throws FlowExecutionException {
+		// remember result
+		return StepTransition.newLog((result.getStatus() + ": " + result.getMsg()), result.getStackTrace());
+	}
+
+	/**
+	 * register a status with result(s)
+	 * @param status
+	 * @param result
+	 */
+	public StepCallbackHandler mapResultTo(StepTransition result, TaskResultEnum... statuses) {
+		for (TaskResultEnum status : statuses) {
+			mapOnResults.put(status, new TransitionWrapper(result));
+		}
+		return this;
+	}
+
+	/**
+	 * register a status with result(s)
+	 * @param status
+	 * @param result
+	 */
+	public StepCallbackHandler mapResultTo(String stepName, TaskResultEnum... statuses) {
+		for (TaskResultEnum status : statuses) {
+			mapOnResults.put(status, new TransitionWrapper(StepTransition.runToStep(stepName)));
+		}
+		return this;
+	}
+
+	/**
+	 * register a status with result(s)
+	 * @param status
+	 * @param result
+	 */
+	public StepCallbackHandler mapResultTo(Enum stepName, TaskResultEnum... statuses) {
+		for (TaskResultEnum status : statuses) {
+			mapOnResults.put(status, new TransitionWrapper(StepTransition.runToStep(stepName)));
+		}
+		return this;
+	}
+	
+	/**
+	 * set default transition if null
+	 * @param transition
+	 */
+	public void setDefIfNull(StepTransition transition) {
+		if (defResult == null) {
+			defResult = transition;
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void merge(StepCallbackHandler another) {
+		this.mapOnResults.putAll(another.mapOnResults);
+		if (another.defResult != null) {
+			this.defResult = another.defResult;
+		}
+	}
+
+	/**
+	 * register step with results
+	 * @param stepOnSuccess
+	 * @param stepOnElse
+	 * @return
+	 */
+	public StepCallbackHandler mapResult(String stepOnSuccess, String stepOnElse) {
+		this.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
+		this.mapResultTo(StepTransition.runToStep(stepOnElse), TaskResultEnum.Failed, TaskResultEnum.Timeout, TaskResultEnum.Canceled);
+		return this;
+	}
+	
+	/**
+	 * register step with results
+	 * @param stepOnSuccess
+	 * @param stepOnElse
+	 * @return
+	 */
+	public StepCallbackHandler mapResult(Enum stepOnSuccess, Enum stepOnElse) {
+		this.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
+		this.mapResultTo(StepTransition.runToStep(stepOnElse), TaskResultEnum.Failed, TaskResultEnum.Timeout, TaskResultEnum.Canceled);
+		return this;
+	}
+	
+	
+	/**
+	 * convenient method to create handler
+	 * @param stepOnSuccess
+	 * @param stepOnElse
+	 * @return
+	 */
+	public static StepCallbackHandler onResult(Enum stepOnSuccess, Enum stepOnElse) {
+		StepCallbackHandler handler = new StepCallbackHandler(StepTransition.runToStep(stepOnElse).withResult(FlowResult.Failed));
+		handler.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
+		return handler;
+	}
+	
+	/**
+	 * convenient method to create handler
+	 * @param stepOnSuccess
+	 * @param stepOnElse
+	 * @return
+	 */
+	public static StepCallbackHandler onResult(String stepOnSuccess, String stepOnElse) {
+		StepCallbackHandler handler = new StepCallbackHandler(StepTransition.runToStep(stepOnElse).withResult(FlowResult.Failed));
+		handler.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
+		return handler;
+	}
+	
+	/**
+	 * simple wrapper for the step transition
+	 * @author biyu
+	 *
+	 */
+	private static class TransitionWrapper extends SimpleStepExecution {
+
+		public TransitionWrapper(StepTransition transition) {
+			super(transition);
+		}
+		
+	}
 	
 }

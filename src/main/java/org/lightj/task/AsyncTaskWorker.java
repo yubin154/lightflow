@@ -1,12 +1,9 @@
 package org.lightj.task;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.lightj.task.WorkerMessage.CallbackType;
+import org.lightj.util.StringUtil;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -24,13 +21,13 @@ import akka.japi.Function;
 
 
 /**
- * Provides abstraction of a http operation. The operation can include long polling. 
+ * Provides abstraction of an business operation. The operation can include asynchronous callback. 
  */
-@SuppressWarnings("rawtypes")
-public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor implements IWorker {
+@SuppressWarnings({"rawtypes", "unchecked"})
+public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	
 	/** task */
-	private final T task;
+	private T task;
 	
 	/** intermediate result */
 	private TaskResult curResult;
@@ -38,27 +35,27 @@ public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor imple
 	/** requester */
 	private ActorRef sender = null;
 	private volatile int tryCount = 0;
-	private FiniteDuration timeoutDuration = null;
-	private boolean sentReply = false;
 
 	/** runtime */
 	private final SupervisorStrategy supervisorStrategy;
 
 	/** unfinished work */
-	private final List<ActorRef> asyncPollWorkers = new ArrayList<ActorRef>();
 	private ActorRef asyncWorker = null;
-	private Cancellable timeoutMessageCancellable = null;
 	private Cancellable retryMessageCancellable = null;
-	
-	private enum InternalMessageType {
-		OPERATION_TIMEOUT, PROCESS_REQUEST_RESULT
-	}
 
-	public AsyncTaskWorker(final T task) {
+	/** any unfinished operation and their schedule */
+	private Cancellable timeoutMessageCancellable = null;
+	private FiniteDuration timeoutDuration = null;
+
+	/** internal message type for handling exception, result, and timeout */
+	private enum InternalMessageType {
+		PROCESS_ON_TIMEOUT
+	}
+	
+	/** constructor */
+	public AsyncTaskWorker() {
 		super();
-		
-		this.task = task;
-		
+
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
 			public Directive apply(Throwable arg0) {
@@ -72,41 +69,34 @@ public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor imple
 	public void onReceive(Object message) throws Exception 
 	{
 		try {
-			if (message instanceof WorkerMessageType) {
-				switch ((WorkerMessageType) message) {
-				case PROCESS_REQUEST:
-					sender = getSender();
-					processRequest();
+			if (message instanceof Task) {
+				task = (T) message;
+				sender = getSender();
+				processRequest();
+				if (tryCount == 0) {
 					replyTask(CallbackType.created, task);
-					break;
 				}
 			}
+			else if (message instanceof TaskResult) {
+				final TaskResult r = (TaskResult) message;
+				processRequestResult(r);
+			} 
 			else if (message instanceof InternalMessageType) {
 				switch ((InternalMessageType) message) {
 
-				case OPERATION_TIMEOUT:
-					operationTimeout();
-					break;
-					
-				case PROCESS_REQUEST_RESULT:
-					processRequestResult();
+				case PROCESS_ON_TIMEOUT:
+					reply(task.createErrorResult(TaskResultEnum.Timeout, "RequestTimeOut", null));
+
 					break;
 					
 				}
-			} 
-			else if (message instanceof TaskResult) {
-				final TaskResult r = (TaskResult) message;
-				handleHttpWorkerResponse(r);
 			} 
 			else {
 				unhandled(message);
 			}
 		} 
 		catch (Exception e) {
-			final StringWriter sw = new StringWriter();
-			final PrintWriter pw = new PrintWriter(sw);
-			e.printStackTrace(pw);
-			replyError(TaskResultEnum.Failed, e.toString(), sw.toString());
+			retry(task.createErrorResult(TaskResultEnum.Failed, e.toString(), StringUtil.getStackTrace(e)));
 		}
 	}
 	
@@ -115,65 +105,63 @@ public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor imple
 	 */
 	private final void processRequest() {
 
-		asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
+		if (asyncWorker == null) {
+			asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
+				private static final long serialVersionUID = 1L;
 
-			public Actor create() {
-				return createRequestWorker(task);
-			}
-		}));
-		
-		asyncWorker.tell(WorkerMessageType.PROCESS_REQUEST, getSelf());
-		asyncPollWorkers.add(asyncWorker);
-
-		// To handle cases where this operation takes extremely long, schedule a 'timeout' message to be sent to us
-		if (task.getExecOptions().hasTimeout()) {
-			timeoutDuration = Duration.create(task.getExecOptions().getTimeOutAt(), TimeUnit.MILLISECONDS);
-			timeoutMessageCancellable = getContext().system().scheduler()
-					.scheduleOnce(timeoutDuration, getSelf(), InternalMessageType.OPERATION_TIMEOUT, getContext().system().dispatcher());
+				public Actor create() {
+					return createRequestWorker(task);
+				}
+				
+			}));
 		}
-
+		
+		asyncWorker.tell(task, getSelf());
+		
+		// asynchronous, set timeout
+		if (tryCount == 0 && task.getExecOptions().hasTimeout()) {
+			timeoutDuration = Duration.create(task.getExecOptions().getTimeoutInMs(), TimeUnit.MILLISECONDS);
+			timeoutMessageCancellable = getContext()
+					.system()
+					.scheduler()
+					.scheduleOnce(timeoutDuration, getSelf(),
+							InternalMessageType.PROCESS_ON_TIMEOUT,
+							getContext().system().dispatcher());
+		}
 
 	}
 
-	private final void processRequestResult() {
+	/**
+	 * process result
+	 * @param r
+	 * @throws Exception
+	 */
+	private final void processRequestResult(TaskResult r) throws Exception {
 		
-		if (curResult.getStatus().isSuccess()) {
+		this.curResult = r;
+		if (curResult.getStatus().isComplete()) {
 			
 			replyTask(CallbackType.submitted, task);
 			TaskResult realResult = processRequestResult(task, curResult);
 			
-			if (realResult != null && realResult.getStatus().isComplete()) 
-			{
-				reply(realResult);
+			if (realResult != null) {
+				if (realResult.getStatus().isAnyError()) {
+					retry(curResult);
+				}
+				else if (realResult.getStatus().isComplete()) 
+				{
+					reply(realResult);
+				}
 			}
 		}
-		else if (curResult.getStatus().isAnyError()) {
-			retry(curResult.getMsg(), curResult.getStackTrace());
-		}
 		
 	}
 	
-	private final void handleHttpWorkerResponse(TaskResult r) throws Exception {
-		
-		if (r.getStatus().isAnyError()) {
-			retry(r.getMsg(), r.getStackTrace());
-		} 
-		else if (r.getStatus().isComplete()) {
-			curResult = r;
-			getSelf().tell(InternalMessageType.PROCESS_REQUEST_RESULT, getSelf());
-		}
-		
-	}
-	
-	private final void operationTimeout() {
-		if (asyncWorker != null && !asyncWorker.isTerminated()) {
-			asyncWorker.tell(PoisonPill.getInstance(), null);
-		}
-		retry(String.format("OperationTimedout, took more than %d seconds", task.getExecOptions().getTimeoutInMs()/1000), null);
-	}
-
-	private final void retry(final String errorMessage, final String stackTrace) {
+	/**
+	 * handle retry
+	 * @param result
+	 */
+	private final void retry(TaskResult result) {
 		// Error response
 		if (tryCount++ < task.getExecOptions().getMaxRetry()) {
 			retryMessageCancellable = getContext()
@@ -185,7 +173,7 @@ public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor imple
 		else {
 			// We have exceeded all retries, reply back to sender
 			// with the error message
-			replyError(TaskResultEnum.Failed, errorMessage, stackTrace);
+			reply(result);
 		}
 	}
 
@@ -197,36 +185,30 @@ public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor imple
 		if (timeoutMessageCancellable != null && !timeoutMessageCancellable.isCancelled()) {
 			timeoutMessageCancellable.cancel();
 		}
-		for (final ActorRef asyncWorker : asyncPollWorkers) {
-			if (asyncWorker != null && !asyncWorker.isTerminated()) {
-				asyncWorker.tell(PoisonPill.getInstance(), null);
-			}
+		if (asyncWorker != null && !asyncWorker.isTerminated()) {
+			asyncWorker.tell(PoisonPill.getInstance(), null);
 		}
 	}
 	
+	/**
+	 * callback with task
+	 * @param type
+	 * @param task
+	 */
 	private final void replyTask(CallbackType type, Task task) {
-		sender.tell(new WorkerMessage(type, task, null), getSelf());
-	}
-
-	private final void replyError(TaskResultEnum state, String msg, String stackTrace) {
-		if (!sentReply) {
-			TaskResult tr = task.createErrorResult(state, msg, stackTrace);
-			sender.tell(new WorkerMessage(CallbackType.taskresult, task, tr), getSelf());
-			sentReply = true;
+		if (!getContext().system().deadLetters().equals(sender)) {
+			sender.tell(new WorkerMessage(type, task, null), getSelf());
 		}
-
-		// Self-terminate
-		getSelf().tell(PoisonPill.getInstance(), null);
 	}
-	
+
+	/**
+	 * callback with result
+	 * @param taskResult
+	 */
 	private final void reply(final TaskResult taskResult) {
-		if (!sentReply) {
+		if (!getContext().system().deadLetters().equals(sender)) {
 			sender.tell(new WorkerMessage(CallbackType.taskresult, task, taskResult), getSelf());
-			sentReply = true;
 		}
-
-		// Self-terminate
-		getSelf().tell(PoisonPill.getInstance(), null);
 	}
 
 	@Override
@@ -236,16 +218,21 @@ public abstract class AsyncTaskWorker<T extends Task> extends UntypedActor imple
 	
 
 	/**
-	 * process poll result
+	 * process request result
 	 * @param result
 	 * @return
 	 */
-	public abstract TaskResult processRequestResult(T task, TaskResult result);
+	public TaskResult processRequestResult(T task, TaskResult result) {
+		return result;
+	}
 
 	/**
 	 * create poll process
 	 * @param task
 	 * @return
 	 */
-	public abstract Actor createRequestWorker(T task);
+	public Actor createRequestWorker(T task) {
+		return new ExecutableTaskWorker();
+	}
+	
 }

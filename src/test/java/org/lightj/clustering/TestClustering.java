@@ -5,28 +5,26 @@ import java.util.Date;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.log4j.Logger;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
 import org.lightj.RuntimeContext;
-import org.lightj.clustering.ClusteringEventHandler;
-import org.lightj.clustering.ClusteringManager;
-import org.lightj.clustering.ClusteringModule;
 import org.lightj.initialization.BaseModule;
 import org.lightj.session.FlowClusteringEventHandler;
 import org.lightj.util.ConcurrentUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sun.enterprise.ee.cms.core.FailureNotificationSignal;
 import com.sun.enterprise.ee.cms.core.FailureSuspectedSignal;
 import com.sun.enterprise.ee.cms.core.GroupLeadershipNotificationSignal;
+import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 import com.sun.enterprise.ee.cms.core.JoinNotificationSignal;
 import com.sun.enterprise.ee.cms.core.JoinedAndReadyNotificationSignal;
 import com.sun.enterprise.ee.cms.core.PlannedShutdownSignal;
-import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 
 public class TestClustering extends BaseTestCase {
 	
-	static Logger logger = Logger.getLogger(TestClustering.class);
+	static Logger logger = LoggerFactory.getLogger(TestClustering.class);
 	static Logger getLogger() {
 		return logger;
 	}

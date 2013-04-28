@@ -4,19 +4,15 @@ import java.util.concurrent.Executors;
 
 import org.junit.Test;
 import org.lightj.BaseTestCase;
-import org.lightj.dal.SimpleLocatable;
 import org.lightj.example.dal.SampleDatabaseEnum;
 import org.lightj.example.session.HelloWorldFlow;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
-import org.lightj.session.FlowEvent;
-import org.lightj.session.FlowModule;
-import org.lightj.session.FlowSessionFactory;
-import org.lightj.session.FlowStatistics;
-import org.lightj.session.FlowStatsTracker;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepImpl;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class TestFlowStats extends BaseTestCase {
 
@@ -35,7 +31,7 @@ public class TestFlowStats extends BaseTestCase {
 	@Test
 	public void testStatsTracker() throws Exception {
 		FlowStatsTracker statsTracker = new FlowStatsTracker();
-		HelloWorldFlow session = FlowSessionFactory.getInstance().createSession(HelloWorldFlow.class, new SimpleLocatable(), new SimpleLocatable());
+		HelloWorldFlow session = FlowSessionFactory.getInstance().createSession(HelloWorldFlow.class);
 		statsTracker.handleFlowEvent(FlowEvent.start, session);
 		assertEquals(0, session.getPercentComplete());
 		
@@ -63,11 +59,11 @@ public class TestFlowStats extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		String ctxPath = "config/org/lightj/session/context-flow.xml";
+		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow-rdbms.xml", "config/org/lightj/session/context-examples-flow.xml");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
+								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))
-								.setSpringContext(ctxPath)
 								.getModule(),
 		};
 	}

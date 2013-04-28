@@ -7,8 +7,8 @@ import java.util.TimerTask;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 import org.lightj.util.DateUtil;
-import org.lightj.util.Log4jProxy;
-import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -20,13 +20,9 @@ import org.lightj.util.StringUtil;
 @SuppressWarnings({"rawtypes"})
 public class FlowTimer implements IFlowEventListener {
 	
-	static Log4jProxy cat = Log4jProxy.getInstance(FlowTimer.class);
+	static Logger logger = LoggerFactory.getLogger(FlowTimer.class);
 	
 	private Timer flowTimeout;
-	
-	private Timer flowStepTimeout;
-	
-	private String curStepWithTimeout;
 	
 	/**
 	 * error event
@@ -77,45 +73,6 @@ public class FlowTimer implements IFlowEventListener {
 	 */
 	public void handleStepEvent(FlowEvent event, final FlowSession session, final IFlowStep flowStep, StepTransition stepTransition) 
 	{
-		if (event == FlowEvent.stepEntry && flowStep.getStepOptions().getTimeoutMs() > 0) {
-			long timeoutMs = flowStep.getStepOptions().getTimeoutMs();
-			Date timeoutAt = new Date(System.currentTimeMillis() + timeoutMs);	
-			final String stepName = flowStep.getStepName();
-			String msg = "Step will timeout at " + DateUtil.format(timeoutAt, "yyyy-MM-dd HH:mm:ss");
-			FlowSaver.persistStepHistory(session, flowStep, msg, FlowResult.InProgress.name());
-
-			if (flowStepTimeout != null && !StringUtil.equalIgnoreCase(stepName, curStepWithTimeout)) {
-				flowStepTimeout.cancel();
-			}
-			flowStepTimeout = new Timer();
-			flowStepTimeout.schedule( new TimerTask() {
-					
-				@Override
-				public void run() {
-					if (StringUtil.equalIgnoreCase(session.getCurrentAction(), stepName) 
-							&& session.getEndDate()==null) {
-						StepTransition timeoutTran = flowStep.onExecutionError(new FlowExecutionException("Step timed out"));
-						flowStep.getFlowDriver().driveWithTransition(timeoutTran);
-					}
-		 		}
-					
-			}, timeoutMs);
-			curStepWithTimeout = stepName;
-
-		}
-		else if(event == FlowEvent.stop && flowStepTimeout != null) {
-			flowStepTimeout.cancel();
-		}
-	}
-	
-	static class StepTimerTask extends TimerTask {
-
-		@Override
-		public void run() {
-			// TODO Auto-generated method stub
-			
-		}
-		
 	}
 	
 }

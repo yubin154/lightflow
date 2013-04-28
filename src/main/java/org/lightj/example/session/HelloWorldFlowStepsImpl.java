@@ -4,38 +4,30 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lightj.dal.SimpleLocatable;
 import org.lightj.example.session.HelloWorldFlow.steps;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowSession;
-import org.lightj.session.FlowSessionFactory;
-import org.lightj.session.FlowState;
 import org.lightj.session.step.DelayedEnclosure;
 import org.lightj.session.step.IFlowStep;
-import org.lightj.session.step.MappedCallbackHandler;
 import org.lightj.session.step.RetryEnclosure;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepBuilder;
-import org.lightj.session.step.StepErrorHandler;
+import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepExecution;
 import org.lightj.session.step.StepTransition;
-import org.lightj.task.AsyncPollTaskWorker;
-import org.lightj.task.AsyncTaskWorker;
-import org.lightj.task.BatchTask;
+import org.lightj.task.AsyncPollMonitor;
+import org.lightj.task.BatchOption;
 import org.lightj.task.ExecutableTask;
+import org.lightj.task.ExecuteOption;
 import org.lightj.task.FlowTask;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.HttpTask;
-import org.lightj.task.asynchttp.HttpWorker;
-import org.lightj.util.ActorUtil;
+import org.lightj.task.asynchttp.AsyncHttpTask;
 import org.lightj.util.StringUtil;
 
-import akka.actor.Actor;
 import akka.actor.ActorRef;
-import akka.actor.UntypedActorFactory;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -48,15 +40,16 @@ import com.ning.http.client.Response;
  * @author binyu
  *
  */
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class HelloWorldFlowStepsImpl {
 	
 	/**
-	 * a simple async task
+	 * running a simple asynchronous task
 	 * @return
 	 */
 	public static IFlowStep buildAsyncTaskStep() {
 		
+		// create the task
 		ExecutableTask task = new DummyTask() {
 			public TaskResult execute(ActorRef executingActor) {
 				context.incTaskCount();
@@ -64,31 +57,27 @@ public class HelloWorldFlowStepsImpl {
 			}			
 		};
 		
-		// result handler, with default transition
-		final MappedCallbackHandler resultHandler = MappedCallbackHandler.onResult(steps.sessionJoinStep, steps.error);
-
-		return new StepBuilder().executeAsyncTasks(resultHandler, task).getFlowStep();
+		return new StepBuilder().executeAsyncTasks(task)
+								.onResult(steps.sessionJoinStep, steps.error)
+								.getFlowStep();
 		
 	}
 	
 	/**
-	 * build join step
+	 * run 2 sub workflow and join from parent flow
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	public static IFlowStep buildJoinStep() 
 	{
+		// build child flows
 		List<FlowSession> children = new ArrayList<FlowSession>();
 		for (int i = 0; i < 2; i++) {
-			FlowSession child = FlowSessionFactory.getInstance().createSession(
-					HelloWorldFlow.class, 
-					new SimpleLocatable(),
-					new SimpleLocatable());
+			FlowSession child = new HelloWorldFlow();
 			children.add(child);
 		}
 
-		// result handler, with default transition
-		MappedCallbackHandler<HelloWorldFlowContext> resultHandler = new MappedCallbackHandler<HelloWorldFlowContext>(StepTransition.runToStep(steps.delayStep)) {
+		// result handler, the handler increment the counter on each child flow completion
+		StepCallbackHandler<HelloWorldFlowContext> resultHandler = new StepCallbackHandler<HelloWorldFlowContext>(StepTransition.runToStep(steps.delayStep)) {
 
 			@Override
 			public synchronized StepTransition executeOnResult(Task task, TaskResult result) throws FlowExecutionException {
@@ -106,7 +95,7 @@ public class HelloWorldFlowStepsImpl {
 	}
 
 	/**
-	 * build a step with delay
+	 * build a step with initial delay
 	 * @return
 	 */
 	public static IFlowStep buildDelayStep() 
@@ -121,6 +110,7 @@ public class HelloWorldFlowStepsImpl {
 	 */
 	public static IFlowStep buildRetryStep() 
 	{
+		// increment count every time this step is executed
 		StepExecution execution = new SimpleStepExecution<HelloWorldFlowContext>(steps.timeoutStep) {
 			@Override
 			public StepTransition execute() throws FlowExecutionException {
@@ -128,7 +118,10 @@ public class HelloWorldFlowStepsImpl {
 				return super.execute();
 			}
 		};
+		
 		IFlowStep step = new StepBuilder().execute(execution).getFlowStep();
+		
+		// retry until match a transition or max retry limit is reached
 		StepTransition matchTran = StepTransition.runToStep(steps.timeoutStep);
 		return RetryEnclosure.retryIf(DelayedEnclosure.delay(1000, step), 3, matchTran);		
 	}
@@ -139,22 +132,24 @@ public class HelloWorldFlowStepsImpl {
 	 */
 	public static IFlowStep buildTimeoutStep() 
 	{
-		StepExecution execution = new SimpleStepExecution<HelloWorldFlowContext>(new StepTransition().inState(FlowState.Callback));
-
-		StepErrorHandler<HelloWorldFlowContext> timeoutHandler = new StepErrorHandler<HelloWorldFlowContext>(steps.actorStep) {
+		// task
+		DummyTask task = new DummyTask(new ExecuteOption(0, 100));
+		
+		// result handler, increment counter if task result if timeout
+		final StepCallbackHandler resultHandler = new StepCallbackHandler<HelloWorldFlowContext>(StepTransition.runToStep(steps.error)) {
 			
 			@Override
-			public StepTransition executeOnError(Throwable t) {
-				assert t instanceof FlowExecutionException;
-				this.sessionContext.setTimeoutCount(this.sessionContext.getTimeoutCount()+1);
-				return defResult;
+			public synchronized StepTransition executeOnResult(Task atask, TaskResult result) {
+				if (TaskResultEnum.Timeout == result.getStatus()) {
+					sessionContext.incTimeoutCount();
+				}
+				return super.executeOnResult(atask, result);
 			}
-		};
-		
-		
-		IFlowStep step = new StepBuilder().execute(execution).onException(timeoutHandler).getFlowStep();
-		step.setTimeoutMilliSec(2000);
-		return step;
+			
+		}.mapResultTo(steps.actorStep, TaskResultEnum.Timeout, TaskResultEnum.Success);
+
+		return new StepBuilder().executeAsyncTasks(task).onResult(resultHandler).getFlowStep();
+
 	}
 	
 	/**
@@ -168,54 +163,35 @@ public class HelloWorldFlowStepsImpl {
 		config.setConnectionTimeOutInMs(3000);
 		AsyncHttpClient client = new AsyncHttpClient(config);
 		
-		// build http task
-		final HttpTask<HelloWorldFlowContext> task = new HttpTask<HelloWorldFlowContext>(client) {
-
-			@Override
-			public TaskResult processRequestResult(Response response) {
-				TaskResult res = this.createTaskResult(TaskResultEnum.Success, "");
-				try {
-					res.setRealResult(response.getResponseBody());
-				} catch (IOException e) {
-					return this.createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e, 2000));
-				}
-				return res;
-			}
+		// build async http task
+		final AsyncHttpTask<HelloWorldFlowContext> task = new AsyncHttpTask<HelloWorldFlowContext>(client){
 
 			@Override
 			public BoundRequestBuilder createRequest() {
 				return client.prepareGet(context.getBadHost());
 			}
 
+			@Override
+			public TaskResult onComplete(Response response) {
+				TaskResult res = createTaskResult(TaskResultEnum.Success, "");
+				try {
+					res.setRealResult(response.getResponseBody());
+				} catch (IOException e) {
+					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e, 2000));
+				}
+				return res;
+			}
+
+			@Override
+			public TaskResult onThrowable(Throwable t) {
+				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), StringUtil.getStackTrace(t));
+			}
 		};
 		
 		// result handler, with default transition
-		final MappedCallbackHandler resultHandler = MappedCallbackHandler.onResult(steps.error, steps.actorPollStep);
+		StepCallbackHandler resultHandler = new StepCallbackHandler(steps.actorPollStep).mapResultTo(steps.actorPollStep, TaskResultEnum.values());
 
-		// build the step
-		ActorRef actor = ActorUtil.createActor(new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Actor create() throws Exception {
-				return new AsyncTaskWorker<HttpTask>(task) {
-
-					@Override
-					public TaskResult processRequestResult(HttpTask task, TaskResult result) {
-						return (TaskResult) result;
-					}
-
-					@Override
-					public Actor createRequestWorker(HttpTask task) {
-						return new HttpWorker(task);
-					}
-
-				};
-			}
-
-		});
-
-		return new StepBuilder().executeAsyncActors(resultHandler, new BatchTask(task), actor).getFlowStep();
+		return new StepBuilder().executeAsyncTasks(task).onResult(resultHandler).getFlowStep();
 	}
 	
 	/**
@@ -230,64 +206,59 @@ public class HelloWorldFlowStepsImpl {
 		AsyncHttpClient client = new AsyncHttpClient(config);
 
 		// build http task
-		final HttpTask<HelloWorldFlowContext> task = new HttpTask<HelloWorldFlowContext>(client) {
-
-			@Override
-			public TaskResult processRequestResult(Response response) {
-				TaskResult res = this.createTaskResult(TaskResultEnum.Success, "");
-				try {
-					res.setRealResult(response.getResponseBody());
-				} catch (IOException e) {
-					return this.createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e, 2000));
-				}
-				return res;
-			}
+		final AsyncHttpTask<HelloWorldFlowContext> task = new AsyncHttpTask<HelloWorldFlowContext>(client) {
 
 			@Override
 			public BoundRequestBuilder createRequest() {
 				return client.prepareGet(context.getGoodHost());
 			}
-			
-		};
-		final MonitorOption monitorOption = new MonitorOption(1000);
-		
-		// result handler, with default transition
-		final MappedCallbackHandler resultHandler = MappedCallbackHandler.onResult(steps.actorBatchStep, steps.error);
-		
-		// build the step
-		ActorRef actor = ActorUtil.createActor(new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
 
 			@Override
-			public Actor create() throws Exception {
-				return new AsyncPollTaskWorker<HttpTask>(task, monitorOption) {
-
-					@Override
-					public Actor createPollWorker(HttpTask task, TaskResult result) {
-						return new HttpWorker(task);
-					}
-
-					@Override
-					public TaskResult processPollResult(TaskResult result) {
-						return (TaskResult) result;
-					}
-
-					@Override
-					public Actor createRequestWorker(HttpTask task) {
-						return new HttpWorker(task);
-					}
-
-				};
+			public TaskResult onComplete(Response response) {
+				TaskResult res = createTaskResult(TaskResultEnum.Success, "");
+				try {
+					res.setRealResult(response.getResponseBody());
+				} catch (IOException e) {
+					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e, 2000));
+				}
+				return res;
 			}
 
-		});
+			@Override
+			public TaskResult onThrowable(Throwable t) {
+				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), StringUtil.getStackTrace(t));
+			}
+		};
+			
+		// poll every second, upto 5 seconds
+		final MonitorOption monitorOption = new MonitorOption(1000, 5000);
+		
+		// poll monitor impl
+		final AsyncPollMonitor monitor = new AsyncPollMonitor(monitorOption) 
+		{
+			@Override
+			public TaskResult processPollResult(TaskResult result) {
+				return result;
+			}
 
-		return new StepBuilder().executeAsyncActors(resultHandler, new BatchTask(task), actor).getFlowStep();
+			@Override
+			public ExecutableTask createPollTask(ExecutableTask task, TaskResult reqResult) {
+				return task;
+			}
+			
+		};
+		
+		return new StepBuilder().executeAsyncPollTasks(monitor, task).onResult(steps.actorBatchStep, steps.error).getFlowStep();
 	}
 
 
+	/**
+	 * execute batch of tasks
+	 * @return
+	 */
 	public static IFlowStep buildActorBatchStep() {
 		
+		// build tasks
 		List<ExecutableTask> tasks = new ArrayList<ExecutableTask>();
 		for (int i = 0; i < 10; i++) {
 			tasks.add(new DummyTask() {
@@ -298,12 +269,41 @@ public class HelloWorldFlowStepsImpl {
 			});
 		}
 		
-		// result handler, with default transition
-		final MappedCallbackHandler resultHandler = MappedCallbackHandler.onResult(steps.stop, steps.error);
-
-		return new StepBuilder().executeAsyncTasks(resultHandler, tasks.toArray(new ExecutableTask[0])).getFlowStep();
+		// build execution with batching option of max concurrency of 5 tasks
+		return new StepBuilder().executeActors(null, StepBuilder.createAsyncActorFactory(), new BatchOption(5), tasks.toArray(new ExecutableTask[0]))
+								.onResult(steps.testFailureStep, steps.error)
+								.getFlowStep();
 	}
 
+
+	/**
+	 * task with an injected failure
+	 * @return
+	 */
+	public static IFlowStep buildTestFailureStep() {
+		
+		// task
+		ExecutableTask task = new DummyTask() {
+			
+			public TaskResult execute(ActorRef executingActor) {
+				if (context.isInjectFailure()) {
+					if (context.isControlledFailure()) {
+						return this.createErrorResult(TaskResultEnum.Failed, "unit test injected failure", null);
+					}
+					else {
+						throw new RuntimeException("unit test injected runtime failure");
+					}
+				}
+				return super.execute(executingActor);
+			}
+			
+		};
+		
+		return new StepBuilder().executeAsyncTasks(task)
+								.onResult(steps.stop, steps.error)
+								.getFlowStep();
+		
+	}
 
 	/**
 	 * dummy task
@@ -312,14 +312,18 @@ public class HelloWorldFlowStepsImpl {
 	 */
 	static class DummyTask extends ExecutableTask<HelloWorldFlowContext> {
 		
+		TaskResult result;
+		DummyTask() {super();}
+		DummyTask(ExecuteOption option) { super(option); }
+		
 		@Override
 		public TaskResult execute(ActorRef executingActor) {
 			try {
-				Thread.sleep(2000);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				return this.createTaskResult(TaskResultEnum.Failed, e.getMessage());
 			}
-			return this.createTaskResult(TaskResultEnum.Success, null);
+			return result==null ? this.createTaskResult(TaskResultEnum.Success, null) : result;
 		}
 
 		@Override

@@ -2,13 +2,13 @@ package org.lightj.session.step;
 
 import java.util.UUID;
 
-import org.apache.log4j.Category;
-import org.apache.log4j.Logger;
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowDriver;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowModule;
-import org.lightj.session.FlowStepOptions;
+import org.lightj.session.FlowStepProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * a flow step, wraps all executions to do work, callback handling, and error handling
@@ -19,7 +19,7 @@ import org.lightj.session.FlowStepOptions;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class StepImpl implements IFlowStep {
 	
-	static Category logger = Logger.getLogger(StepImpl.class);
+	static Logger logger = LoggerFactory.getLogger(StepImpl.class);
 	
 	/** unique step id */
 	private final String stepId = "Step|" + UUID.randomUUID().toString();
@@ -42,12 +42,7 @@ public class StepImpl implements IFlowStep {
 	/**
 	 * execution error handler, set by user
 	 */
-	protected StepErrorHandler executionErrorHandler;
-	
-	/**
-	 * result error handler, set by user
-	 */
-	protected StepErrorHandler resultErrorHandler;
+	protected StepErrorHandler errorHandler;
 	
 	/**
 	 * flow driver that drives this step, set by framework
@@ -57,17 +52,7 @@ public class StepImpl implements IFlowStep {
 	/**
 	 * execution options
 	 */
-	protected FlowStepOptions flowStepOptions = new FlowStepOptions();
-	
-	/**
-	 * flow step statistics
-	 */
-	protected StepStatistics statistics;
-	
-	/**
-	 * transition caused this step to be executed
-	 */
-	protected StepTransition transitionFrom;
+	protected FlowStepProperties flowStepProperties;
 	
 	/**
 	 * locatable key
@@ -92,9 +77,9 @@ public class StepImpl implements IFlowStep {
 	/**
 	 * handling execution error
 	 */
-	public StepTransition onExecutionError(Throwable t) {
-		executionErrorHandler.setError(t);
-		return executionErrorHandler.execute();
+	public StepTransition onError(Throwable t) {
+		errorHandler.setError(t);
+		return errorHandler.execute();
 	}
 
 	/**
@@ -102,14 +87,6 @@ public class StepImpl implements IFlowStep {
 	 */
 	public StepTransition onResult() throws FlowExecutionException {
 		return resultHandler.execute();
-	}
-
-	/**
-	 * result error handling
-	 */
-	public StepTransition onResultError(Throwable t) {
-		resultErrorHandler.setError(t);
-		return resultErrorHandler.execute();
 	}
 
 	/**
@@ -134,15 +111,14 @@ public class StepImpl implements IFlowStep {
 	 */
 	public void setSessionContext(FlowContext context) {
 		if (execution != null) execution.setSessionContext(context);
-		if (executionErrorHandler != null) executionErrorHandler.setSessionContext(context);
+		if (errorHandler != null) errorHandler.setSessionContext(context);
 		if (resultHandler != null) resultHandler.setSessionContext(context);
-		if (resultErrorHandler != null) resultErrorHandler.setSessionContext(context);
 	}
 
 	/**
 	 * resume a parked step on asynch callback
 	 */
-	public void resume() {
+	public void resume(final StepTransition trans) {
 		// this is to make sure this step is still the "current" step recognized by the flow driver
 		// and yes, we check reference equal
 		synchronized (driver) {
@@ -152,8 +128,9 @@ public class StepImpl implements IFlowStep {
 					
 					@Override
 					public void run() {
-						dvr.callback();
+						dvr.driveWithTransition(trans);
 					}
+					
 				});
 			}
 		}
@@ -163,9 +140,9 @@ public class StepImpl implements IFlowStep {
 	 * set error handler for error happend in execution phase
 	 * @param executionErrorHandler
 	 */
-	public void setExecutionErrorHandler(StepErrorHandler executionErrorHandler) {
+	public void setErrorHandler(StepErrorHandler executionErrorHandler) {
 		executionErrorHandler.setFlowStep(this);
-		this.executionErrorHandler = executionErrorHandler;
+		this.errorHandler = executionErrorHandler;
 	}
 
 	/**
@@ -178,24 +155,30 @@ public class StepImpl implements IFlowStep {
 	}
 
 	/**
-	 * set error handler for error happend in result handling phase
-	 * @param resultErrorHandler
+	 * set or merge result handler
+	 * @param resultHandler
 	 */
-	public void setResultErrorHandler(StepErrorHandler resultErrorHandler) {
-		resultErrorHandler.setFlowStep(this);
-		this.resultErrorHandler = resultErrorHandler;
+	public void setOrUpdateResultHandler(StepCallbackHandler resultHandler) {
+		if (resultHandler != null) {
+			if (this.resultHandler == null) {
+				setResultHandler(resultHandler);
+			} else {
+				this.resultHandler.merge(resultHandler);
+			}
+		}
 	}
-
+	
 	/**
 	 * set result handler
 	 * @param resultHandler
 	 */
 	public void setResultHandler(StepCallbackHandler resultHandler) {
-		execution.setDelegateTaskListener(resultHandler);
-		resultHandler.setFlowStep(this);
-		this.resultHandler = resultHandler;
+		if (resultHandler != null) {
+			resultHandler.setFlowStep(this);
+			this.resultHandler = resultHandler;
+		}
 	}
-	
+
 	/**
 	 * flow step name
 	 */
@@ -211,56 +194,44 @@ public class StepImpl implements IFlowStep {
 		this.stepName = name;
 	}
 
-	/**
-	 * flow step statistics
-	 */
-	public StepStatistics getStatistics() {
-		return statistics;
+	public FlowStepProperties getFlowStepProperties() {
+		return flowStepProperties;
 	}
 
-	/**
-	 * flow step statistics
-	 */
-	public void setStatistics(StepStatistics statistics) {
-		this.statistics = statistics;
-	}
-
-	/**
-	 * transition from
-	 */
-	public void setTransitionFrom(StepTransition transitionFrom) {
-		this.transitionFrom = transitionFrom;
-	}
-
-	/**
-	 * transition from
-	 */
-	public StepTransition getTransitionFrom() {
-		return transitionFrom;
-	}
-
-	public FlowStepOptions getStepOptions() {
-		return flowStepOptions;
+	public void setFlowStepProperties(FlowStepProperties flowStepProperties) {
+		this.flowStepProperties = flowStepProperties;
 	}
 
 	@Override
-	public IFlowStep setTimeoutMilliSec(int timeoutMilliSec) {
-		this.flowStepOptions.setTimeoutMs(timeoutMilliSec);
-		return this;
-	}
-
-	@Override
-	public final void setIfNull(StepExecution exec, StepErrorHandler ehandler,
-			StepCallbackHandler chandler, StepErrorHandler cehandler) {
+	public final void setIfNull(StepExecution exec, StepErrorHandler ehandler, StepCallbackHandler chandler) {
 		if (execution == null) execution = exec;
-		if (executionErrorHandler == null) executionErrorHandler = ehandler;
-		if (resultErrorHandler == null) resultErrorHandler = cehandler;
-		if (resultHandler == null) resultHandler = chandler;
+		if (errorHandler == null) errorHandler = ehandler;
+		if (resultHandler == null) {
+			resultHandler = chandler;
+		} else if (chandler != null){
+			resultHandler.setDefIfNull(chandler.getDefResult());
+		}
+		
 	}
 
 	@Override
 	public String getStepId() {
 		return stepId;
+	}
+
+	@Override
+	public StepExecution getExecution() {
+		return execution;
+	}
+
+	@Override
+	public StepCallbackHandler getResultHandler() {
+		return resultHandler;
+	}
+
+	@Override
+	public StepErrorHandler getErrorHandler() {
+		return errorHandler;
 	}
 
 }

@@ -5,7 +5,6 @@ import java.util.List;
 import org.lightj.dal.BaseDatabaseType;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.DataAccessRuntimeException;
-import org.lightj.dal.Query;
 
 /**
  * session data manager interface
@@ -13,7 +12,7 @@ import org.lightj.dal.Query;
  *
  * @param <T>
  */
-public interface ISessionDataManager<T extends ISessionData> {
+public interface ISessionDataManager<T extends ISessionData, Q> {
 
 	/**
 	 * create new instance of {@link ISessionData} 
@@ -21,6 +20,12 @@ public interface ISessionDataManager<T extends ISessionData> {
 	 * @throws DataAccessRuntimeException
 	 */
 	public T newInstance() throws DataAccessRuntimeException;
+	
+	/**
+	 * create a new query
+	 * @return
+	 */
+	public Q newQuery();
 	
 	/**
 	 * save {@link ISessionData}
@@ -60,7 +65,7 @@ public interface ISessionDataManager<T extends ISessionData> {
 	 * @return
 	 * @throws DataAccessException
 	 */
-	public List<T> search(Query query) throws DataAccessException;
+	public List<T> search(Q query) throws DataAccessException;
 	
 	/**
 	 * associate with a datastore 

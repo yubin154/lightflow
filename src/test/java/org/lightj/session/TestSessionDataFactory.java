@@ -2,12 +2,12 @@ package org.lightj.session;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
-import org.lightj.dal.Query;
 import org.lightj.example.dal.SampleDatabaseEnum;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
@@ -19,7 +19,8 @@ import org.lightj.session.dal.ISessionMetaDataManager;
 import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.ISessionStepLogManager;
 import org.lightj.session.dal.SessionDataFactory;
-import org.lightj.session.dal.SessionDataImpl;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -39,6 +40,7 @@ public class TestSessionDataFactory extends BaseTestCase {
 		sd.setRunBy("lightj");
 		sd.setStatus("success");
 		sd.setTargetKey("target");
+		sd.setFlowKey(UUID.randomUUID().toString());
 		sd.setType("1");
 		sd.setFlowState(FlowState.Completed);
 		sd.setFlowResult(FlowResult.Success);
@@ -52,12 +54,11 @@ public class TestSessionDataFactory extends BaseTestCase {
 		Assert.assertEquals(sd.getFlowId(), sd1.getFlowId());
 		Assert.assertEquals("step3", sd1.getCurrentAction());
 		Assert.assertNull(sd1.getNextAction());
-		List<SessionDataImpl> searches = sdm.search(new Query().and("flow_id", "=", Long.valueOf(sd.getFlowId())));
-		Assert.assertEquals(1, searches.size());
+		ISessionData search = sdm.findByKey(sd.getFlowKey());
+		Assert.assertEquals(sd.getFlowId(), search.getFlowId());
 		sdm.delete(sd);
 		Assert.assertTrue(sd.getPrimaryKey()<=0);
-		searches = sdm.search(new Query().and("flow_id", "=", Long.valueOf(sd.getFlowId())));
-		Assert.assertEquals(0, searches.size());
+		search = sdm.findById(sd.getFlowId());
 	}
 	
 	@Test
@@ -101,19 +102,22 @@ public class TestSessionDataFactory extends BaseTestCase {
 		// update and search
 		smdm.save(smd1);
 		smdm.save(smd2);
-		ISessionMetaData smd3 = smdm.findById(smd1.getFlowMetaId());
-		ISessionMetaData smd4 = smdm.findById(smd2.getFlowMetaId());
-		Assert.assertEquals(smd1.getStrValue(), smd3.getStrValue());
-		Assert.assertEquals(smd2.getBlobValue(), smd4.getBlobValue());
 		// search by query
-		List<ISessionMetaData> searches = smdm.search(new Query().and("flow_id", "=", Long.valueOf(sessId)));
+		List<ISessionMetaData> searches = smdm.findByFlowId(sessId);
 		Assert.assertEquals(2, searches.size());
+		for (ISessionMetaData smd : searches) {
+			if (smd.getStrValue() != null)  {
+				Assert.assertEquals(smd1.getStrValue(), smd.getStrValue());
+			} else {
+				Assert.assertEquals(smd2.getBlobValue(), smd.getBlobValue());
+			}
+		}
 		// delete
 		smdm.delete(smd1);
 		smdm.delete(smd2);
 		Assert.assertEquals(0, smd1.getFlowMetaId());
 		Assert.assertEquals(0, smd2.getFlowMetaId());
-		searches = smdm.search(new Query().and("flow_id", "=", Long.valueOf(sessId)));
+		searches = smdm.findByFlowId(sessId);
 		Assert.assertEquals(0, searches.size());
 
 		// cleanup
@@ -152,8 +156,8 @@ public class TestSessionDataFactory extends BaseTestCase {
 		stl.setStepName("step1");
 		stlm.save(stl);
 		Assert.assertTrue("primary key is not populated", stl.getPrimaryKey()>0);
-		ISessionStepLog stl1 = stlm.findById(stl.getStepId());
-		Assert.assertEquals(stl.getStepName(), stl1.getStepName());
+		List<ISessionStepLog> logs = stlm.findByFlowId(sessId);
+		Assert.assertEquals(stl.getStepName(), logs.get(0).getStepName());
 		stlm.delete(stl);
 		Assert.assertTrue("primary key is not cleaned up", stl.getPrimaryKey()<=0);
 
@@ -172,11 +176,11 @@ public class TestSessionDataFactory extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		String ctxPath = "config/org/lightj/session/context-flow.xml";
+		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow-rdbms.xml");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
+								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))
-								.setSpringContext(ctxPath)
 								.getModule(),
 		};
 	}

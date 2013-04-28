@@ -9,18 +9,23 @@
 		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd 
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
-	<bean id="flowFactory" class="org.lightj.session.FlowSessionFactory" factory-method="getInstance" />
+	<context:annotation-config />
 	
-	<bean id="sessionDataManager" class="org.lightj.session.dal.SessionDataManagerImpl" factory-method="getInstance" />
-	
-	<bean id="sessionMetaDataManager" class="org.lightj.session.dal.SessionMetaDataManagerImpl" factory-method="getInstance" />
-	
-	<bean id="sessionStepLogManager" class="org.lightj.session.dal.SessionStepLogManagerImpl" factory-method="getInstance" />
+	<bean id="springApplicationContext" class="org.lightj.util.SpringApplicationContext"/>
 
-	<bean id="sessionDataFactory" class="org.lightj.session.dal.SessionDataFactory" factory-method="getInstance">
-		<property name="dataManager" ref="sessionDataManager"></property>
-		<property name="metaDataManager" ref="sessionMetaDataManager"></property>
-		<property name="stepLogManager" ref="sessionStepLogManager"></property>
-	</bean>
+	<!-- mongo -->
+	<bean id="sessionDataManager" class="org.lightj.session.dal.mongo.MongoSessionDataManagerImpl" />
+	<bean id="sessionMetaDataManager" class="org.lightj.session.dal.mongo.MongoSessionMetaDataManagerImpl" />
+	<bean id="sessionStepLogManager" class="org.lightj.session.dal.mongo.MongoSessionStepLogManagerImpl" />
+	
+	<!-- rdbms -->
+	<!-- 
+	<bean id="sessionDataManager" class="org.lightj.session.dal.SessionDataManagerImpl" factory-method="getInstance" />
+	<bean id="sessionMetaDataManager" class="org.lightj.session.dal.SessionMetaDataManagerImpl" factory-method="getInstance" />
+	<bean id="sessionStepLogManager" class="org.lightj.session.dal.SessionStepLogManagerImpl" factory-method="getInstance" />
+	-->
+	
+	<bean id="sessionDataFactory" class="org.lightj.session.dal.SessionDataFactory" factory-method="getInstance" />
+	<bean id="flowFactory" class="org.lightj.session.FlowSessionFactory" factory-method="getInstance" />
 	
 </beans>

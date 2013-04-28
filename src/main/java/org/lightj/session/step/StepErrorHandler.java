@@ -34,7 +34,7 @@ public class StepErrorHandler<T extends FlowContext> extends StepExecution<T> {
 	protected Throwable t;
 
 	@Override
-	public final StepTransition execute() throws FlowExecutionException {
+	public StepTransition execute() throws FlowExecutionException {
 		this.sessionContext.saveFlowError(this.flowStep.getStepId(), StringUtil.getStackTrace(t, 2000));
 		return executeOnError(t);
 	}

@@ -10,6 +10,13 @@ import java.lang.annotation.Target;
 public @interface FlowStepProperties {
 	
 	/**
+	 * error handling step, 
+	 * flow driver will execute the step without setting Current Action to it
+	 * @return
+	 */
+	boolean isErrorStep()	default false;
+	
+	/**
 	 * step description
 	 * @return
 	 */
@@ -28,12 +35,6 @@ public @interface FlowStepProperties {
 	 * @return
 	 */
 	boolean logging()	default true;
-	
-	/**
-	 * timeout millisecond
-	 * @return
-	 */
-	int timeoutMillisec()	default 0;
 	
 	/**
 	 * step to go to on success

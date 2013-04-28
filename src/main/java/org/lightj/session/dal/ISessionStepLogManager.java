@@ -42,15 +42,6 @@ public interface ISessionStepLogManager<T extends ISessionStepLog> {
 	public void delete(T data) throws DataAccessException;
 	
 	/**
-	 * find log by id
-	 * @param id
-	 * @param fromCache
-	 * @return
-	 * @throws DataAccessException
-	 */
-	public T findById(long id) throws DataAccessException;
-	
-	/**
 	 * find all logs by flow id
 	 * @param flowId
 	 * @return

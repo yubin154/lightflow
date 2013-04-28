@@ -9,7 +9,8 @@ package org.lightj.task;
 import java.util.UUID;
 
 import org.lightj.session.FlowContext;
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author biyu
@@ -17,7 +18,7 @@ import org.lightj.util.Log4jProxy;
 public abstract class Task<T extends FlowContext> {
 	
 	/** logger */
-	static Log4jProxy logger = Log4jProxy.getLogger(Task.class);
+	static Logger logger = LoggerFactory.getLogger(Task.class);
 
 	/** task id */
 	private final String taskId = "Task|" + UUID.randomUUID().toString();
@@ -63,8 +64,6 @@ public abstract class Task<T extends FlowContext> {
 		this.extTaskUuid = extTaskUuid;
 	}
 
-	public abstract String getTaskDetail();
-
 	/** create an immutable TaskResult */
 	public final TaskResult createTaskResult(TaskResultEnum status, String msg) {
 		return new TaskResult(this, status, msg);
@@ -84,4 +83,7 @@ public abstract class Task<T extends FlowContext> {
 	public final TaskResult createTaskResult(Object realResult, TaskResultEnum status, String msg) {
 		return new TaskResult(this, realResult, status, msg);
 	}
+
+	public abstract String getTaskDetail();
+
 }

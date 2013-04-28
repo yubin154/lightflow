@@ -15,7 +15,7 @@ import org.lightj.dal.Query;
  *
  */
 @SuppressWarnings("rawtypes")
-public class SessionMetaDataManagerImpl extends AbstractDAO<SessionMetaDataImpl> implements ISessionMetaDataManager<SessionMetaDataImpl> {
+public class SessionMetaDataManagerImpl extends AbstractDAO<SessionMetaDataImpl> implements ISessionMetaDataManager<SessionMetaDataImpl, Query> {
 
 	private static SessionMetaDataManagerImpl me = new SessionMetaDataManagerImpl();
 	
@@ -33,9 +33,9 @@ public class SessionMetaDataManagerImpl extends AbstractDAO<SessionMetaDataImpl>
 			register(SessionMetaDataImpl.class, SessionMetaDataImpl.TABLENAME, null, BaseSequenceEnum.SEQ_FLOW_META_ID, 
 			colNames, colTypes, findGetters(javaNames), findSetters(javaNames, colTypes));
 		} catch (SecurityException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 		} catch (NoSuchMethodException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 		}
 	}
 
@@ -60,14 +60,28 @@ public class SessionMetaDataManagerImpl extends AbstractDAO<SessionMetaDataImpl>
 
 	static final String[] UNX_COLS = {"flow_id", "NAME"};
 	@Override
-	public void createOrUpdate(SessionMetaDataImpl data) throws DataAccessException {
-		SessionMetaDataImpl existing = new SessionMetaDataImpl();
-		initUnique(existing, UNX_COLS, new Object[] {Long.valueOf(data.getFlowId()), data.getName()});
-		if (!isNull(Integer.class, existing.getPrimaryKey())) {
-			// update
-			data.setFlowMetaId(existing.getPrimaryKey());
+	protected boolean isPersistent(SessionMetaDataImpl data) {
+		// weather the data is persistent in db
+		if (isNull(long.class, data.getPrimaryKey()) 
+				&& data.getFlowId() > 0 && data.getName() != null) {
+			SessionMetaDataImpl existing = new SessionMetaDataImpl();
+			try {
+				initUnique(existing, UNX_COLS, new Object[] {Long.valueOf(data.getFlowId()), data.getName()});
+			} catch (DataAccessException e) {
+				return false;
+			}
+			if (!isNull(long.class, existing.getPrimaryKey())) {
+				// update
+				data.setFlowMetaId(existing.getPrimaryKey());
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
-		save(data);
-
+		else {
+			return true;
+		}
 	}
+
 }

@@ -14,7 +14,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.type.TypeReference;
 import org.lightj.Constants;
@@ -28,8 +27,9 @@ import org.lightj.session.step.StepLog;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.util.JsonUtil;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -41,12 +41,8 @@ import org.lightj.util.StringUtil;
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public class FlowContext {
 	
-	static final Log4jProxy logger = Log4jProxy.getInstance(FlowContext.class);
+	static final Logger logger = LoggerFactory.getLogger(FlowContext.class);
 
-	/** step execution history */
-	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.AutoSave)
-	private LinkedHashMap<String, StepLog> executionLogs = new LinkedHashMap<String, StepLog>();
-	
 	/**
 	 * property hash map
 	 */
@@ -66,6 +62,10 @@ public class FlowContext {
 	 * session id this context associated with
 	 */
 	private long sessionId;
+	
+	/** step execution history */
+	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.AutoSave)
+	private LinkedHashMap<String, StepLog> executionLogs = new LinkedHashMap<String, StepLog>();
 	
 	/**
 	 * Constructor
@@ -164,8 +164,9 @@ public class FlowContext {
 	}
 	
 	/** loaded */
-	void setLoaded(boolean loaded) {
-		this.loaded = loaded;
+	void reload() {
+		this.loaded = false;
+		lazyLoad();
 	}
 	
 	/**
@@ -197,9 +198,14 @@ public class FlowContext {
 	 * @param name
 	 * @return
 	 */
-	protected String getStringMeta(String name) {
+	public String getStringMeta(String name) {
 		if (context != null && context.get(name) != null){
-			return context.get(name).getStrValue();	
+			String raw = context.get(name).getStrValue();
+			try {
+				return JsonUtil.decode(raw, String.class);
+			} catch (Exception e) {
+				logger.warn("Failed to decode meta data : " + name + "=" + raw);
+			}	
 		}
 		return null;
 	}
@@ -281,12 +287,8 @@ public class FlowContext {
 			String jsonValue = (String) context.get(name).getBlobValue();
 			try {
 				return JsonUtil.decode(jsonValue, typeRef);
-			} catch (JsonParseException e) {
-				logger.error(e);
-			} catch (JsonMappingException e) {
-				logger.error(e);
-			} catch (IOException e) {
-				logger.error(e);
+			} catch (Exception e) {
+				logger.error(e.getMessage(), e);
 			}
 		}
 		return null;
@@ -410,6 +412,27 @@ public class FlowContext {
 	 */
 	public boolean exist(String name) {
 		return context.containsKey(name);
+	}
+	
+	/**
+	 * searchable context
+	 * @return
+	 */
+	public HashMap<String, String> getSearchableContext() {
+		HashMap<String, String> result = new HashMap<String, String>();
+		for (Entry<String, CtxPropWrapper> entry : field2Prop.entrySet()) {
+			CtxPropWrapper ctxProp = entry.getValue();
+			if (ctxProp.ctxProp.saveType() != CtxProp.CtxSaveType.NoSave && 
+					ctxProp.ctxProp.dbType() == CtxProp.CtxDbType.VARCHAR) {
+				try {
+					Object v = ctxProp.getter.invoke(this, Constants.NO_PARAMETER_VALUES);
+					result.put(entry.getKey(), v!=null ? v.toString() : null);
+				} catch (Throwable t) {
+					logger.error(t.getMessage(), t);
+				}
+			}
+		}
+		return result;
 	}
 	
 	

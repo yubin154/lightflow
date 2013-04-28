@@ -5,11 +5,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HsqldbSequencerTypeImpl implements IDatabaseSequencerType {
 	
-	static Logger cat = Logger.getLogger(HsqldbSequencerTypeImpl.class);
+	static Logger cat = LoggerFactory.getLogger(HsqldbSequencerTypeImpl.class);
 
 	/** dual table */
 	private String dualTable;

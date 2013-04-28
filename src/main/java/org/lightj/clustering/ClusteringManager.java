@@ -9,9 +9,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.NetUtil;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sun.enterprise.ee.cms.core.CallBack;
 import com.sun.enterprise.ee.cms.core.FailureNotificationSignal;
@@ -41,7 +42,7 @@ import com.sun.enterprise.mgmt.ClusterManager;
 public class ClusteringManager {
 
 	/** logger */
-	static Log4jProxy logger = Log4jProxy.getLogger(ClusterManager.class);
+	static Logger logger = LoggerFactory.getLogger(ClusterManager.class);
 	
 	public static final String NODEID_DELIMITER = ":"; 
 	
@@ -232,7 +233,7 @@ public class ClusteringManager {
 				else if (notification instanceof PlannedShutdownSignal) {
 					handler.handlePlannedShutdownSignal((PlannedShutdownSignal) notification);
 				} else {
-					logger.fatal("received unkown notification type:"	+ notification);
+					logger.error("received unkown notification type:"	+ notification);
 				}
 			}
 		}

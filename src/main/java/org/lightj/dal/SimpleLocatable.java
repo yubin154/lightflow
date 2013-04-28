@@ -1,6 +1,7 @@
 package org.lightj.dal;
 
 import java.io.InvalidObjectException;
+import java.util.UUID;
 
 /**
  * dummy locatable, an object with a key
@@ -11,7 +12,7 @@ public class SimpleLocatable implements Locatable {
 	
 	private String key = null;
 	public SimpleLocatable() {
-		this(Long.toString(System.currentTimeMillis()));
+		this(UUID.randomUUID().toString());
 	}
 	
 	public SimpleLocatable(String key) {

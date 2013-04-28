@@ -5,7 +5,6 @@ import java.util.List;
 import org.lightj.dal.BaseDatabaseType;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.DataAccessRuntimeException;
-import org.lightj.dal.Query;
 
 /**
  * session metadata manager interface
@@ -13,7 +12,7 @@ import org.lightj.dal.Query;
  *
  * @param <T>
  */
-public interface ISessionMetaDataManager<T extends ISessionMetaData> {
+public interface ISessionMetaDataManager<T extends ISessionMetaData, Q> {
 
 	/**
 	 * get new instance of session metadata
@@ -37,36 +36,12 @@ public interface ISessionMetaDataManager<T extends ISessionMetaData> {
 	public void delete(T data) throws DataAccessException;
 	
 	/**
-	 * find metadata by id
-	 * @param id
-	 * @param fromCache
-	 * @return
-	 * @throws DataAccessException
-	 */
-	public T findById(long id) throws DataAccessException;
-	
-	/**
 	 * find all metadata by flow id
 	 * @param sessId
 	 * @return
 	 * @throws DataAccessException
 	 */
 	public List<T> findByFlowId(long sessId) throws DataAccessException;
-	
-	/**
-	 * create if not exist, update otherwise
-	 * @param data
-	 * @throws DataAccessException
-	 */
-	public void createOrUpdate(T data) throws DataAccessException;
-	
-	/**
-	 * search by query
-	 * @param query
-	 * @return
-	 * @throws DataAccessException
-	 */
-	public List<T> search(Query query) throws DataAccessException;
 	
 	/**
 	 * associate data store

@@ -1,6 +1,6 @@
 package org.lightj.dal;
 
-public class OracleDatabaseType extends BaseDatabaseType {
+public class OracleDatabaseType extends RdbmsDatabaseType {
 
 	/**
 	 * 

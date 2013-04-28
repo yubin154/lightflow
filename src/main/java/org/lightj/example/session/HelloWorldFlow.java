@@ -1,6 +1,7 @@
 package org.lightj.example.session;
 
 import org.lightj.session.FlowDefinition;
+import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowProperties;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowSession;
@@ -12,6 +13,7 @@ import org.lightj.session.step.StepBuilder;
 import org.lightj.session.step.StepExecution;
 import org.lightj.session.step.StepImpl;
 import org.lightj.session.step.StepTransition;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 /**
@@ -21,7 +23,7 @@ import org.lightj.session.step.StepTransition;
  */
 @SuppressWarnings("rawtypes")
 @FlowDefinition(typeId="HelloWorld", desc="hello world", group="TEST")
-@FlowProperties(interruptible=false,clustered=true,errorStep="error")
+@FlowProperties(interruptible=false,clustered=true)
 public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	
 	public static enum steps {
@@ -46,22 +48,34 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 		@FlowStepProperties(stepWeight=1)
 		actorBatchStep,
 		@FlowStepProperties(stepWeight=1)
+		testFailureStep,
+		@FlowStepProperties(stepWeight=1)
 		stop,
-		@FlowStepProperties(stepWeight=0)
+		@FlowStepProperties(stepWeight=0, isErrorStep=true)
 		error,
 	}
 
 	/**
 	 * demonstrate how to do DI for individual step, see {@link HelloWorldFlowStepsImpl}
 	 */
+	@Autowired(required=true)
 	private IFlowStep asyncTaskStep;
+	@Autowired(required=true)
 	private IFlowStep sessionJoinStep;
+	@Autowired(required=true)
 	private IFlowStep delayStep;
+	@Autowired(required=true)
 	private IFlowStep retryStep;
+	@Autowired(required=true)
 	private IFlowStep timeoutStep;
+	@Autowired(required=true)
 	private IFlowStep actorStep;
+	@Autowired(required=true)
 	private IFlowStep actorPollStep;
+	@Autowired(required=true)
 	private IFlowStep actorBatchStep;
+	@Autowired(required=true)
+	private IFlowStep testFailureStep;
 
 	public IFlowStep getActorPollStep() {
 		return actorPollStep;
@@ -111,9 +125,11 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	public void setActorBatchStep(IFlowStep actorBatchStep) {
 		this.actorBatchStep = actorBatchStep;
 	}
-
-	public HelloWorldFlow() {
-		super();
+	public IFlowStep getTestFailureStep() {
+		return testFailureStep;
+	}
+	public void setTestFailureStep(IFlowStep testFailureStep) {
+		this.testFailureStep = testFailureStep;
 	}
 
 	@Override
@@ -146,7 +162,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 */
 	public IFlowStep asyncTaskStep() 
 	{
-		return asyncTaskStep;
+		return asyncTaskStep!=null ? asyncTaskStep : HelloWorldFlowStepsImpl.buildAsyncTaskStep();
 	}
 	
 	/**
@@ -155,7 +171,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * @return
 	 */
 	public IFlowStep sessionJoinStep() throws Exception {
-		return sessionJoinStep;
+		return sessionJoinStep!=null ? sessionJoinStep : HelloWorldFlowStepsImpl.buildJoinStep();
 	}
 	
 	/**
@@ -164,7 +180,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 */
 	public IFlowStep delayStep() 
 	{
-		return delayStep;
+		return delayStep!=null ? delayStep : HelloWorldFlowStepsImpl.buildDelayStep();
 	}
 
 	/**
@@ -173,7 +189,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 */
 	public IFlowStep retryStep() 
 	{
-		return retryStep;
+		return retryStep!=null ? retryStep : HelloWorldFlowStepsImpl.buildRetryStep();
 	}
 	
 	/**
@@ -181,7 +197,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * @return
 	 */
 	public IFlowStep timeoutStep() {
-		return timeoutStep;
+		return timeoutStep!=null ? timeoutStep : HelloWorldFlowStepsImpl.buildTimeoutStep();
 	}
 
 	/**
@@ -189,7 +205,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * @return
 	 */
 	public IFlowStep actorStep() {
-		return actorStep;
+		return actorStep!=null ? actorStep : HelloWorldFlowStepsImpl.buildActorStep();
 	}
 	
 	/**
@@ -197,7 +213,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * @return
 	 */
 	public IFlowStep actorPollStep() {
-		return actorPollStep;
+		return actorPollStep!=null ? actorPollStep : HelloWorldFlowStepsImpl.buildActorPollStep();
 	}
 	
 	/**
@@ -205,18 +221,32 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * @return
 	 */
 	public IFlowStep actorBatchStep() {
-		return actorBatchStep;
+		return actorBatchStep!=null ? actorBatchStep : HelloWorldFlowStepsImpl.buildActorBatchStep();
 	}
 	
+	/**
+	 * inject failure
+	 * @return
+	 */
+	public IFlowStep testFailureStep() {
+		return testFailureStep!=null ? testFailureStep : HelloWorldFlowStepsImpl.buildTestFailureStep();
+	}
+
 	/**
 	 * error complete step
 	 * @return
 	 */
 	public IFlowStep error() {
-		StepExecution execution = new SimpleStepExecution(
-				new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Failed));
 
-		return new StepBuilder().execute(execution).getFlowStep();
+		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Failed);
+		return new StepBuilder().execute(new SimpleStepExecution<HelloWorldFlowContext>(trans) {
+			@Override
+			public StepTransition execute() throws FlowExecutionException {
+				sessionContext.incErrorStepCount();
+				return sessionContext.isPauseOnError() ? StepTransition.parkInState(FlowState.Paused, FlowResult.Failed, "pause on error") : defResult;
+			}
+		}).getFlowStep();
+
 	}
 	
 	/**
@@ -224,10 +254,10 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * @return
 	 */
 	public IFlowStep stop() {
-		StepExecution execution = new SimpleStepExecution(
-				new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Success));
 
-		return new StepBuilder().execute(execution).getFlowStep();
+		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Success);
+		return new StepBuilder().parkInState(trans).getFlowStep();
+
 	}
 	
 }

@@ -5,7 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * sequencer oracle implementation 
@@ -13,7 +14,7 @@ import org.lightj.util.Log4jProxy;
  */
 public class OracleSequencerTypeImpl implements IDatabaseSequencerType {
 
-	static Log4jProxy cat = Log4jProxy.getInstance(OracleSequencerTypeImpl.class.getName());
+	static Logger logger = LoggerFactory.getLogger(OracleSequencerTypeImpl.class);
 
 	/** constructor */
 	public OracleSequencerTypeImpl() {}
@@ -36,8 +37,8 @@ public class OracleSequencerTypeImpl implements IDatabaseSequencerType {
 				retVal = rs.getLong("value");
 			}
 		} catch (SQLException sqle) {
-			cat.error("sql= " + sql);
-			cat.error("SQLException in SequenceDAO.getNextValue(db,seq) because "
+			logger.error("sql= " + sql);
+			logger.error("SQLException in SequenceDAO.getNextValue(db,seq) because "
 							+ sqle.getMessage());
 			throw new DataAccessException(sqle);
 		} finally {
@@ -66,8 +67,8 @@ public class OracleSequencerTypeImpl implements IDatabaseSequencerType {
 				returnInt = rs.getLong("value");
 			}
 		} catch (SQLException sqle) {
-			cat.error("sql= " + sql);
-			cat.error("SQLException in SequenceDAO.transactionalGetNextValue because "
+			logger.error("sql= " + sql);
+			logger.error("SQLException in SequenceDAO.transactionalGetNextValue because "
 							+ sqle.getMessage());
 			throw new DataAccessException(sqle);
 		} finally {
@@ -97,8 +98,8 @@ public class OracleSequencerTypeImpl implements IDatabaseSequencerType {
 				returnInt = rs.getLong("value");
 			}
 		} catch (SQLException sqle) {
-			cat.error("sql= " + sql);
-			cat.error("SQLException in SequenceDAO.transactionalGetCurrentValue because "
+			logger.error("sql= " + sql);
+			logger.error("SQLException in SequenceDAO.transactionalGetCurrentValue because "
 							+ sqle.getMessage());
 			throw new DataAccessException(sqle);
 		} finally {
@@ -126,8 +127,8 @@ public class OracleSequencerTypeImpl implements IDatabaseSequencerType {
 				retVal = rs.getLong("value");
 			}
 		} catch (SQLException sqle) {
-			cat.error("sql= " + sql);
-			cat	.error("SQLException in SequenceDAO.getCurrentValue(db,seq) because "
+			logger.error("sql= " + sql);
+			logger.error("SQLException in SequenceDAO.getCurrentValue(db,seq) because "
 							+ sqle.getMessage());
 			// ORA-8002 sequence string.CURRVAL is not yet defined in this
 			// session

@@ -1,8 +1,9 @@
 package org.lightj.session;
 
 import java.io.InvalidObjectException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
@@ -11,18 +12,17 @@ import org.lightj.dal.DataAccessException;
 import org.lightj.locking.LockException;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.IFlowStep;
-import org.lightj.session.step.MappedCallbackHandler;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepErrorHandler;
 import org.lightj.session.step.StepExecution;
 import org.lightj.session.step.StepImpl;
-import org.lightj.session.step.StepStatistics;
 import org.lightj.session.step.StepTransition;
 import org.lightj.util.AnnotationDefaults;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.NetUtil;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -31,11 +31,11 @@ import org.lightj.util.StringUtil;
  * @author biyu
  *
  */
-@SuppressWarnings({"rawtypes"})
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class FlowDriver implements Runnable, IQueueTask {
 
 	/** logger */
-	static final Log4jProxy logger = Log4jProxy.getInstance(FlowDriver.class);
+	static final Logger logger = LoggerFactory.getLogger(FlowDriver.class);
 	
 	/**
 	 * the session it is going to drive
@@ -56,6 +56,11 @@ public class FlowDriver implements Runnable, IQueueTask {
 	 * flow event listener
 	 */
 	private HashMap<Class, IFlowEventListener> eventListeners;
+	
+	/**
+	 * step property to stepname map
+	 */
+	private HashMap<String, FlowStepProperties> stepProperties;
 
 	/**
 	 * constructor
@@ -66,6 +71,13 @@ public class FlowDriver implements Runnable, IQueueTask {
 		this.session = session;
 		this.type = session.getClass();
 		this.eventListeners = new HashMap<Class, IFlowEventListener>();
+		this.stepProperties = new HashMap<String, FlowStepProperties>();
+		// populate step properties
+		Class<Enum> stepsEnum = session.getFirstStepEnum().getDeclaringClass();
+		for (Field stepField : stepsEnum.getFields()) {
+			FlowStepProperties sp = stepField.getAnnotation(FlowStepProperties.class);
+			this.stepProperties.put(stepField.getName(), (sp!=null?sp:AnnotationDefaults.of(FlowStepProperties.class)));
+		}
 	}
 	
 	/**
@@ -100,39 +112,32 @@ public class FlowDriver implements Runnable, IQueueTask {
 	        currentFlowStep = (IFlowStep) flowStep;
 	        
 	        // set default from properties
-	        StepExecution exec = null;
-	        StepCallbackHandler chandler = null;
+	        Enum nextStep = getRelateEnumValue(getEnumByName(step), 1);
+	        StepExecution exec = new SimpleStepExecution<FlowContext>(nextStep);
+	        StepCallbackHandler chandler = new StepCallbackHandler(nextStep);
 	        StepErrorHandler ehandler = null;
 	        String onSuccess = currentExecutionProperties.onSuccess();
 	        String onElse = currentExecutionProperties.onElse();
 	        String onException = currentExecutionProperties.onException();
-	        String defErrorStep = session.getFlowProperties().errorStep();
+	        String defErrorStep = getErrorStep();
 	        
-	        if (!StringUtil.isNullOrEmpty(defErrorStep) && session.validateStepByName(defErrorStep)) {
+	        if (!StringUtil.isNullOrEmpty(defErrorStep) && validateStepByName(defErrorStep)) {
 	        	ehandler = StepErrorHandler.onException(defErrorStep);
 	        }
-	        if (!StringUtil.isNullOrEmpty(onSuccess) && session.validateStepByName(onSuccess)) {
-	        	exec = new SimpleStepExecution(onSuccess);
-	        }
 	        if (!StringUtil.isNullOrEmpty(onSuccess) && !StringUtil.isNullOrEmpty(onElse)
-	        		&& session.validateStepByName(onSuccess) && session.validateStepByName(onElse)) {
-	        	chandler = MappedCallbackHandler.onResult(onSuccess, onElse);
+	        		&& validateStepByName(onSuccess) && validateStepByName(onElse)) {
+	        	chandler = StepCallbackHandler.onResult(onSuccess, onElse);
 	        }
-	        if (!StringUtil.isNullOrEmpty(onException) && session.validateStepByName(onException)) {
+	        if (!StringUtil.isNullOrEmpty(onException) && validateStepByName(onException)) {
 	        	ehandler = StepErrorHandler.onException(onException);
 	        }
-	        currentFlowStep.setIfNull(exec, ehandler, chandler, ehandler);
+	        currentFlowStep.setIfNull(exec, ehandler, chandler);
 	        
 	        currentFlowStep.setStepName(step); // step name
 	        currentFlowStep.setFlowDriver(this); // this driver
 	        currentFlowStep.setSessionContext(session.getSessionContext()); // session context
 	        // execution properties from annotation
-	        currentFlowStep.getStepOptions().setPredefinedProperties(
-	        		currentExecutionProperties.desc(),
-	        		currentExecutionProperties.stepWeight(), 
-	        		currentExecutionProperties.logging(),
-	        		currentExecutionProperties.timeoutMillisec()); 
-	        currentFlowStep.setStatistics(new StepStatistics()); // statistics
+	        currentFlowStep.setFlowStepProperties(currentExecutionProperties);
 	        
 	        return currentFlowStep;
 	        
@@ -182,25 +187,6 @@ public class FlowDriver implements Runnable, IQueueTask {
 	}
 
 	/**
-	 * this happens when the callback comes back,
-	 * where we need to resume the session from parking state
-	 *
-	 */
-	public void callback() {
-		// take the current step and execute its callback handler
-		StepTransition transition = null;
-		try {
-			transition = currentFlowStep.onResult();
-			drive(transition);
-		}
-		catch (Throwable t) {
-			// we always persist history when failure happens
-			handleError(t);
-			transition = currentFlowStep.onResultError(t);
-		}
-	}
-
-	/**
 	 * drive this flow with a specific transition, used in synchronous scheduled flow step execution
 	 * @param transition
 	 */
@@ -211,7 +197,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 		catch (Throwable t) {
 			// we always persist history when failure happens
 			handleError(t);
-			transition = currentFlowStep.onResultError(t);
+			transition = currentFlowStep.onError(t);
 		}
 	}
 
@@ -236,7 +222,6 @@ public class FlowDriver implements Runnable, IQueueTask {
 		while (t != null && t.getActionStatus() == FlowState.Running) {
 			if (currentFlowStep != null && !StringUtil.equalIgnoreCase(currentFlowStep.getStepName(), t.getNextStep())) {
 				// we are exiting the current step, send stepExit event
-				currentFlowStep.getStatistics().setEndTime(new Date());
 				handleStepEvent(FlowEvent.stepExit, currentFlowStep, t);
 			}
 			// run the next step
@@ -267,7 +252,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 				handleStepEvent(FlowEvent.stepOngoing, currentFlowStep, transition);
 				session.setState(t.getActionStatus());
 				try {
-					FlowSessionFactory.getInstance().saveSession(session);
+					FlowSessionFactory.getInstance().saveSessionData(session);
 				} catch (FlowSaveException e) {
 					throw new StateChangeException(e);
 				}
@@ -310,7 +295,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 		    					sessionFromDb.getResult(), "Flow state changed externally");
 		    		}
 					// force reload context
-					session.getSessionContext().setLoaded(false);
+					session.getSessionContext().reload();
 				}
 			} catch (DataAccessException e) {
 
@@ -325,53 +310,61 @@ public class FlowDriver implements Runnable, IQueueTask {
     		return StepTransition.NOOP;
     	}
         
-    	// start timer timer for the step
-    	Date stepStartTime = new Date();
-    	
-    	// change related session properties
-		// current action
-        session.setCurrentAction(currentStepStr);
-        // next action
-        try {
-			session.setNextAction(session.getRelateEnumValue(session.getEnumByName(currentStepStr), 1).name());
-		} catch (Throwable t) {
-			// we can't access flow's step enum, nothing serious, ignore
-		}
+    	// change related session properties, only for non-error handling step
+    	if (!isErrorStep(currentStepStr)) {
+    		// current action
+            session.setCurrentAction(currentStepStr);
+            // next action
+            try {
+    			session.setNextAction(getRelateEnumValue(getEnumByName(currentStepStr), 1).name());
+    		} catch (Throwable t) {
+    			// we can't access flow's step enum, nothing serious, ignore
+    		}
+    	}
 
 		// call the session implementation step to build the IFlowSetp to be executed
     	IFlowStep flowStep = null;
         
     	try {
 			 flowStep = buildStep(currentStepStr);
-		} catch (FlowExecutionException e) {
+		} 
+    	catch (FlowExecutionException e) {
 			// we can't build a valid step implementation, stop the flow
 			StepImpl dummy = new StepImpl();
 			dummy.setStepName(currentStepStr);
-	        handleStepEvent(FlowEvent.stepBuild, dummy, StepTransition.newLog(e.getMessage(), StringUtil.getStackTrace(e, 2000)));
+			session.getSessionContext().addStep(dummy);
+			session.getSessionContext().saveFlowError(dummy.getStepId(), StringUtil.getStackTrace(e));
+	        handleStepEvent(FlowEvent.stepBuild, dummy, StepTransition.newLog(e.getMessage(), StringUtil.getStackTrace(e)));
 			logger.error(e.getMessage(), e);
 			handleError(e);
 			return new StepTransition(FlowState.Completed, null, FlowResult.Fatal, e.getMessage());
 		}
 
-    	// change related session properties
-        // running state
-        session.setState(flowStepTransition.getActionStatus());
-        // result state if any
-        if (flowStepTransition.getResultStatus() != null) {
-        	session.setResult(flowStepTransition.getResultStatus());
-        }
-        flowStep.getStatistics().setStartTime(stepStartTime);
-        
-        // notify event listeners step entry
-        handleStepEvent(FlowEvent.stepEntry, flowStep, flowStepTransition);
-        StepTransition transition = null;
+    	// change related session properties, for non-error handling step only
+    	if (!isErrorStep(currentStepStr)) {
+            // running state
+            session.setState(flowStepTransition.getActionStatus());
+            // result state if any
+            if (flowStepTransition.getResultStatus() != null) {
+            	session.setResult(flowStepTransition.getResultStatus());
+            }
+            
+            // notify event listeners step entry
+            handleStepEvent(FlowEvent.stepEntry, flowStep, flowStepTransition);
+    	}
+
+    	StepTransition transition = null;
         try {
-        	currentFlowStep.setTransitionFrom(flowStepTransition);
 			transition = currentFlowStep.execute();
 		} catch (Throwable t) {
 	        // notify event listeners error
 			handleError(t);
-			transition = currentFlowStep.onExecutionError(t);
+			if (!isErrorStep(currentStepStr)) {
+				transition = currentFlowStep.onError(t);
+			}
+			else {
+				transition = new StepTransition(FlowState.Completed, null, FlowResult.Fatal, "Error handling step failed: " + t.getMessage());
+			}
 		} finally {
 			// when flow is running with no new step (waiting for callback), generate ongoing event
 			if (transition == null || !transition.isEdge()) {
@@ -428,6 +421,106 @@ public class FlowDriver implements Runnable, IQueueTask {
 				logger.warn("Flow event handling exception : " + t.getMessage());
 			}
 		}
+	}
+	
+	/**
+	 * find error step
+	 * @return
+	 */
+	protected String getErrorStep() {
+		for (Entry<String, FlowStepProperties> entry : stepProperties.entrySet()) {
+			if (entry.getValue().isErrorStep()) {
+				return entry.getKey();
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * if a step is an error step
+	 * @return
+	 */
+	protected boolean isErrorStep(String stepName) {
+		return stepProperties.containsKey(stepName) && stepProperties.get(stepName).isErrorStep();
+	}
+	
+	/**
+	 * all steps in this flow
+	 * @return
+	 * @throws InvocationTargetException 
+	 * @throws IllegalAccessException 
+	 * @throws NoSuchMethodException 
+	 */
+	protected Enum[] getStepEnums() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+		return getEnumValues(session.getFirstStepEnum().getDeclaringClass());
+	}
+	
+	/**
+	 * find next step enum based on current step and offset
+	 * 
+	 * @param stepsEnum
+	 * @param current
+	 * @param offset
+	 * @return
+	 * @throws NoSuchMethodException
+	 * @throws IllegalAccessException
+	 * @throws InvocationTargetException
+	 */
+	protected Enum getRelateEnumValue(Enum current,	int offset) 
+		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
+	{
+		Enum[] steps = getEnumValues(session.getFirstStepEnum().getDeclaringClass());
+		int idx = current.ordinal() + offset;
+		idx = Math.min(idx, steps.length - 1);
+		idx = Math.max(0, idx);
+		return steps[idx];
+	}
+
+	/**
+	 * validate a step
+	 * @param stepName
+	 * @return
+	 */
+	protected boolean validateStepByName(String stepName) {
+		try {
+			return getEnumByName(stepName) != null;
+		} catch (Throwable e) {
+			return false;
+		}
+	}
+
+	/**
+	 * find a enum value by its name via reflection
+	 * 
+	 * @param enumName
+	 * @return
+	 * @throws NoSuchMethodException
+	 * @throws IllegalAccessException
+	 * @throws InvocationTargetException
+	 */
+	protected Enum getEnumByName(String enumName) 
+		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
+	{
+		Class<Enum> stepsEnum = session.getFirstStepEnum().getDeclaringClass();
+		Method method = stepsEnum.getMethod("valueOf", new Class[] { String.class });
+		return (Enum) method.invoke(Constants.NO_OBJECT, new Object[] { enumName });
+	}
+	
+
+	/**
+	 * get all steps out of a steps enum
+	 * 
+	 * @param enumType
+	 * @return
+	 * @throws NoSuchMethodException
+	 * @throws IllegalAccessException
+	 * @throws InvocationTargetException
+	 */
+	protected static Enum[] getEnumValues(Class enumType)
+		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
+	{
+		Method method = enumType.getMethod("values", Constants.NO_PARAMETER_TYPES);
+		return (Enum[]) method.invoke(null, Constants.NO_PARAMETER_VALUES);
 	}
 
 	//////////////////// Runnable interface ///////////////////

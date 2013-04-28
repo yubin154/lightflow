@@ -7,7 +7,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Vector;
 
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * initializing modules
@@ -16,7 +17,7 @@ import org.lightj.util.Log4jProxy;
 public class InitializationProcessor {
 
 	/** logger */
-	static Log4jProxy logger = Log4jProxy.getInstance(InitializationProcessor.class);
+	static Logger logger = LoggerFactory.getLogger(InitializationProcessor.class);
 
 	/**
 	 * top modules to be initialized

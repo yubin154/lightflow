@@ -3,13 +3,14 @@ package org.lightj.session.step;
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowDriver;
 import org.lightj.session.FlowExecutionException;
-import org.lightj.session.FlowStepOptions;
+import org.lightj.session.FlowStepProperties;
 
 /**
  * A step in a workflow session
  * @author biyu
  *
  */
+@SuppressWarnings("rawtypes")
 public interface IFlowStep {
 	
 	/**
@@ -23,7 +24,7 @@ public interface IFlowStep {
 	 * @return
 	 * @throws FlowExecutionException
 	 */
-	public StepTransition onExecutionError(Throwable t);
+	public StepTransition onError(Throwable t);
 	
 	/**
 	 * handling result, 
@@ -35,13 +36,6 @@ public interface IFlowStep {
 	 * @throws FlowExecutionException
 	 */
 	public StepTransition onResult() throws FlowExecutionException;
-	
-	/**
-	 * handling error condition in onResult()
-	 * @param t
-	 * @return
-	 */
-	public StepTransition onResultError(Throwable t);
 	
 	/**
 	 * register the flow driver to the step to be used in callback notification
@@ -62,11 +56,11 @@ public interface IFlowStep {
 	public void setSessionContext(FlowContext context);
 	
 	/**
-	 * resume a parked step in asynchronous callback
+	 * resume a parked step with a step transition in asynchronous callback
 	 *
 	 */
-	public void resume();
-	
+	public void resume(StepTransition transition);
+
 	/**
 	 * step name
 	 * @return
@@ -80,42 +74,17 @@ public interface IFlowStep {
 	public void setStepName(String name);
 	
 	/**
-	 * set flow step statistics
-	 * @param statistics
-	 */
-	public void setStatistics(StepStatistics statistics);
-	
-	/**
-	 * get flow step statistics
-	 * @return
-	 */
-	public StepStatistics getStatistics();
-	
-	/**
-	 * transition caused this step to be executed
-	 * @param transitionFrom
-	 */
-	public void setTransitionFrom(StepTransition transitionFrom);
-	
-	/**
-	 * the transition caused this step to be executed
-	 * @return
-	 */
-	public StepTransition getTransitionFrom();
-
-	/**
 	 * flow step options available at runtime
 	 * @return
 	 */
-	public FlowStepOptions getStepOptions();
-	
+	public FlowStepProperties getFlowStepProperties();
+
 	/**
-	 * set timeout for the step
-	 * @param timeoutMilliSec
-	 * @return
+	 * set flow step properties 
+	 * @param flowStepProperties
 	 */
-	public IFlowStep setTimeoutMilliSec(int timeoutMilliSec);
-	
+	public void setFlowStepProperties(FlowStepProperties flowStepProperties);
+
 	/**
 	 * a unique step id
 	 * @return
@@ -129,7 +98,24 @@ public interface IFlowStep {
 	 * @param chandler
 	 * @param cehandler
 	 */
-	@SuppressWarnings("rawtypes")
-	void setIfNull(StepExecution exec, StepErrorHandler ehandler, StepCallbackHandler chandler, StepErrorHandler cehandler);
+	void setIfNull(StepExecution exec, StepErrorHandler ehandler, StepCallbackHandler chandler);
+	
+	/**
+	 * execution
+	 * @return
+	 */
+	public StepExecution getExecution();
+	
+	/**
+	 * result handler
+	 * @return
+	 */
+	public StepCallbackHandler getResultHandler();
+	
+	/**
+	 * error handler
+	 * @return
+	 */
+	public StepErrorHandler getErrorHandler();
 	
 }

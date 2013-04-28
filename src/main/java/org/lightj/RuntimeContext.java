@@ -1,8 +1,5 @@
 package org.lightj;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-
 import org.lightj.util.StringUtil;
 
 
@@ -15,26 +12,20 @@ import org.lightj.util.StringUtil;
 public class RuntimeContext {
 
 	public static final String CONFIG_ROOT = "org.lightj.context.externalConfigRootUrl";
-	public static final String PRODUCTS = "org.lightj.products";
+	public static final String PRODUCT = "org.lightj.product";
 	public static final String ENV = "org.lightj.env";
 	public static final String BUILD = "org.lightj.build";
+	public static final String DC = "org.lightj.dc";
 	
 	public static final String LOG_CONFIG = "java.util.logging.config.file";
 	public static final String LOG4J_CONFIG = "log4j.configuration";
 	public static final String LOG4J_PROPS = "log4j.properties";
 	
-	public static void setProducts(String...products) {
-		System.setProperty(PRODUCTS, StringUtil.join(products, ","));
+	public static void setProduct(String product) {
+		System.setProperty(PRODUCT, product);
 	}
-	public static boolean hasAnyProduct() {
-		return !StringUtil.isNullOrEmpty(System.getProperty(PRODUCTS));
-	}
-	public static String[] getProducts() {
-		String productStr = System.getProperty(PRODUCTS);
-		return StringUtil.isNullOrEmpty(productStr) ? new String[] {"lightj"} : productStr.split(",");
-	}
-	public static String getMainProduct() {
-		return hasAnyProduct() ? getProducts()[0] : "lightj";
+	public static String getProduct() {
+		return System.getProperty(PRODUCT, "UnknownProduct");
 	}
 	public static String getEnv() {
 		return System.getProperty(ENV, "UnknownEnv");
@@ -48,36 +39,26 @@ public class RuntimeContext {
 	public static String getBuild() {
 		return System.getProperty(BUILD, "UnknownBuild");
 	}
-
-	/**
-	 * Returns the ConfigRoot.
-	 * @return URL for config root
-	 */
-	public static URL getConfigRoot() {
-		try {
-			return System.getProperty(CONFIG_ROOT)!=null ? new URL(System.getProperty(CONFIG_ROOT)) : null;
-		} catch (MalformedURLException e) {
-			return null;
-		}
+	public static void setDc(String dc) {
+		System.setProperty(DC, dc);
 	}
-
-	/**
-	 * Sets the config root.
-	 * @param configRoot The config root to set
-	 */
-	public static void setConfigRoot(String cr) {
-		System.setProperty(CONFIG_ROOT, cr);
+	public static String getDc() {
+		return System.getProperty(DC, "UnknownDC");
+	}
+	public static void setClusterUuid(String product, String env, String dc, String buildId) {
+		setProduct(product);
+		setEnv(env);
+		setDc(dc);
+		setBuild(buildId);
 	}
 
 	/**
 	 * get cluster name of product-env-build
-	 * @see {@link RuntimeContext#setProducts(String...)} {@link RuntimeContext#setEnv(String)} {@link RuntimeContext#setBuild(String)}
+	 * @see {@link RuntimeContext#setProduct(String...)} {@link RuntimeContext#setEnv(String)} {@link RuntimeContext#setBuild(String)}
 	 * @return
 	 */
 	public static String getClusterName() {
-		return StringUtil.join(new String[] {getMainProduct(), getEnv(), getBuild()}, "-");
+		return StringUtil.join(new String[] {getProduct(), getEnv(), getDc(), getBuild()}, "-");
 	}
-	
-	
 	
 }

@@ -2,7 +2,6 @@ package org.lightj.session;
 
 import java.io.InvalidObjectException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -15,6 +14,7 @@ import org.lightj.dal.Locatable;
 import org.lightj.dal.Locator;
 import org.lightj.dal.LocatorUtil;
 import org.lightj.dal.Query;
+import org.lightj.dal.SimpleLocatable;
 import org.lightj.locking.LockException;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.SessionDataFactory;
@@ -22,9 +22,11 @@ import org.lightj.session.step.StepLog;
 import org.lightj.util.AnnotationDefaults;
 import org.lightj.util.DBUtil;
 import org.lightj.util.DateUtil;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.NetUtil;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.mongodb.core.query.Criteria;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -32,7 +34,8 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 {
 
 	/** logger */
-	private static Log4jProxy logger = Log4jProxy.getInstance(FlowSession.class);
+	private static Logger logger = LoggerFactory.getLogger(FlowSession.class);
+
 	/** date format used in default flow key */
 	private static String date_fmt = "yyyy-MM-dd";
 	
@@ -60,11 +63,59 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * @param firstStep
 	 * @param type
 	 */
-	protected FlowSession() {
+	public FlowSession() {
 		sessionDo = SessionDataFactory.getInstance().getDataManager().newInstance();
 		sessionDo.setCreationDate(new Date());
 		sessionDo.setFlowState(FlowState.Pending);
 		sessionDo.setCurrentAction(getFirstStepEnum().name());
+		setRequester(new SimpleLocatable());
+		setTarget(new SimpleLocatable());
+		postConstruct();
+	}
+	
+	/**
+	 * post construct a flow
+	 * @param session
+	 */
+	private final void postConstruct() {
+//		try {
+//			Class<? extends FlowSession> flowKlass = getClass();
+//			FlowDefinition type = flowKlass.getAnnotation(FlowDefinition.class);
+//			if (type == null) throw new IllegalArgumentException("No flow definition annontation found");
+//			Class<? extends FlowContext> ctxKlass = null;
+//			Type[]  types = ClassUtils.getGenericType(flowKlass);
+//			for (Type iType : types) {
+//				for (Type aType : ((ParameterizedType) iType).getActualTypeArguments()) {
+//					if (aType instanceof Class) {
+//						ctxKlass = (Class<? extends FlowContext>) aType;
+//					}
+//				}
+//			}
+//					
+//			FlowType ft = FlowSessionFactory.getInstance().fromFlowTypeId(type.typeId());
+//			if (ft == null) {
+//				validateSteps();
+//				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass, type.group());
+//				FlowSessionFactory.getInstance().addFlowTypes(Arrays.asList(new FlowType[] {ft}));
+//			}
+//			sessionContext = (T) ctxKlass.newInstance();
+//			setFlowType(ft);
+//		} catch (IllegalArgumentException e) {
+//			throw e;
+//		} catch (FlowValidationException e) {
+//			throw e;
+//		} catch (Throwable t) {
+//			throw new IllegalArgumentException(t);
+//		}
+		try {
+			FlowType ft = FlowSessionFactory.getInstance().fromFlowClass(this.getClass());
+			setFlowType(ft);
+			sessionContext = (T) ft.getCtxKlass().newInstance();
+		} catch (IllegalAccessException e) {
+			throw new FlowValidationException(e);
+		} catch (InstantiationException e) {
+			throw new FlowValidationException(e);
+		}
 	}
 	
 	/** first step */
@@ -87,13 +138,13 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 */
 	public String getStatusDesc() {
 		return getState() == FlowState.Completed ? 
-				getResult().name() : getState().getLabel();
+				getResult().getUserStatus() : getState().getLabel();
 	}
 
-	public long getId() {
+	public final long getId() {
 		return sessionDo.getFlowId();
 	}
-	public boolean isSaved() {
+	public final boolean isSaved() {
 		return getId() > 0;
 	}
 
@@ -117,7 +168,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	}
 	/** get complete locatable string in the format of key:locator */
 	public String getKeyOfRequester() {
-		return sessionDo.getRequesterKey();
+		return sessionDo.getKeyofRequester();
 	}
 	
 	public Date getCreationDate() {
@@ -170,7 +221,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	public String getCurrentAction() {
 		return sessionDo.getCurrentAction();
 	}
-	protected void setCurrentAction(String currentAction) {
+	public void setCurrentAction(String currentAction) {
 		sessionDo.setCurrentAction(currentAction);
 	}
 	
@@ -254,68 +305,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 				sessionContext.setSessionId(this.getId());
 			}
 		}
-	}
-
-	/**
-	 * get all steps out of a steps enum
-	 * 
-	 * @param enumType
-	 * @return
-	 * @throws NoSuchMethodException
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException
-	 */
-	protected static Enum[] getEnumValues(Class enumType)
-		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
-	{
-		Method method = enumType.getMethod("values", Constants.NO_PARAMETER_TYPES);
-		return (Enum[]) method.invoke(null, Constants.NO_PARAMETER_VALUES);
-	}
-
-	/**
-	 * find a enum value by its name via reflection
-	 * 
-	 * @param enumName
-	 * @return
-	 * @throws NoSuchMethodException
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException
-	 */
-	protected Enum getEnumByName(String enumName) 
-		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
-	{
-		Class<Enum> stepsEnum = getFirstStepEnum().getDeclaringClass();
-		Method method = stepsEnum.getMethod("valueOf", new Class[] { String.class });
-		return (Enum) method.invoke(Constants.NO_OBJECT, new Object[] { enumName });
-	}
-	
-	protected boolean validateStepByName(String stepName) {
-		try {
-			return getEnumByName(stepName) != null;
-		} catch (Throwable e) {
-			return false;
-		}
-	}
-
-	/**
-	 * find next step enum based on current step and offset
-	 * 
-	 * @param stepsEnum
-	 * @param current
-	 * @param offset
-	 * @return
-	 * @throws NoSuchMethodException
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException
-	 */
-	protected Enum getRelateEnumValue(Enum current,	int offset) 
-		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
-	{
-		Enum[] steps = getEnumValues(getFirstStepEnum().getDeclaringClass());
-		int idx = current.ordinal() + offset;
-		idx = Math.min(idx, steps.length - 1);
-		idx = Math.max(0, idx);
-		return steps[idx];
 	}
 
 	/**
@@ -491,7 +480,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 			this.setState(actionStatus);
 			FlowResult currRs = getResult();
 			boolean needSaveRs = (resultStatus != null && 
-					(currRs == null || resultStatus.logLevel().isGreaterOrEqual(currRs.logLevel())));
+					(currRs == null || resultStatus.logLevel().intValue() >= currRs.logLevel().intValue()));
 
 			if (needSaveRs) {
 				this.setResult(resultStatus);
@@ -552,7 +541,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 			}
 			FlowResult currRs = getResult();
 			boolean needSaveRs = (resultStatus != null && 
-					(currRs == null || resultStatus.logLevel().isGreaterOrEqual(currRs.logLevel())));
+					(currRs == null || resultStatus.logLevel().intValue() >= currRs.logLevel().intValue()));
 
 			if (needSaveRs) {
 				this.setResult(resultStatus);
@@ -588,7 +577,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		Class sessionKlass = this.getClass();
 		// go through its steps and make sure all map to a concrete method
 		try {
-			for (Enum step : getEnumValues(getFirstStepEnum().getDeclaringClass())) {
+			for (Enum step : FlowDriver.getEnumValues(getFirstStepEnum().getDeclaringClass())) {
 				sessionKlass.getMethod(step.name(), Constants.NO_PARAMETER_TYPES);
 			}
 		} catch (SecurityException e) {
@@ -615,7 +604,15 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		// wipe out next step
 		setNextAction(null);
 		// stop all non-completed child sessions if any
-		Query q = new Query().and("parent_id", "=", this.getId()).and("flow_id", "!=", this.getId()).and("end_date is null");
+		Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
+		if (q instanceof org.lightj.dal.Query) {
+			((Query)q).and("parent_id", "=", this.getId()).and("flow_id", "!=", this.getId()).and("end_date is null");
+		}
+		else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
+			((org.springframework.data.mongodb.core.query.Query)q).addCriteria(
+					Criteria.where("parentId").is(this.getId()).and("flowId").ne(this.getId()).and("endDate").is(null));
+		}
+		
 		for (FlowSession child : FlowSessionFactory.getInstance().getSessionsByQuery(q)) {
 			child.killFlow(this.getState(), this.getResult(), "Parent was stopped");
 		}
@@ -667,12 +664,19 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		String msg = null;
 		try {
 			// first cancel all non complete child flows
-			List<FlowSession> children = FlowSessionFactory.getInstance().getSessionsByQuery(new Query().and("end_date is null")
-					.and("flow_state in (" + 
-							DBUtil.dbC(FlowState.Running.name()) + ',' +
-							DBUtil.dbC(FlowState.Callback.name())+ ")")
-					.and("parent_id", "=", this.getId())
-			);
+			Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
+			if (q instanceof org.lightj.dal.Query) {
+				((Query)q).and("end_date is null")
+				.and("flow_state in (" + 
+						DBUtil.dbC(FlowState.Running.name()) + ',' +
+						DBUtil.dbC(FlowState.Callback.name())+ ")")
+				.and("parent_id", "=", this.getId());
+			}
+			else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
+				((org.springframework.data.mongodb.core.query.Query)q).addCriteria(
+						Criteria.where("endDate").is(null).and("actionStatus").in(FlowState.Running.name(), FlowState.Callback.name()).and("parentId").is(this.getId()));
+			}			
+			List<FlowSession> children = FlowSessionFactory.getInstance().getSessionsByQuery(q);
 			for (FlowSession child : children) {
 				child.killFlow(FlowState.Canceled, FlowResult.Failed, "Parent recover from an unexpected stop");
 			}
@@ -758,5 +762,31 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * @throws LockException
 	 */
 	protected void releaseLock() throws LockException {
+	}
+	
+	/**
+	 * flow info
+	 * @return
+	 */
+	public FlowInfo getFlowInfo() {
+		FlowInfo flowInfo = new FlowInfo();
+		flowInfo.setFlowKey(getKey());
+		flowInfo.setCreateDate(getCreationDate());
+		flowInfo.setCurrentStep(getCurrentAction());
+		flowInfo.setEndDate(getEndDate());
+		flowInfo.setExecutionLogs(sessionContext.getExecutionLogs());
+		flowInfo.setFlowResult(getResult().getUserStatus());
+		flowInfo.setFlowState(getState().getLabel());
+		flowInfo.setFlowStatus(getStatus());
+		flowInfo.setFlowType(getFlowType().value());
+		flowInfo.setProgress("" + getStats().getPercentComplete() + "%");
+		flowInfo.setRequester(getKeyOfRequester());
+		flowInfo.setTarget(getKeyOfTarget());
+		flowInfo.setFlowContext(sessionContext.getSearchableContext());
+		return flowInfo;
+	}
+	
+	public void save() throws FlowSaveException {
+		FlowSessionFactory.getInstance().save(this);
 	}
 }

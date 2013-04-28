@@ -21,17 +21,6 @@ public class FlowTask extends ExecutableTask {
 	 */
 	private final FlowSession subFlow;
 	
-	/** parent flow id */
-	private long parentFlowId;
-	
-	public void setParentFlowId(long parentFlowId) {
-		this.parentFlowId = parentFlowId;
-	}
-
-	public long getParentFlowId() {
-		return parentFlowId;
-	}
-
 	public FlowTask(FlowSession subFlow, ExecuteOption execOption) {
 		super(execOption);
 		this.subFlow = subFlow;
@@ -45,8 +34,9 @@ public class FlowTask extends ExecutableTask {
 	@Override
 	public TaskResult execute(ActorRef executingActor) {
 		try {
+			long parentFlowId = context.getSessionId();
 			if (subFlow.getParentId() <= 0) {
-				subFlow.setParentId(this.parentFlowId);
+				subFlow.setParentId(parentFlowId);
 				FlowSessionFactory.getInstance().update(subFlow);
 			}
 			subFlow.addEventListener(new SubFlowEventListener(this, executingActor));

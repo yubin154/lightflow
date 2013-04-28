@@ -1,8 +1,7 @@
 package org.lightj.session;
 
-import java.io.InvalidObjectException;
 
-public class NoSuchFlowException extends InvalidObjectException {
+public class NoSuchFlowException extends IllegalArgumentException {
 
 	/**
 	 * 
@@ -12,5 +11,16 @@ public class NoSuchFlowException extends InvalidObjectException {
 	public NoSuchFlowException(String message) {
 		super(message);
 	}
+    public NoSuchFlowException() {
+	super();
+    }
+
+    public NoSuchFlowException(String message, Throwable cause) {
+        super(message, cause);
+    }
+ 
+    public NoSuchFlowException(Throwable cause) {
+        super(cause);
+    }
 
 }

@@ -5,7 +5,7 @@ import org.lightj.dal.ITransactional;
 public interface ILockManager {
 	
 	/** lock a target */
-	public void lock(String targetKey, boolean isExclusive) throws LockException;
+	public void lock(String targetKey) throws LockException;
 	
 	/** unlock a target */
 	public void unlock(String targetKey) throws LockException;

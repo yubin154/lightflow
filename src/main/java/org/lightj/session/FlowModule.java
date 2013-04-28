@@ -1,9 +1,9 @@
 package org.lightj.session;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import org.lightj.RuntimeContext;
 import org.lightj.clustering.ClusteringException;
 import org.lightj.clustering.ClusteringManager;
 import org.lightj.clustering.ClusteringModule;
@@ -18,10 +18,8 @@ import org.lightj.initialization.InitializationException;
 import org.lightj.locking.ILockManager;
 import org.lightj.locking.LockException;
 import org.lightj.session.dal.SessionDataFactory;
-import org.lightj.session.dal.SessionDataManagerImpl;
-import org.lightj.session.dal.SessionMetaDataManagerImpl;
-import org.lightj.session.dal.SessionStepLogManagerImpl;
 import org.lightj.util.SpringContextUtil;
+import org.springframework.context.ApplicationContext;
 
 import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 
@@ -34,7 +32,8 @@ import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 public class FlowModule {
 
 	/** singleton */
-	private static SessionModuleInner s_Module = null;
+	private static FlowModuleInner s_Module = null;
+	public static final String FLOW_CTX = "CTX_FLOW_MODULE";
 	
 	/** constructor */
 	public FlowModule() {
@@ -42,7 +41,7 @@ public class FlowModule {
 	}
 	
 	private synchronized void init() {
-		if (s_Module == null) s_Module = new SessionModuleInner();
+		if (s_Module == null) s_Module = new FlowModuleInner();
 	}
 
 	/** module to be initialized */
@@ -78,6 +77,13 @@ public class FlowModule {
 	public FlowModule enableCluster(ILockManager lm) {
 		return this.enableCluster(lm, 10000, 60000);
 	}
+	
+	/** add flows from spring context */
+	public FlowModule setSpringContext(ApplicationContext flowCtx) {
+		s_Module.validateForChange();
+		s_Module.flowCtx = flowCtx;
+		return this;
+	}
 
 	/**
 	 * enable clustering with defined min/max delay milliseconds for recover flow 
@@ -109,27 +115,19 @@ public class FlowModule {
 		return s_Module.lockManager;
 	}
 	
-	/** load sessions from spring context */
-	public FlowModule setSpringContext(String path) {
-		s_Module.validateForChange();
-		s_Module.springCtxPath = path;
-		return this;
-	}
-
 	/**
 	 * real init
 	 * @author biyu
 	 *
 	 */
-	private static class SessionModuleInner extends BaseModule {
+	private static class FlowModuleInner extends BaseModule {
 		
 		/** enable cluster support */
 		private boolean clusterEnabled;
 		private ILockManager lockManager = new ILockManager() {
 
 			@Override
-			public void lock(String targetKey, boolean isExclusive)
-					throws LockException {
+			public void lock(String targetKey) throws LockException {
 				throw new LockException("not implemented");
 			}
 
@@ -154,17 +152,16 @@ public class FlowModule {
 		private int recoverMaxDelayMs;
 		/** database */
 		private BaseDatabaseType dbEnum;
-		/** spring context */
-		private String springCtxPath;
 		/** executor service */
 		private ExecutorService es;
+		private ApplicationContext flowCtx;
 		
 		/**
 		 * constructor
 		 * @param dbEnum
 		 * @param flowTypes
 		 */
-		private SessionModuleInner() 
+		private FlowModuleInner() 
 		{
 			addInitializable(new BaseInitializable() {
 				
@@ -175,6 +172,7 @@ public class FlowModule {
 					}
 				}
 				
+				@SuppressWarnings("rawtypes")
 				@Override
 				protected void initialize() 
 				{
@@ -186,20 +184,24 @@ public class FlowModule {
 						throw new InitializationException("session flow requires a database");
 					}
 					
-					SessionDataFactory f = null;
 					// load spring context
-					if (springCtxPath != null) {
-						SpringContextUtil.loadContext("SessionModule", springCtxPath);
-						f = (SessionDataFactory) SpringContextUtil.getContext("SessionModule").getBean("sessionDataFactory");
+					if (flowCtx == null) {
+						throw new InitializationException("session flow application context not set");
 					}
-					else {
-						f = SessionDataFactory.getInstance();
-						f.setDataManager(SessionDataManagerImpl.getInstance());
-						f.setMetaDataManager(SessionMetaDataManagerImpl.getInstance());
-						f.setStepLogManager(SessionStepLogManagerImpl.getInstance());
-					}
-					f.setDbEnum(dbEnum);
 					
+					SpringContextUtil.registerContext(FLOW_CTX, flowCtx);
+					
+					SessionDataFactory f = null;
+					f = (SessionDataFactory) SpringContextUtil.getBean(FLOW_CTX, "sessionDataFactory");
+
+					// load registered flow bean classes
+					List<Class<? extends FlowSession>> flowTypes = SpringContextUtil.getBeansClass(FLOW_CTX, FlowSession.class);
+					for (Class<? extends FlowSession> flowType : flowTypes) {
+						FlowSessionFactory.getInstance().addFlowKlazz(flowType);
+					}
+
+					f.setDbEnum(dbEnum);
+
 					/** setup in memory db tables */
 					if (dbEnum instanceof HsqlDatabaseType) {
 						setupMemTables(dbEnum);
@@ -212,7 +214,7 @@ public class FlowModule {
 						}
 						try {
 							ClusteringManager.getInstance().startOrJoin(
-									RuntimeContext.getClusterName(), 
+									new ClusteringModule().getClusterName(), 
 									MemberType.CORE, 
 									new FlowClusteringEventHandler(recoverMinDelayMs, recoverMaxDelayMs));
 						} catch (ClusteringException e) {

@@ -6,14 +6,15 @@ import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class FlowSaver implements IFlowEventListener {
 	
-	static Log4jProxy logger = Log4jProxy.getInstance(FlowSaver.class);
+	static Logger logger = LoggerFactory.getLogger(FlowSaver.class);
 	
 	/**
 	 * save step history for the current step
@@ -23,7 +24,7 @@ public class FlowSaver implements IFlowEventListener {
 	 * @param detail
 	 */
 	public static void persistStepHistory(FlowSession session, IFlowStep flowStep, String msg, String detail) {
-		if (flowStep.getStepOptions().loggingEnabled()) {
+		if (flowStep.getFlowStepProperties().logging()) {
 			ISessionStepLog log = SessionDataFactory.getInstance().getStepLogManager().newInstance();
 			log.setFlowId(session.getId());
 			log.setCreationDate(new Date());
@@ -83,8 +84,11 @@ public class FlowSaver implements IFlowEventListener {
 			persistStepHistory(session, event.getLabel(), event.getLabel());
 			break;
 		case recover:
+			persistStepHistory(session, (session.getStatus() != null ? session.getStatus() : event.getLabel()), event.getLabel());
+			break;
 		case stop:
 		case pause:
+			FlowSessionFactory.getInstance().removeSessionFromCache(session.getKey());
 			persistStepHistory(session, (session.getStatus() != null ? session.getStatus() : event.getLabel()), event.getLabel());
 			break;
 			
@@ -138,7 +142,7 @@ public class FlowSaver implements IFlowEventListener {
         // compare log level of result status and log it as session status if needed
         if (rst!=null && hasMsg) {
         	FlowResult currentWfRst = session.getResult();
-        	if (currentWfRst == null || rst.logLevel().isGreaterOrEqual(currentWfRst.logLevel())) {
+        	if (currentWfRst == null || rst.logLevel().intValue() >= currentWfRst.logLevel().intValue()) {
 				persistMsgInSession(session, msg);
         	}
         }

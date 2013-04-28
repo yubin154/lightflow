@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.lightj.initialization.BaseInitializable;
 import org.lightj.initialization.BaseModule;
+import org.lightj.util.StringUtil;
 
 /**
  * place to intialize your database
@@ -19,6 +20,10 @@ public class DatabaseModule {
 
 	public DatabaseModule() {
 		init();
+	}
+	
+	public BaseDatabaseType getDataSourceOfName(String name) {
+		return s_Module.initializable.getDataSourceOfName(name);
 	}
 
 	private synchronized void init() {
@@ -74,6 +79,16 @@ public class DatabaseModule {
 			for (BaseDatabaseType db : databases) {
 				this.databases.add(db);
 			}
+		}
+		
+		/** search by name */
+		private BaseDatabaseType getDataSourceOfName(String name) {
+			for (BaseDatabaseType db : databases) {
+				if (StringUtil.equalIgnoreCase(name, db.getName())) {
+					return db;
+				}
+			}
+			return null;
 		}
 		
 	}

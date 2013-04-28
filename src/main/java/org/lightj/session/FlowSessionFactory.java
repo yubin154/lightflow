@@ -14,7 +14,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.ITransactional;
-import org.lightj.dal.Locatable;
 import org.lightj.dal.Locator;
 import org.lightj.dal.Query;
 import org.lightj.locking.LockException;
@@ -23,9 +22,12 @@ import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.util.ClassUtils;
 import org.lightj.util.DBUtil;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.NetUtil;
+import org.lightj.util.SpringContextUtil;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.mongodb.core.query.Criteria;
 
 /**
  * Business object factory for flow session
@@ -39,7 +41,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	/**
 	 * logger
 	 */
-	static Log4jProxy cat = Log4jProxy.getInstance(FlowSessionFactory.class);
+	static Logger logger = LoggerFactory.getLogger(FlowSessionFactory.class);
 	
 	/**
 	 * a cache for all the actively running session managers in this VM
@@ -55,6 +57,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 * a cache of all type value to {@link FlowType}
 	 */
 	private static ConcurrentMap<String, FlowType> flowTypes = new ConcurrentHashMap<String, FlowType>();
+	private static ConcurrentMap<Class, FlowType> flowClassTypes = new ConcurrentHashMap<Class, FlowType>();
 	
 	/**
 	 * singleton
@@ -79,35 +82,11 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	private FlowSessionFactory() {}
 
 	/**
-	 * validate all flow sessions, its construction and its steps
-	 * @throws FlowValidationException
-	 */
-	public void validateSession(FlowType flowType) throws FlowValidationException {
-		Class<? extends FlowSession> flowKlass = flowType.getFlowKlass();
-		if (flowKlass != null) {
-			try {
-				// make sure flow can be constructed
-				FlowSession session = flowKlass.newInstance();
-				// make sure flow context can be constructed 
-				flowType.getCtxKlass().newInstance();
-				// validate steps
-				session.validateSteps();
-			} 
-			catch (Throwable t) {
-				throw new FlowValidationException(t);
-			}
-		}
-		else {
-			throw new FlowValidationException("Flow type doesn't associate with flow class " + flowType.value());
-		}
-	}
-
-	/**
 	 * save the session part of the flow, used when persist from {@link FlowDriver}
 	 * @param session
 	 * @throws DataAccessException
 	 */
-	public void saveSession(FlowSession session) throws FlowSaveException 
+	void saveSessionData(FlowSession session) throws FlowSaveException 
 	{
 		ISessionData managerDO = session.getSessionData();
 		managerDO.setLastModified(new Date());
@@ -130,7 +109,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 				SessionDataFactory.getInstance().getMetaDataManager().save(managerMeta);
 				managerMeta.setDirty(false);
 			} catch (DataAccessException e) {
-				cat.error(null, e);
+				logger.error(null, e);
 			}
 		}
 	}
@@ -141,27 +120,46 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 * @return
 	 */
 	private List<ISessionData> getActiveSessionsLike(ISessionData likeMe) {
-		Query query = new Query();
-		// only care about the same type
-		query.and("flow_type", "=", likeMe.getType());
-		// don't count my parent
-		if (likeMe.getParentId() > 0) {
-			query.and("flow_id", "!=", likeMe.getParentId());
+		Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
+		if (q instanceof org.lightj.dal.Query) {
+			Query query = (Query) q;
+			// only care about the same type
+			query.and("flow_type", "=", likeMe.getType());
+			// don't count my parent
+			if (likeMe.getParentId() > 0) {
+				query.and("flow_id", "!=", likeMe.getParentId());
+			}
+			// don't count myself
+			if (likeMe.getFlowId() > 0) {
+				query.and("flow_id", "!=", likeMe.getFlowId());
+			}
+			// on the same component
+			if (!StringUtil.isNullOrEmpty(likeMe.getTargetKey())) {
+				query.and("target", "=", likeMe.getTargetKey());
+			}
+			// open session
+			query.and("END_DATE IS NULL");
 		}
-		// don't count myself
-		if (likeMe.getFlowId() > 0) {
-			query.and("flow_id", "!=", likeMe.getFlowId());
+		else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
+			org.springframework.data.mongodb.core.query.Query query = (org.springframework.data.mongodb.core.query.Query) q;
+			Criteria criteria = Criteria.where("type").is(likeMe.getType()).and("endDate").is(null);
+			if (likeMe.getParentId() > 0) {
+				criteria.and("flowId").ne(likeMe.getParentId());
+			}
+			// don't count myself
+			if (likeMe.getFlowId() > 0) {
+				criteria.and("flowId").ne(likeMe.getFlowId());
+			}
+			// on the same component
+			if (!StringUtil.isNullOrEmpty(likeMe.getTargetKey())) {
+				criteria.and("targetKey").is(likeMe.getTargetKey());
+			}
+			query.addCriteria(criteria);
 		}
-		// on the same component
-		if (!StringUtil.isNullOrEmpty(likeMe.getTargetKey())) {
-			query.and("target", "=", likeMe.getTargetKey());
-		}
-		// open session
-		query.and("END_DATE IS NULL");
 		try {
-			return SessionDataFactory.getInstance().getDataManager().search(query);
+			return SessionDataFactory.getInstance().getDataManager().search(q);
 		} catch (DataAccessException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 			return Collections.emptyList();
 		}
 
@@ -185,7 +183,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 				// before save
 				session.beforeSave(isUpdate);
 				// save session
-				saveSession(session);
+				saveSessionData(session);
 				// optimistic locking
 				if(session.getFlowProperties().lockTarget() && !isUpdate && session.getEndDate() == null) 
 				{
@@ -197,7 +195,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 						try {
 							SessionDataFactory.getInstance().getDataManager().delete(session.getSessionData());
 						} catch (DataAccessException e) {
-							cat.error(null, e);
+							logger.error(null, e);
 						}
 						long existingSessionId = activeSession.get(0).getFlowId();
 						FlowExistException e = new FlowExistException("Unable to create flow on "
@@ -220,7 +218,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 				try {
 					SessionDataFactory.getInstance().getDataManager().delete(session.getSessionData());
 				} catch (DataAccessException e1) {
-					cat.error(null, e1);
+					logger.error(null, e1);
 				}
 				throw e;
 			}
@@ -243,7 +241,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 			save(session);
 		} catch (FlowSaveException e) {
 			// shouldn't have never reach here
-			cat.error(null, e);
+			logger.error(null, e);
 		}
 	}
 	
@@ -265,90 +263,49 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	}
 	
 	/**
-	 * 
-	 * @param flowKlass
-	 * @param target
-	 * @param requester
+	 * create a new session with a flow class
+	 * @param flowKlazz
 	 * @return
-	 * @throws FlowSaveException 
 	 */
-	public <A extends FlowSession> A createSession(Class<A> flowKlass, Locatable target, Locatable requester)
-	{
-		FlowDefinition type = flowKlass.getAnnotation(FlowDefinition.class);
-		
-		if (type == null) throw new IllegalArgumentException("No flow definition annontation found");
-		
-		try {
-			Class<? extends FlowContext> ctxKlass = null;
-			Type[]  types = ClassUtils.getGenericType(flowKlass);
-			for (Type iType : types) {
-				for (Type aType : ((ParameterizedType) iType).getActualTypeArguments()) {
-					if (aType instanceof Class) {
-						ctxKlass = (Class<? extends FlowContext>) aType;
-					}
-				}
-			}
-					
-			FlowType ft = null;
-			if (!flowTypes.containsKey(type.typeId())) 
-			{
-				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass, type.group());
-				addFlowTypes(Arrays.asList(new FlowType[] {ft}));
-			}
-			else {
-				ft = flowTypes.get(type.typeId());
-				if (ft.getFlowKlass() != flowKlass) {
-					throw new IllegalAccessException("Duplicate flow type id " + type.typeId() + ", " 
-							+ ft.getFlowKlass().getName() + " already registered with the id");
-				}
-			}
-
-			A session = flowKlass.newInstance();
-			session.setRequester(requester);
-			session.setTarget(target);
-			session.setFlowType(ft);
-			session.sessionContext = ctxKlass.newInstance();
-			return session;
-		} catch (Throwable t) {
-			// we shouldn't have reached here if we do the validation up front
-			cat.error(null, t);
-			throw new IllegalArgumentException(t);
-		}
+	public <T extends FlowSession> T createSession(Class<T> flowKlazz) {
+		return SpringContextUtil.getBean(FlowModule.FLOW_CTX, flowKlazz);
 	}
-
+	
 	/**
 	 * create a session from db
 	 * @param sessionDo
 	 * @return
+	 * @throws NoSuchFlowException 
 	 * @throws FlowSaveException 
 	 */
 	public FlowSession createSession(ISessionData sessionDo) {
 		FlowType type = fromFlowTypeId(sessionDo.getType());
 		if (type != null) {
-			FlowSession session = createSession(type.getFlowKlass(), null, null);
+			FlowSession session = (FlowSession) SpringContextUtil.getBean(FlowModule.FLOW_CTX, type.getFlowKlass());
 			// overwrite session DO 
 			session.setSessionData(sessionDo);
 			return session;
 		}
-		return null;
+		throw new NoSuchFlowException("Unknown flowtype " + sessionDo.getType());
 	}
 	
 	/**
 	 * @see Locator#findByKey(java.lang.String)
 	 */
-	public FlowSession findByKey(String key) throws NoSuchFlowException {
+	public FlowSession findByKey(String key) {
 		// try it in cache
-		FlowSession s = getSessionByKeyFromCache(key);
-		if (s!=null) {
-			if (!StringUtil.equalIgnoreCase(NetUtil.getMyHostName(), s.getRunBy())) {
+		FlowSession session = null;
+		session = getSessionByKeyFromCache(key);
+		if (session!=null) {
+			if (!StringUtil.equalIgnoreCase(NetUtil.getMyHostName(), session.getRunBy())) {
 				removeSessionFromCache(key);
 			}
-			return s;
+			return session;
 		}
-		// cache misses, resort to lower level cache in DAO layer
 		try {
 			ISessionData sessionDo = SessionDataFactory.getInstance().getDataManager().findByKey(key);
-			FlowSession session = createSession(sessionDo);
+			if (sessionDo == null) throw new NoSuchFlowException("Session with key " + key + " is not found or not understood");
+			session = createSession(sessionDo);
 			if (session == null) throw new NoSuchFlowException("Session with key " + key + " is not found or not understood");
 			session.loadExtra();
 			return session;
@@ -356,7 +313,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 			throw new NoSuchFlowException(e.getMessage());
 		}
 	}
-
+	
 	/**
 	 * search for sessions
 	 * @param wfType
@@ -367,20 +324,41 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 */
 	public List<FlowSession> getSessions(FlowType wfType, FlowState wfState, FlowResult wfStatus, String targetKey) 
 	{
-		Query query = new Query().orderBy(" id desc");
-		if (wfType != null) {
-			query.and("flow_type", "=", wfType.value());
+		Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
+		if (q instanceof org.lightj.dal.Query) {
+			Query query = (Query) q; 
+			query.orderBy(" id desc");
+			if (wfType != null) {
+				query.and("flow_type", "=", wfType.value());
+			}
+			if (wfState != null) {
+				query.and("flow_state", "=", wfState.name());
+			}
+			if (wfStatus != null) {
+				query.and("flow_result", "=", wfStatus.name());
+			}
+			if (targetKey != null) {
+				query.and("target", "=", targetKey);
+			}
 		}
-		if (wfState != null) {
-			query.and("flow_state", "=", wfState.name());
-		}
-		if (wfStatus != null) {
-			query.and("flow_result", "=", wfStatus.name());
-		}
-		if (targetKey != null) {
-			query.and("target", "=", targetKey);
-		}
-		return getSessionsByQuery(query);
+		else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
+			org.springframework.data.mongodb.core.query.Query query = (org.springframework.data.mongodb.core.query.Query) q;
+			Criteria criteria = new Criteria();
+			if (wfType != null) {
+				criteria.and("type").is(wfType.value());
+			}
+			if (wfState != null) {
+				criteria.and("actionStatus").is(wfState.name());
+			}
+			if (wfStatus != null) {
+				criteria.and("resultStatus").is(wfStatus.name());
+			}
+			if (targetKey != null) {
+				criteria.and("targetKey").is(targetKey);
+			}
+			query.addCriteria(criteria);
+		}		
+		return getSessionsByQuery(q);
 	}
 
 	/**
@@ -391,11 +369,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 * @param fullTraversial
 	 * @return
 	 */
-	public List<FlowSession> getSessionsByQuery(Query q) {
-		Integer[] typeIds = getTypeIds();
-		if (typeIds != null && typeIds.length > 0) {
-			q.and("flow_type in (" + StringUtil.join(typeIds, ",") + ")");
-		}
+	public List<FlowSession> getSessionsByQuery(Object q) {
 		List<FlowSession> sessions = new ArrayList<FlowSession>();
 		try {
 			List<ISessionData> sessionDos  = SessionDataFactory.getInstance().getDataManager().search(q);
@@ -416,7 +390,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 			} 		
 		}
 		catch (DataAccessException e) {
-			cat.error(null, e);
+			logger.error(null, e);
 		}
  		return sessions;
  	}
@@ -439,16 +413,23 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 		ITransactional operation = new ITransactional() {
 
 			public void execute() throws Throwable {
+				
+				Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
+				if (q instanceof org.lightj.dal.Query) {
+					((Query) q).and("end_date is null")
+					.and("run_by", "=", runBy)
+					.and("flow_state in (" + 
+							DBUtil.dbC(FlowState.Running.name()) + ',' +
+							DBUtil.dbC(FlowState.Callback.name())+ ")")
+					.and("parent_id is null");
+				}
+				else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
+					((org.springframework.data.mongodb.core.query.Query) q)
+						.addCriteria(Criteria.where("endDate").is(null).and("runBy").is(runBy).and("actionStatus").in(FlowState.Running.name(), FlowState.Callback.name()).and("parentId").is(null));
+				}
 
 				// first time run since the VM starts, reclaim any of my session from last crash/reboot
-				List<FlowSession> sessionsToRecover = FlowSessionFactory.this.getSessionsByQuery(
-						new Query().and("end_date is null")
-							.and("run_by", "=", runBy)
-							.and("flow_state in (" + 
-									DBUtil.dbC(FlowState.Running.name()) + ',' +
-									DBUtil.dbC(FlowState.Callback.name())+ ")")
-							.and("parent_id is null")
-				);
+				List<FlowSession> sessionsToRecover = FlowSessionFactory.this.getSessionsByQuery(q);
 				for (FlowSession session : sessionsToRecover) {
 					if (session.getFlowProperties().clustered()) {
 						session.recoverFromCrash();
@@ -461,16 +442,16 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 			try {
 				FlowModule.getLockManager().synchronizeObject(FlowSessionFactory.class.getName(), operation);
 			} catch (RuntimeException e) {
-				cat.error("Recover session failed", e);
+				logger.error("Recover session failed", e);
 			} catch (LockException e) {
-				cat.error("Recover session failed", e);
+				logger.error("Recover session failed", e);
 			}
 		} else {
-			cat.warn("Flow framework is not cluster safe, possible concurrent recover operation");
+			logger.warn("Flow framework is not cluster safe, possible concurrent recover operation");
 			try {
 				operation.execute();
 			} catch (Throwable e) {
-				cat.error("Recover session failed", e);
+				logger.error("Recover session failed", e);
 			}
 		}
 
@@ -496,12 +477,46 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	}
 	
 	/**
+	 * add a new flow class
+	 * @param flowKlass
+	 */
+	public synchronized void addFlowKlazz(Class<? extends FlowSession> flowKlass) {
+		try {
+			FlowDefinition type = flowKlass.getAnnotation(FlowDefinition.class);
+			if (type == null) throw new IllegalArgumentException("No flow definition annontation found");
+			Class<? extends FlowContext> ctxKlass = null;
+			Type[]  types = ClassUtils.getGenericType(flowKlass);
+			for (Type iType : types) {
+				for (Type aType : ((ParameterizedType) iType).getActualTypeArguments()) {
+					if (aType instanceof Class) {
+						ctxKlass = (Class<? extends FlowContext>) aType;
+					}
+				}
+			}
+					
+			FlowType ft = fromFlowTypeId(type.typeId());
+			if (ft == null) {
+//				validateSteps();
+				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass, type.group());
+				addFlowTypes(Arrays.asList(new FlowType[] {ft}));
+			}
+		} catch (IllegalArgumentException e) {
+			throw e;
+		} catch (FlowValidationException e) {
+			throw e;
+		} catch (Throwable t) {
+			throw new IllegalArgumentException(t);
+		}
+		
+	}
+	
+	/**
 	 * add runtime flow types
 	 * @param flowTypes
 	 */
-	public void addFlowTypes(Collection<? extends FlowType> flowType) {
+	public synchronized void addFlowTypes(Collection<? extends FlowType> flowType) {
 		for (FlowType type : flowType) {
-			validateSession(type);
+//			validateSession(type);
 			String typeId = type.value();
 			if (flowTypes.containsKey(typeId)) {
 				FlowType another = flowTypes.get(typeId);
@@ -509,20 +524,21 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 					throw new IllegalArgumentException("Flow type id " + type.value() + " already registered by other flow " + another.desc());
 				}
 			}
-			flowTypes.put(typeId, type);
+			flowTypes.putIfAbsent(typeId, type);
+			flowClassTypes.putIfAbsent(type.getFlowKlass(), type);
 		}
 	}
 	
 	/**
 	 * calculate and cache type ids
 	 */
-	private Integer[] _typeIds;
-	private Integer[] getTypeIds() {
-		if (_typeIds == null) {
-			_typeIds = flowTypes.keySet().toArray(new Integer[0]);
-		}
-		return _typeIds;
-	}
+//	private Integer[] _typeIds;
+//	private Integer[] getTypeIds() {
+//		if (_typeIds == null) {
+//			_typeIds = flowTypes.keySet().toArray(new Integer[0]);
+//		}
+//		return _typeIds;
+//	}
 	
 	/**
 	 * get flow type from its id
@@ -532,5 +548,13 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	FlowType fromFlowTypeId(String flowTypeId) {
 		return flowTypes.get(flowTypeId);
 	}
-
+	
+	/**
+	 * get flow type from its class
+	 * @param flowClass
+	 * @return
+	 */
+	FlowType fromFlowClass(Class flowClass) {
+		return flowClassTypes.get(flowClass);
+	}
 }

@@ -1,5 +1,6 @@
 package org.lightj.clustering;
 
+import org.lightj.RuntimeContext;
 import org.lightj.initialization.BaseInitializable;
 import org.lightj.initialization.BaseModule;
 
@@ -29,9 +30,19 @@ public class ClusteringModule  {
 		return s_Module;
 	}
 	
+	public void setClusterName(String clusterName) {
+		s_Module.validateForChange();
+		s_Module.clusterName = clusterName;
+	}
+	
+	public String getClusterName() {
+		return s_Module.clusterName!=null ? s_Module.clusterName : RuntimeContext.getClusterName();
+	}
+	
 	/** inner module does the real init */
 	private class ClusteringInnerModule extends BaseModule {
 
+		private String clusterName;
 		ClusteringInnerModule() {
 			
 			super(new BaseModule[] {});

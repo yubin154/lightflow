@@ -10,7 +10,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -23,7 +24,7 @@ import org.lightj.util.Log4jProxy;
  */
 public class TransactionManager {
 	
-	static final Log4jProxy log = Log4jProxy.getInstance(TransactionManager.class.getName());
+	static final Logger logger = LoggerFactory.getLogger(TransactionManager.class.getName());
 	
 	/**
 	 * Wether current thread is in a transaction
@@ -79,17 +80,17 @@ public class TransactionManager {
 			// this would be a problem if we call TransactionManger.execute() within another transaction
 
 			ConnectionHelper.commitTr(dbEnum);
-			log.debug("Transaction commited");
+			logger.debug("Transaction commited");
 		}
 		catch (RuntimeException rte) {
 			exceptionThrown = true;
-			log.error("Transaction failed for " + job.getClass().getName() + ": " + rte.getMessage());
+			logger.error("Transaction failed for " + job.getClass().getName() + ": " + rte.getMessage());
 			throw rte;
 			
 		}
 		catch (Exception e) {
 			exceptionThrown = true;
-			log.error("Transaction failed for " + job.getClass().getName() + ": " + e.getMessage());
+			logger.error("Transaction failed for " + job.getClass().getName() + ": " + e.getMessage());
 			throw e;
 		}
 		finally {
@@ -97,7 +98,7 @@ public class TransactionManager {
 			if (exceptionThrown) {
 				// something wrong with transaction, rollback
 				ConnectionHelper.rollbackTr(dbEnum);
-				log.debug("Transaction rolledback");
+				logger.debug("Transaction rolledback");
 
 				// call rollback handler if any
 				List<TransactionHandler> handlers = onRollbackHandlers.get();

@@ -1,6 +1,7 @@
 package org.lightj.session.dal;
 
 import org.lightj.dal.BaseDatabaseType;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 /**
@@ -15,10 +16,13 @@ import org.lightj.dal.BaseDatabaseType;
 public class SessionDataFactory {
 	
 	/** session data manager */
+	@Autowired
 	private ISessionDataManager dataManager;
 	/** session meta data manager */
+	@Autowired
 	private ISessionMetaDataManager metaDataManager;
 	/** session log manager */
+	@Autowired
 	private ISessionStepLogManager stepLogManager;
 
 	private SessionDataFactory() {}

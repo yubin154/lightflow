@@ -65,6 +65,17 @@ public final class StepTransition implements Comparable<StepTransition> {
 	public static StepTransition runToStep(Enum stepName) {
 		return new StepTransition().toStep(stepName).inState(FlowState.Running);
 	}
+	
+	/**
+	 * park in state
+	 * @param state
+	 * @param result
+	 * @param msg
+	 * @return
+	 */
+	public static StepTransition parkInState(FlowState state, FlowResult result, String msg) {
+		return new StepTransition().inState(state).withResult(result).withMsg(msg);
+	}
 
 	public StepTransition() {}
 	
@@ -155,6 +166,15 @@ public final class StepTransition implements Comparable<StepTransition> {
 
 	public String getMsg() {
 		return msg;
+	}
+	
+	public void setMsg(String msg) {
+		this.msg = msg;
+	}
+	
+	public StepTransition withMsg(String msg) {
+		this.msg = msg;
+		return this;
 	}
 
 	public FlowResult getResultStatus() {

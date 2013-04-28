@@ -16,6 +16,8 @@ import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepImpl;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResultEnum;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class TestFlowContext extends BaseTestCase {
 
@@ -53,11 +55,11 @@ public class TestFlowContext extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		String ctxPath = "config/org/lightj/session/context-flow.xml";
+		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow-rdbms.xml");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
+								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))
-								.setSpringContext(ctxPath)
 								.getModule(),
 		};
 	}

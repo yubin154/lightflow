@@ -6,8 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lightj.clustering.ClusteringEventHandler;
 import org.lightj.clustering.ClusteringManager;
-import org.lightj.util.Log4jProxy;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sun.enterprise.ee.cms.core.FailureNotificationSignal;
 import com.sun.enterprise.ee.cms.core.FailureSuspectedSignal;
@@ -18,7 +19,7 @@ import com.sun.enterprise.ee.cms.core.PlannedShutdownSignal;
 
 public class FlowClusteringEventHandler implements ClusteringEventHandler {
 	
-	static Log4jProxy logger = Log4jProxy.getInstance(FlowClusteringEventHandler.class);
+	static Logger logger = LoggerFactory.getLogger(FlowClusteringEventHandler.class);
 
 	private ConcurrentHashMap<String, Timer> recoverTimerMap = new ConcurrentHashMap<String, Timer>();
 	private int minDelay = 10000;

@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Drain to db from an asynchronous queue
@@ -15,7 +16,7 @@ import org.lightj.util.Log4jProxy;
 @SuppressWarnings({"rawtypes","unchecked"})
 public abstract class AbstractDbDrainer<T extends AbstractDAO> {
 
-	static Log4jProxy cat = Log4jProxy.getInstance(AbstractDbDrainer.class);
+	static Logger logger = LoggerFactory.getLogger(AbstractDbDrainer.class);
 
 	/**
 	 * dao class

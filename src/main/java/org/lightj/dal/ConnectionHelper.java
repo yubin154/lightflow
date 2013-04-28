@@ -18,7 +18,8 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.lightj.dal.IDataAccess.IResultSetHandler;
-import org.lightj.util.Log4jProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author biyu
@@ -28,7 +29,7 @@ import org.lightj.util.Log4jProxy;
 public class ConnectionHelper {
 	
 	// Create Log4j logger instance for logging
-	static Log4jProxy cat = Log4jProxy.getInstance(ConnectionHelper.class.getName());
+	static Logger logger = LoggerFactory.getLogger(ConnectionHelper.class);
 	
 	// data sources
 	private static HashMap<BaseDatabaseType, DataSource> dataSources = new HashMap<BaseDatabaseType, DataSource>();
@@ -65,7 +66,7 @@ public class ConnectionHelper {
 		Connection conn = null;
 		ConnectionWrapper conWrapper = null;
 		if (dbEnum == null) { 
-			cat.error("Invalid DBEnum passed, dbenum value is null.");
+			logger.error("Invalid DBEnum passed, dbenum value is null.");
 			throw new SQLException ("Invalid DBEnum passed, dbenum value is null.");
 		}
 		
@@ -80,7 +81,7 @@ public class ConnectionHelper {
 			conn = conWrapper.con;
 			if (conn == null || conn.isClosed()) {
 				// connection is closed out of the context, warning, and clean it up form thread local map
-				cat.warn("Checked out connection is closed or empty, it was closed out of context");
+				logger.warn("Checked out connection is closed or empty, it was closed out of context");
 				connections.remove(key);
 				return getConnection(dbEnum);
 			}
@@ -117,7 +118,7 @@ public class ConnectionHelper {
 			if (rs != null) rs.close();
 			rs = null;
 		} catch (Exception e) {
-			cat.error("Error closing ResultSet: " + e.getMessage());
+			logger.error("Error closing ResultSet: " + e.getMessage());
 			throw new DataAccessRuntimeException("Error closing ResultSet: " + e.getMessage());
 		}
 
@@ -125,7 +126,7 @@ public class ConnectionHelper {
 			if (ps != null) ps.close();
 			ps = null;
 		} catch (Exception e) {
-			cat.error("Error closing Statement: " + e.getMessage());
+			logger.error("Error closing Statement: " + e.getMessage());
 			throw new DataAccessRuntimeException("Error closing Statement: " + e.getMessage());
 		}
 
@@ -141,7 +142,7 @@ public class ConnectionHelper {
 					if (conWrapper.con == con) {
 						conWrapper.checkedOutNum--;
 						if (conWrapper.checkedOutNum > 10) {
-							cat.warn("Potential problem!!!, db connection checkout counter bigger than 10: Thread=" + Thread.currentThread().getName() + ",count=" + conWrapper.checkedOutNum + ",autocommit=" + conWrapper.con.getAutoCommit());
+							logger.warn("Potential problem!!!, db connection checkout counter bigger than 10: Thread=" + Thread.currentThread().getName() + ",count=" + conWrapper.checkedOutNum + ",autocommit=" + conWrapper.con.getAutoCommit());
 						}
 						if (conWrapper.checkedOutNum <= 0) {
 							boolean closeUncommittedCon = false;
@@ -150,14 +151,14 @@ public class ConnectionHelper {
 							}
 							con.close();
 							connections.remove(key);
-							if (closeUncommittedCon) cat.warn("Closed a db connection with uncommitted transaction");
+							if (closeUncommittedCon) logger.warn("Closed a db connection with uncommitted transaction");
 						}
 						break;
 					} 
 				}
 			}
 		} catch (Exception e) {
-			cat.error("Error closing Connection: " + e.getMessage());
+			logger.error("Error closing Connection: " + e.getMessage());
 			throw new DataAccessRuntimeException("Error closing Connection: " + e.getMessage());
 		}
 	}
@@ -179,7 +180,7 @@ public class ConnectionHelper {
 			conn.setAutoCommit(false);
 		}
 		catch (Exception e) {
-			cat.debug("Failed to start transaction because " + e.getMessage());
+			logger.debug("Failed to start transaction because " + e.getMessage());
 		}
 		return conn;
 	}
@@ -212,7 +213,7 @@ public class ConnectionHelper {
 			cleanupDBResources(null, null, conWrapper.con);
 		}
 		else {
-			cat.warn("Can not find transaction to commit");
+			logger.warn("Can not find transaction to commit");
 		}
 	}
 	
@@ -227,7 +228,7 @@ public class ConnectionHelper {
 			conn.setAutoCommit(true);
 		}
 		catch (Exception e) {
-			cat.debug("Failed to rollback transaction because " + e.getMessage());
+			logger.debug("Failed to rollback transaction because " + e.getMessage());
 		}
 	}
 	
@@ -247,7 +248,7 @@ public class ConnectionHelper {
 			cleanupDBResources(null, null, conWrapper.con);
 		}
 		else {
-			cat.warn("Can not find transaction to rollback");
+			logger.warn("Can not find transaction to rollback");
 		}
 	}
 	
