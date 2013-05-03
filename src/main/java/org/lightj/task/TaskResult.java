@@ -25,7 +25,7 @@ public class TaskResult implements Serializable {
 	protected final String msg;
 	
 	/** stack trace */
-	protected final String stackTrace;
+	protected final Throwable stackTrace;
 	
 	/** real object */
 	private Object realResult;
@@ -58,7 +58,7 @@ public class TaskResult implements Serializable {
 	 * @param msg
 	 * @param stackTrace
 	 */
-	public TaskResult(Task task, TaskResultEnum status, String msg, String stackTrace) {
+	public TaskResult(Task task, TaskResultEnum status, String msg, Throwable stackTrace) {
 		this(task, null, status, msg, stackTrace);
 	}
 	
@@ -69,7 +69,7 @@ public class TaskResult implements Serializable {
 	 * @param msg
 	 * @param stackTrace
 	 */
-	public TaskResult(Task task, Object realResult, TaskResultEnum status, String msg, String stackTrace) {
+	public TaskResult(Task task, Object realResult, TaskResultEnum status, String msg, Throwable stackTrace) {
 		this.realResult = realResult;
 		this.task = task;
 		this.status = status;
@@ -89,7 +89,7 @@ public class TaskResult implements Serializable {
 		return task;
 	}
 
-	public String getStackTrace() {
+	public Throwable getStackTrace() {
 		return stackTrace;
 	}
 

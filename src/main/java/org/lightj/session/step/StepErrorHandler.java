@@ -6,6 +6,8 @@ import java.util.Map;
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An execution aspect of a flow step for error handling
@@ -16,6 +18,8 @@ import org.lightj.util.StringUtil;
 @SuppressWarnings("rawtypes")
 public class StepErrorHandler<T extends FlowContext> extends StepExecution<T> {
 	
+	static final Logger logger = LoggerFactory.getLogger(StepErrorHandler.class);
+
 	public StepErrorHandler(String stepName) {
 		super(StepTransition.runToStep(stepName));
 	}
@@ -35,7 +39,6 @@ public class StepErrorHandler<T extends FlowContext> extends StepExecution<T> {
 
 	@Override
 	public StepTransition execute() throws FlowExecutionException {
-		this.sessionContext.saveFlowError(this.flowStep.getStepId(), StringUtil.getStackTrace(t, 2000));
 		return executeOnError(t);
 	}
 	
@@ -78,24 +81,33 @@ public class StepErrorHandler<T extends FlowContext> extends StepExecution<T> {
 	public StepTransition executeOnError(Throwable t) {
 		Throwable th = null;
 		StepTransition tran = defResult;
-		if (t instanceof FlowExecutionException && t.getCause() != null) {
-			// checked exception
-			th = t.getCause();
-		}
-		else {
-			// runtime exception
-			th = t;
-		}
-		
-		Class<? extends Throwable> errorKlass = th.getClass();
-		for (Class<? extends Throwable> mappedKlass : errorClass2ResultMap.keySet()) {
-			if (mappedKlass.isAssignableFrom(errorKlass)) {
-				tran = errorClass2ResultMap.get(mappedKlass);
-				break;
-			}
-		}
 
-		tran.log(th.getMessage(), StringUtil.getStackTrace(th, 2000));
+		try {
+
+			this.sessionContext.saveFlowError(this.flowStep.getStepId(), StringUtil.getStackTrace(t, 2000));
+			if (t instanceof FlowExecutionException && t.getCause() != null) {
+				// checked exception
+				th = t.getCause();
+			}
+			else {
+				// runtime exception
+				th = t;
+			}
+			
+			Class<? extends Throwable> errorKlass = th.getClass();
+			for (Class<? extends Throwable> mappedKlass : errorClass2ResultMap.keySet()) {
+				if (mappedKlass.isAssignableFrom(errorKlass)) {
+					tran = errorClass2ResultMap.get(mappedKlass);
+					break;
+				}
+			}
+
+			tran.log(th.getMessage(), StringUtil.getStackTrace(th, 2000));
+
+		}
+		catch (Throwable t1) {
+			logger.error("failed to handle flow error", t1);
+		}
 		return tran;
 	}
 

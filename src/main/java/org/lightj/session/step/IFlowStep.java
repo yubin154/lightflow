@@ -62,6 +62,12 @@ public interface IFlowStep {
 	public void resume(StepTransition transition);
 
 	/**
+	 * resume a parked step with an error in async callback
+	 * @param t
+	 */
+	public void resume(Throwable t);
+
+	/**
 	 * step name
 	 * @return
 	 */

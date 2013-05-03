@@ -1,6 +1,9 @@
 package org.lightj.session.dal;
 
 import org.lightj.dal.BaseDatabaseType;
+import org.lightj.dal.mongo.MongoDatabaseType;
+import org.lightj.session.dal.mongo.MongoSessionDataManagerImpl;
+import org.lightj.session.dal.mongo.MongoSessionMetaDataManagerImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 
 
@@ -53,6 +56,29 @@ public class SessionDataFactory {
 	}
 	
 	public void setDbEnum(BaseDatabaseType dbEnum) {
+		if (dbEnum instanceof MongoDatabaseType) {
+			if (dataManager == null) {
+				this.dataManager = new org.lightj.session.dal.mongo.MongoSessionDataManagerImpl();
+			}
+			if (metaDataManager == null) {
+				this.metaDataManager = new org.lightj.session.dal.mongo.MongoSessionMetaDataManagerImpl();
+				((MongoSessionMetaDataManagerImpl) this.metaDataManager).setSessionDataManager((MongoSessionDataManagerImpl) this.dataManager);
+			}
+			if (stepLogManager == null) {
+				this.stepLogManager = new org.lightj.session.dal.mongo.MongoSessionStepLogManagerImpl();
+			}
+		}
+		else {
+			if (dataManager == null) {
+				this.dataManager = org.lightj.session.dal.SessionDataManagerImpl.getInstance();
+			}
+			if (metaDataManager == null) {
+				this.metaDataManager = org.lightj.session.dal.SessionMetaDataManagerImpl.getInstance();
+			}
+			if (stepLogManager == null) {
+				this.stepLogManager = org.lightj.session.dal.SessionStepLogManagerImpl.getInstance();
+			}
+		}
 		this.dataManager.setDbEnum(dbEnum);
 		this.metaDataManager.setDbEnum(dbEnum);
 		this.stepLogManager.setDbEnum(dbEnum);

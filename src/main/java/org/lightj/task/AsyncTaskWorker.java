@@ -3,7 +3,6 @@ package org.lightj.task;
 import java.util.concurrent.TimeUnit;
 
 import org.lightj.task.WorkerMessage.CallbackType;
-import org.lightj.util.StringUtil;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -59,7 +58,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
 			public Directive apply(Throwable arg0) {
-				getSelf().tell(task.createErrorResult(TaskResultEnum.Failed, "AsyncWorker creashed", null), getSelf());
+				getSelf().tell(task.createErrorResult(TaskResultEnum.Failed, "AsyncWorker creashed", arg0), getSelf());
 				return SupervisorStrategy.stop();
 			}
 		});
@@ -95,8 +94,8 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 				unhandled(message);
 			}
 		} 
-		catch (Exception e) {
-			retry(task.createErrorResult(TaskResultEnum.Failed, e.toString(), StringUtil.getStackTrace(e)));
+		catch (Throwable e) {
+			retry(task.createErrorResult(TaskResultEnum.Failed, e.toString(), e));
 		}
 	}
 	

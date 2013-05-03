@@ -19,8 +19,7 @@ import org.lightj.session.dal.ISessionMetaDataManager;
 import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.ISessionStepLogManager;
 import org.lightj.session.dal.SessionDataFactory;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -176,7 +175,7 @@ public class TestSessionDataFactory extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow-rdbms.xml");
+		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
 								.setSpringContext(flowCtx)

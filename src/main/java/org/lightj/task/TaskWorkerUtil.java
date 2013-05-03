@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.lightj.task.asynchttp.AsyncHttpTask;
 import org.lightj.util.ActorUtil;
-import org.lightj.util.StringUtil;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -116,15 +115,13 @@ public class TaskWorkerUtil {
 						return createTaskResult(response.getResponseBody(),
 								TaskResultEnum.Success, "");
 					} catch (IOException e) {
-						return createErrorResult(TaskResultEnum.Failed,
-								e.getMessage(), StringUtil.getStackTrace(e));
+						return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
 					}
 				}
 
 				@Override
 				public TaskResult onThrowable(Throwable t) {
-					return createErrorResult(TaskResultEnum.Failed,
-							t.getMessage(), StringUtil.getStackTrace(t));
+					return createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
 				}
 
 			});

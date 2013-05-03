@@ -3,7 +3,6 @@ package org.lightj.task;
 import java.util.concurrent.TimeUnit;
 
 import org.lightj.task.WorkerMessage.CallbackType;
-import org.lightj.util.StringUtil;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -74,7 +73,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
 			public Directive apply(Throwable arg0) {
-				getSelf().tell(task.createErrorResult(TaskResultEnum.Failed, "AsyncPollWorker crashed", null), getSelf());
+				getSelf().tell(task.createErrorResult(TaskResultEnum.Failed, "AsyncPollWorker crashed", arg0), getSelf());
 				return SupervisorStrategy.stop();
 			}
 		});
@@ -126,8 +125,8 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 				unhandled(message);
 			}
 		} 
-		catch (Exception e) {
-			retry(TaskResultEnum.Failed, e.toString(), StringUtil.getStackTrace(e));
+		catch (Throwable e) {
+			retry(TaskResultEnum.Failed, e.toString(), e);
 		}
 	}
 	
@@ -247,7 +246,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * @param errorMessage
 	 * @param stackTrace
 	 */
-	private final void retry(final TaskResultEnum status, final String errorMessage, final String stackTrace) {
+	private final void retry(final TaskResultEnum status, final String errorMessage, final Throwable stackTrace) {
 		// Error response
 		boolean retried = false;
 		if (requestDone) {
@@ -309,7 +308,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * @param msg
 	 * @param stackTrace
 	 */
-	private final void replyError(TaskResultEnum state, String msg, String stackTrace) {
+	private final void replyError(TaskResultEnum state, String msg, Throwable stackTrace) {
 		TaskResult tr = task.createErrorResult(state, msg, stackTrace);
 		if (!getContext().system().deadLetters().equals(sender)) {
 			sender.tell(new WorkerMessage(CallbackType.taskresult, task, tr), getSelf());

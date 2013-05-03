@@ -20,7 +20,6 @@ public class FlowInfo {
 	private Date endDate;
 	private String progress;
 	
-	
 	private HashMap<String, String> flowContext;
 	
 	private LinkedHashMap<String, StepLog> executionLogs;

@@ -15,7 +15,6 @@ import org.lightj.dal.Locator;
 import org.lightj.dal.LocatorUtil;
 import org.lightj.dal.Query;
 import org.lightj.dal.SimpleLocatable;
-import org.lightj.locking.LockException;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.StepLog;
@@ -78,35 +77,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * @param session
 	 */
 	private final void postConstruct() {
-//		try {
-//			Class<? extends FlowSession> flowKlass = getClass();
-//			FlowDefinition type = flowKlass.getAnnotation(FlowDefinition.class);
-//			if (type == null) throw new IllegalArgumentException("No flow definition annontation found");
-//			Class<? extends FlowContext> ctxKlass = null;
-//			Type[]  types = ClassUtils.getGenericType(flowKlass);
-//			for (Type iType : types) {
-//				for (Type aType : ((ParameterizedType) iType).getActualTypeArguments()) {
-//					if (aType instanceof Class) {
-//						ctxKlass = (Class<? extends FlowContext>) aType;
-//					}
-//				}
-//			}
-//					
-//			FlowType ft = FlowSessionFactory.getInstance().fromFlowTypeId(type.typeId());
-//			if (ft == null) {
-//				validateSteps();
-//				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass, type.group());
-//				FlowSessionFactory.getInstance().addFlowTypes(Arrays.asList(new FlowType[] {ft}));
-//			}
-//			sessionContext = (T) ctxKlass.newInstance();
-//			setFlowType(ft);
-//		} catch (IllegalArgumentException e) {
-//			throw e;
-//		} catch (FlowValidationException e) {
-//			throw e;
-//		} catch (Throwable t) {
-//			throw new IllegalArgumentException(t);
-//		}
 		try {
 			FlowType ft = FlowSessionFactory.getInstance().fromFlowClass(this.getClass());
 			setFlowType(ft);
@@ -595,12 +565,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * clean up after flow 
 	 */
 	protected void cleanup() {
-		// unlock target(s)
-		try {
-			releaseLock();
-		} catch (LockException e) {
-			logger.warn("unlock failed", e);
-		}
 		// wipe out next step
 		setNextAction(null);
 		// stop all non-completed child sessions if any
@@ -751,20 +715,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	}
 	
 	/**
-	 * acquire lock before flow start, override me to lock
-	 * @throws LockException
-	 */
-	protected void acquireLock() throws LockException {
-	}
-	
-	/**
-	 * unlock before complete, override me to unlock
-	 * @throws LockException
-	 */
-	protected void releaseLock() throws LockException {
-	}
-	
-	/**
 	 * flow info
 	 * @return
 	 */
@@ -786,6 +736,10 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		return flowInfo;
 	}
 	
+	/**
+	 * save flow
+	 * @throws FlowSaveException
+	 */
 	public void save() throws FlowSaveException {
 		FlowSessionFactory.getInstance().save(this);
 	}

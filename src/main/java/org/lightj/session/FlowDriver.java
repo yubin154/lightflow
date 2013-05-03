@@ -9,14 +9,12 @@ import java.util.Map.Entry;
 
 import org.lightj.Constants;
 import org.lightj.dal.DataAccessException;
-import org.lightj.locking.LockException;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepErrorHandler;
 import org.lightj.session.step.StepExecution;
-import org.lightj.session.step.StepImpl;
 import org.lightj.session.step.StepTransition;
 import org.lightj.util.AnnotationDefaults;
 import org.lightj.util.NetUtil;
@@ -94,7 +92,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 	 * @return
 	 * @throws InvalidObjectException
 	 */
-	public IFlowStep buildStep(String step) throws FlowExecutionException {
+	private IFlowStep buildStep(String step) throws FlowExecutionException {
         // getting information about the step
 		try {
 			Method method = type.getMethod(step, Constants.NO_PARAMETER_TYPES);
@@ -168,37 +166,51 @@ public class FlowDriver implements Runnable, IQueueTask {
 			logger.error("Error update session", e);
 			throw new FlowExecutionException("Error update session", e);
 		}
-		// lock target(s)
+		// run the flow
 		try {
-			session.acquireLock();
-		} catch (LockException e1) {
-			handleError(e1);
-		}
-		// initialize flow stats
-		session.getStats();
-		handleFlowEvent(evt);
-		try {
+			// initialize flow stats
+			session.getStats();
+			handleFlowEvent(evt);
 			drive(new StepTransition()
 					.toStep(session.getCurrentAction())
 					.inState(session.getState()));
-		} catch (StateChangeException e) {
-			handleError(e);
+			
+		} catch (Throwable t) {
+			handleError(t);
+			session.killFlow(FlowState.Completed, FlowResult.Fatal, String.format("fail to start flow %s", t.getMessage()));
 		}
 	}
 
 	/**
-	 * drive this flow with a specific transition, used in synchronous scheduled flow step execution
+	 * drive this flow with a specific transition, used in async flow step callback
 	 * @param transition
 	 */
 	public void driveWithTransition(StepTransition transition) {
+		drive(transition);
+	}
+
+	/**
+	 * drive this flow with a specific error, used in async flow step callback
+	 * @param t
+	 */
+	public void driveWithError(Throwable t) {
+
+		handleError(t);
+
+		StepTransition transition = null;
 		try {
-			drive(transition);
-		}
-		catch (Throwable t) {
-			// we always persist history when failure happens
-			handleError(t);
 			transition = currentFlowStep.onError(t);
+		} catch (Throwable t1) {
+			String currentStepStr = currentFlowStep.getStepName();
+			if (!isErrorStep(currentStepStr)) {
+				transition = currentFlowStep.onError(t);
+			}
+			else {
+				transition = new StepTransition(FlowState.Completed, null, FlowResult.Fatal, "Error handling failed: " + t.getMessage());
+			}
 		}
+
+		drive(transition);
 	}
 
 	/**
@@ -216,7 +228,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 	 *
 	 * @param stepStr
 	 */
-	private synchronized void drive(final StepTransition transition) throws StateChangeException {
+	private synchronized void drive(final StepTransition transition) {
 		StepTransition t = transition;
 		// keep running until we hit a stop/wait
 		while (t != null && t.getActionStatus() == FlowState.Running) {
@@ -251,11 +263,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 				// when flow is running with no new step (waiting for callback), generate ongoing event
 				handleStepEvent(FlowEvent.stepOngoing, currentFlowStep, transition);
 				session.setState(t.getActionStatus());
-				try {
-					FlowSessionFactory.getInstance().saveSessionData(session);
-				} catch (FlowSaveException e) {
-					throw new StateChangeException(e);
-				}
+				FlowSessionFactory.getInstance().update(session);
 			}
 		}
 		else {
@@ -309,9 +317,11 @@ public class FlowDriver implements Runnable, IQueueTask {
     		// session is marked as complete from external, quit
     		return StepTransition.NOOP;
     	}
+    	
+    	boolean isErroStep = isErrorStep(currentStepStr);
         
     	// change related session properties, only for non-error handling step
-    	if (!isErrorStep(currentStepStr)) {
+    	if (!isErroStep) {
     		// current action
             session.setCurrentAction(currentStepStr);
             // next action
@@ -323,43 +333,39 @@ public class FlowDriver implements Runnable, IQueueTask {
     	}
 
 		// call the session implementation step to build the IFlowSetp to be executed
-    	IFlowStep flowStep = null;
-        
     	try {
-			 flowStep = buildStep(currentStepStr);
+			 buildStep(currentStepStr);
+			 handleStepEvent(FlowEvent.stepBuild, currentFlowStep, StepTransition.newLog(String.format("%s built", currentStepStr), null));
 		} 
     	catch (FlowExecutionException e) {
 			// we can't build a valid step implementation, stop the flow
-			StepImpl dummy = new StepImpl();
-			dummy.setStepName(currentStepStr);
-			session.getSessionContext().addStep(dummy);
-			session.getSessionContext().saveFlowError(dummy.getStepId(), StringUtil.getStackTrace(e));
-	        handleStepEvent(FlowEvent.stepBuild, dummy, StepTransition.newLog(e.getMessage(), StringUtil.getStackTrace(e)));
 			logger.error(e.getMessage(), e);
 			handleError(e);
 			return new StepTransition(FlowState.Completed, null, FlowResult.Fatal, e.getMessage());
 		}
 
     	// change related session properties, for non-error handling step only
-    	if (!isErrorStep(currentStepStr)) {
+    	if (!isErroStep) {
             // running state
             session.setState(flowStepTransition.getActionStatus());
             // result state if any
             if (flowStepTransition.getResultStatus() != null) {
             	session.setResult(flowStepTransition.getResultStatus());
             }
-            
-            // notify event listeners step entry
-            handleStepEvent(FlowEvent.stepEntry, flowStep, flowStepTransition);
     	}
 
     	StepTransition transition = null;
         try {
-			transition = currentFlowStep.execute();
+            // notify event listeners step entry
+            handleStepEvent(FlowEvent.stepEntry, currentFlowStep, flowStepTransition);
+
+            // execute
+            transition = currentFlowStep.execute();
+            
 		} catch (Throwable t) {
 	        // notify event listeners error
 			handleError(t);
-			if (!isErrorStep(currentStepStr)) {
+			if (!isErroStep) {
 				transition = currentFlowStep.onError(t);
 			}
 			else {
@@ -403,6 +409,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 
 	/** notify registered {@link IFlowEventListener} of flow error */
 	public void handleError(Throwable t) {
+		session.getSessionContext().setLastError(t);
 		for (Entry<Class, IFlowEventListener> l : eventListeners.entrySet()) {
 			try {
 				l.getValue().handleError(t, session);

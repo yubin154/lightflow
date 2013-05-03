@@ -16,8 +16,7 @@ import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepImpl;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResultEnum;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 public class TestFlowContext extends BaseTestCase {
 
@@ -30,13 +29,7 @@ public class TestFlowContext extends BaseTestCase {
 		test.setParam4(new HashMap<String, String>());
 		test.setParam5(new ArrayList<String>());
 		IFlowStep step = new StepImpl();
-		Task<FlowContext> task = new Task<FlowContext>() {
-			
-			@Override
-			public String getTaskDetail() {
-				return "dummy";
-			}
-		};
+		Task<DummyFlowContext> task = new Task<DummyFlowContext>(){};
 		test.addStep(step);		
 		test.addTask(task.getTaskId(), task);
 		test.saveTaskResult(step.getStepId(), task, task.createTaskResult(TaskResultEnum.Success, "success"));
@@ -55,7 +48,7 @@ public class TestFlowContext extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow-rdbms.xml");
+		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
 								.setSpringContext(flowCtx)

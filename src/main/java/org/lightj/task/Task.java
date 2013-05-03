@@ -70,12 +70,12 @@ public abstract class Task<T extends FlowContext> {
 	}
 	
 	/** create an immutable error result */
-	public final TaskResult createErrorResult(TaskResultEnum status, String msg, String stackTrace) {
+	public final TaskResult createErrorResult(TaskResultEnum status, String msg, Throwable stackTrace) {
 		return new TaskResult(this, status, msg, stackTrace);
 	}
 
 	/** create an immutable error result */
-	public final TaskResult createErrorResult(Object realResult, TaskResultEnum status, String msg, String stackTrace) {
+	public final TaskResult createErrorResult(Object realResult, TaskResultEnum status, String msg, Throwable stackTrace) {
 		return new TaskResult(this, realResult, status, msg, stackTrace);
 	}
 
@@ -83,7 +83,5 @@ public abstract class Task<T extends FlowContext> {
 	public final TaskResult createTaskResult(Object realResult, TaskResultEnum status, String msg) {
 		return new TaskResult(this, realResult, status, msg);
 	}
-
-	public abstract String getTaskDetail();
 
 }

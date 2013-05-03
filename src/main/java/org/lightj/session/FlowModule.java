@@ -170,6 +170,12 @@ public class FlowModule {
 					if (dbEnum instanceof HsqlDatabaseType) {
 						cleanupMemTables(dbEnum);
 					}
+					clusterEnabled = false;
+					recoverMaxDelayMs = 0;
+					recoverMinDelayMs = 0;
+					dbEnum = null;
+					es = null;
+					flowCtx = null;
 				}
 				
 				@SuppressWarnings("rawtypes")
@@ -189,18 +195,18 @@ public class FlowModule {
 						throw new InitializationException("session flow application context not set");
 					}
 					
+					SessionDataFactory f = SessionDataFactory.getInstance();
+					f.setDbEnum(dbEnum);
+
 					SpringContextUtil.registerContext(FLOW_CTX, flowCtx);
 					
-					SessionDataFactory f = null;
-					f = (SessionDataFactory) SpringContextUtil.getBean(FLOW_CTX, "sessionDataFactory");
+//					f = (SessionDataFactory) SpringContextUtil.getBean(FLOW_CTX, "sessionDataFactory");
 
 					// load registered flow bean classes
 					List<Class<? extends FlowSession>> flowTypes = SpringContextUtil.getBeansClass(FLOW_CTX, FlowSession.class);
 					for (Class<? extends FlowSession> flowType : flowTypes) {
 						FlowSessionFactory.getInstance().addFlowKlazz(flowType);
 					}
-
-					f.setDbEnum(dbEnum);
 
 					/** setup in memory db tables */
 					if (dbEnum instanceof HsqlDatabaseType) {
@@ -209,9 +215,6 @@ public class FlowModule {
 					
 					// enabled cluster
 					if (clusterEnabled) {
-						if  (!dbEnum.isShared()) {
-							throw new InitializationException("Clustering can only be enabled with shared database"); 
-						}
 						try {
 							ClusteringManager.getInstance().startOrJoin(
 									new ClusteringModule().getClusterName(), 

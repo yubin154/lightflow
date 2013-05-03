@@ -11,8 +11,7 @@ import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepImpl;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 public class TestFlowStats extends BaseTestCase {
 
@@ -59,7 +58,7 @@ public class TestFlowStats extends BaseTestCase {
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow-rdbms.xml", "config/org/lightj/session/context-examples-flow.xml");
+		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
 								.setSpringContext(flowCtx)

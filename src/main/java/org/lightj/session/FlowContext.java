@@ -67,6 +67,9 @@ public class FlowContext {
 	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.AutoSave)
 	private LinkedHashMap<String, StepLog> executionLogs = new LinkedHashMap<String, StepLog>();
 	
+	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.SaveOnChange)
+	private Throwable lastError = null;
+	
 	/**
 	 * Constructor
 	 * @param sm
@@ -475,6 +478,16 @@ public class FlowContext {
 		if (executionLogs.containsKey(stepId)) {
 			executionLogs.get(stepId).setComplete();
 		}
+	}
+	
+	/////////////// execution exceptions ////////////////
+
+	public Throwable getLastError() {
+		return lastError;
+	}
+
+	public void setLastError(Throwable lastError) {
+		this.lastError = lastError;
 	}
 	
 	static class CtxPropWrapper {

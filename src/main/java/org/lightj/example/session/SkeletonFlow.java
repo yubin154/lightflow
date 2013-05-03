@@ -12,20 +12,14 @@ import org.lightj.locking.LockManagerImpl;
 import org.lightj.session.FlowDefinition;
 import org.lightj.session.FlowModule;
 import org.lightj.session.FlowProperties;
-import org.lightj.session.FlowResult;
 import org.lightj.session.FlowSaveException;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
-import org.lightj.session.FlowState;
 import org.lightj.session.FlowStepProperties;
 import org.lightj.session.step.IFlowStep;
-import org.lightj.session.step.StepBuilder;
-import org.lightj.session.step.StepTransition;
 import org.lightj.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @FlowDefinition(typeId="Skeleton", desc="Bare minimal of a flow", group="Group_LowPriority")
 @FlowProperties(clustered=false, interruptible=false, lockTarget=false, priority=5, timeoutInSec=0, killNonRecoverable=true)
@@ -38,45 +32,31 @@ public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 	 *
 	 */
 	public static enum SkeletonSteps {
-		@FlowStepProperties(stepWeight=1, logging=false, onSuccess="stop", onElse="handleError", onException="handleError")
+		@FlowStepProperties(stepWeight=2, logging=false, onSuccess="stop", onElse="handleError", onException="handleError")
 		start,
 		@FlowStepProperties(stepWeight=5)
+		step1,
+		@FlowStepProperties(stepWeight=1)
 		stop,
 		@FlowStepProperties(stepWeight=0, isErrorStep=true)
 		handleError
 	}
-	
+
 	@Override
 	protected Enum getFirstStepEnum() {
 		return SkeletonSteps.start;
 	}
 
 	//////////////// step implementation /////////////////
-	@Autowired
+	@Autowired(required=true)
 	private IFlowStep skeletonStartStep;
-	@Autowired
+	@Autowired(required=true)
+	private IFlowStep skeletonStep1;
+	@Autowired(required=true)
 	private IFlowStep skeletonStopStep;
-	@Autowired
+	@Autowired(required=true)
 	private IFlowStep skeletonErrorStep;
 	
-	public IFlowStep getSkeletonStartStep() {
-		return skeletonStartStep;
-	}
-	public void setSkeletonStartStep(IFlowStep skeletonStartStep) {
-		this.skeletonStartStep = skeletonStartStep;
-	}
-	public IFlowStep getSkeletonStopStep() {
-		return skeletonStopStep;
-	}
-	public void setSkeletonStopStep(IFlowStep skeletonStopStep) {
-		this.skeletonStopStep = skeletonStopStep;
-	}
-	public IFlowStep getSkeletonErrorStep() {
-		return skeletonErrorStep;
-	}
-	public void setSkeletonErrorStep(IFlowStep skeletonErrorStep) {
-		this.skeletonErrorStep = skeletonErrorStep;
-	}
 	// method with the same name as in flow step enum, framework will use reflection to run each step
 	public IFlowStep start() {
 		return skeletonStartStep;
@@ -87,22 +67,14 @@ public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 	public IFlowStep handleError() {
 		return skeletonErrorStep;
 	}
-	
-	public static @Bean IFlowStep skeletonStartStep() {
-		return new StepBuilder().runTo(SkeletonSteps.stop).getFlowStep();
+	public IFlowStep step1() {
+		return skeletonStep1;
 	}
 	
-	public static @Bean IFlowStep skeletonStopStep() {
-		return new StepBuilder().parkInState(StepTransition.parkInState(FlowState.Completed, FlowResult.Success, null)).getFlowStep();
-	}
-
-	public static @Bean IFlowStep skeletonErrorStep() {
-		return new StepBuilder().parkInState(StepTransition.parkInState(FlowState.Completed, FlowResult.Failed, "something wrong")).getFlowStep();
-	}
-
 	public static void main(String[] args) {
 		// initialize flow framework
-		ApplicationContext flowCtx = new ClassPathXmlApplicationContext("config/org/lightj/session/context-flow.xml", "config/org/lightj/session/context-examples-flow.xml");
+		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
+		
 		InitializationProcessor initializer = new InitializationProcessor(
 			new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.FLOW_MONGO)

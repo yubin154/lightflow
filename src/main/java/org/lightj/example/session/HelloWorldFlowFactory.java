@@ -7,6 +7,7 @@ import java.util.List;
 import org.lightj.example.session.HelloWorldFlow.steps;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowSession;
+import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.step.DelayedEnclosure;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.RetryEnclosure;
@@ -25,7 +26,9 @@ import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.asynchttp.AsyncHttpTask;
-import org.lightj.util.StringUtil;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 
 import akka.actor.ActorRef;
 
@@ -41,13 +44,18 @@ import com.ning.http.client.Response;
  *
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class HelloWorldFlowStepsImpl {
+@Configuration
+public class HelloWorldFlowFactory {
+	
+	public @Bean @Scope("prototype") HelloWorldFlow helloWorldFlow() {
+		return new HelloWorldFlow();
+	}
 	
 	/**
 	 * running a simple asynchronous task
 	 * @return
 	 */
-	public static IFlowStep buildAsyncTaskStep() {
+	public @Bean @Scope("prototype") IFlowStep helloWorldAsyncTaskStep() {
 		
 		// create the task
 		ExecutableTask task = new DummyTask() {
@@ -67,13 +75,19 @@ public class HelloWorldFlowStepsImpl {
 	 * run 2 sub workflow and join from parent flow
 	 * @return
 	 */
-	public static IFlowStep buildJoinStep() 
+	public @Bean @Scope("prototype") IFlowStep helloWorldSessionJoinStep() 
 	{
 		// build child flows
-		List<FlowSession> children = new ArrayList<FlowSession>();
+		List<FlowTask> tasks = new ArrayList<FlowTask>();
 		for (int i = 0; i < 2; i++) {
-			FlowSession child = new HelloWorldFlow();
-			children.add(child);
+
+			tasks.add(new FlowTask() {
+				@Override
+				public FlowSession createSubFlow() {
+					return FlowSessionFactory.getInstance().createSession(HelloWorldFlow.class);
+				}
+			});
+
 		}
 
 		// result handler, the handler increment the counter on each child flow completion
@@ -88,17 +102,24 @@ public class HelloWorldFlowStepsImpl {
 				return super.executeOnResult(task, result);
 			}
 			
+			public final synchronized StepTransition executeOnCompleted(Task task)
+					throws FlowExecutionException 
+			{
+				StepTransition trans = super.executeOnCompleted(task);
+				return trans;
+			}
+			
 		}.mapResult(steps.delayStep, steps.error);
 
 		// build the step
-		return new StepBuilder().launchSubFlows(children, resultHandler).getFlowStep();
+		return new StepBuilder().executeAsyncTasks(tasks.toArray(new FlowTask[0])).onResult(resultHandler).getFlowStep();
 	}
 
 	/**
 	 * build a step with initial delay
 	 * @return
 	 */
-	public static IFlowStep buildDelayStep() 
+	public @Bean @Scope("prototype") IFlowStep helloWorldDelayStep() 
 	{
 		IFlowStep step = new StepBuilder().runTo(steps.retryStep).getFlowStep();
 		return DelayedEnclosure.delay(3000, step);		
@@ -108,7 +129,7 @@ public class HelloWorldFlowStepsImpl {
 	 * build a retry step
 	 * @return
 	 */
-	public static IFlowStep buildRetryStep() 
+	public @Bean @Scope("prototype") IFlowStep helloWorldRetryStep() 
 	{
 		// increment count every time this step is executed
 		StepExecution execution = new SimpleStepExecution<HelloWorldFlowContext>(steps.timeoutStep) {
@@ -123,14 +144,14 @@ public class HelloWorldFlowStepsImpl {
 		
 		// retry until match a transition or max retry limit is reached
 		StepTransition matchTran = StepTransition.runToStep(steps.timeoutStep);
-		return RetryEnclosure.retryIf(DelayedEnclosure.delay(1000, step), 3, matchTran);		
+		return RetryEnclosure.retryIf(DelayedEnclosure.delay(1000, step), 1, matchTran);		
 	}
 	
 	/**
 	 * build a step with timeout option
 	 * @return
 	 */
-	public static IFlowStep buildTimeoutStep() 
+	public @Bean @Scope("prototype") IFlowStep helloWorldTimeoutStep() 
 	{
 		// task
 		DummyTask task = new DummyTask(new ExecuteOption(0, 100));
@@ -156,7 +177,7 @@ public class HelloWorldFlowStepsImpl {
 	 * actor step with async task
 	 * @return
 	 */
-	public static IFlowStep buildActorStep()
+	public @Bean @Scope("prototype") IFlowStep helloWorldActorStep()
 	{
 		// create async http client, should be shared
 		AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
@@ -177,14 +198,14 @@ public class HelloWorldFlowStepsImpl {
 				try {
 					res.setRealResult(response.getResponseBody());
 				} catch (IOException e) {
-					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e, 2000));
+					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
 				}
 				return res;
 			}
 
 			@Override
 			public TaskResult onThrowable(Throwable t) {
-				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), StringUtil.getStackTrace(t));
+				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
 			}
 		};
 		
@@ -198,7 +219,7 @@ public class HelloWorldFlowStepsImpl {
 	 * actor step with polling
 	 * @return
 	 */
-	public static IFlowStep buildActorPollStep()
+	public @Bean @Scope("prototype") IFlowStep helloWorldActorPollStep()
 	{
 		// create and configure async http client
 		AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
@@ -219,14 +240,14 @@ public class HelloWorldFlowStepsImpl {
 				try {
 					res.setRealResult(response.getResponseBody());
 				} catch (IOException e) {
-					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e, 2000));
+					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
 				}
 				return res;
 			}
 
 			@Override
 			public TaskResult onThrowable(Throwable t) {
-				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), StringUtil.getStackTrace(t));
+				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
 			}
 		};
 			
@@ -256,11 +277,11 @@ public class HelloWorldFlowStepsImpl {
 	 * execute batch of tasks
 	 * @return
 	 */
-	public static IFlowStep buildActorBatchStep() {
+	public @Bean @Scope("prototype") IFlowStep helloWorldActorBatchStep() {
 		
 		// build tasks
 		List<ExecutableTask> tasks = new ArrayList<ExecutableTask>();
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 2; i++) {
 			tasks.add(new DummyTask() {
 				public TaskResult execute(ActorRef executingActor) {
 					context.incBatchCount();
@@ -270,7 +291,7 @@ public class HelloWorldFlowStepsImpl {
 		}
 		
 		// build execution with batching option of max concurrency of 5 tasks
-		return new StepBuilder().executeActors(null, StepBuilder.createAsyncActorFactory(), new BatchOption(5), tasks.toArray(new ExecutableTask[0]))
+		return new StepBuilder().executeActors(null, StepBuilder.createAsyncActorFactory(), new BatchOption(1), tasks.toArray(new ExecutableTask[0]))
 								.onResult(steps.testFailureStep, steps.error)
 								.getFlowStep();
 	}
@@ -280,7 +301,7 @@ public class HelloWorldFlowStepsImpl {
 	 * task with an injected failure
 	 * @return
 	 */
-	public static IFlowStep buildTestFailureStep() {
+	public @Bean @Scope("prototype") IFlowStep helloWorldTestFailureStep() {
 		
 		// task
 		ExecutableTask task = new DummyTask() {
@@ -326,8 +347,7 @@ public class HelloWorldFlowStepsImpl {
 			return result==null ? this.createTaskResult(TaskResultEnum.Success, null) : result;
 		}
 
-		@Override
-		public String getTaskDetail() {
+		public String toString() {
 			return "dummy exeutable task";
 		}
 

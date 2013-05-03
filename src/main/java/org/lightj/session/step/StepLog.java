@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
+import org.lightj.util.StringUtil;
 
 
 @SuppressWarnings("rawtypes")
@@ -35,10 +36,10 @@ public class StepLog implements Serializable {
 		if (tasks.containsKey(task.getTaskId())) {
 			TaskLog ti = tasks.get(task.getTaskId());
 			ti.extTaskUuid = task.getExtTaskUuid();
-			ti.taskInfo = task.getTaskDetail();
+			ti.taskInfo = task.toString();
 		}
 		else {
-			tasks.put(task.getTaskId(), new TaskLog(task.getTaskDetail(), task.getExtTaskUuid()));
+			tasks.put(task.getTaskId(), new TaskLog(task.toString(), task.getExtTaskUuid()));
 		}
 	}
 	public void updateTaskResult(Task task, TaskResult taskResult) {
@@ -46,7 +47,7 @@ public class StepLog implements Serializable {
 			TaskLog ti = tasks.get(task.getTaskId());
 			ti.result = taskResult.getStatus().name();
 			ti.msg = taskResult.getMsg();
-			ti.stackTrace = taskResult.getStackTrace();
+			ti.stackTrace = StringUtil.getStackTrace(taskResult.getStackTrace());
 		}
 	}
 	public void updateStackTrace(String stackTrace) {

@@ -2,15 +2,11 @@ package org.lightj.session.step;
 
 import static akka.pattern.Patterns.ask;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowResult;
-import org.lightj.session.FlowSession;
 import org.lightj.task.AsyncPollMonitor;
 import org.lightj.task.AsyncPollTaskWorker;
 import org.lightj.task.AsyncTaskWorker;
@@ -18,8 +14,6 @@ import org.lightj.task.BatchOption;
 import org.lightj.task.BatchTask;
 import org.lightj.task.BatchTaskWorker;
 import org.lightj.task.ExecutableTask;
-import org.lightj.task.ExecuteOption;
-import org.lightj.task.FlowTask;
 import org.lightj.task.IWorker;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResultEnum;
@@ -116,6 +110,28 @@ public class StepBuilder {
 	}
 	
 	/**
+	 * result handler, go to step when success, all other will go to error step
+	 * @param stepOnSuccess
+	 * @return
+	 */
+	public StepBuilder onSuccess(String stepOnSuccess) {
+		StepCallbackHandler handler = new StepCallbackHandler(stepOnSuccess);
+		flowStep.setOrUpdateResultHandler(handler);
+		return this;
+	}
+	
+	/**
+	 * result handler, go to step when success, all other will go to error step
+	 * @param stepOnSuccess
+	 * @return
+	 */
+	public StepBuilder onSuccess(Enum stepOnSuccess) {
+		StepCallbackHandler handler = new StepCallbackHandler(stepOnSuccess);
+		flowStep.setOrUpdateResultHandler(handler);
+		return this;
+	}
+
+	/**
 	 * result handler, go to step when for success/fail result
 	 * @param stepOnSuccess
 	 * @param stepOnElse
@@ -211,15 +227,7 @@ public class StepBuilder {
 	public StepBuilder executeAsyncTasks(final ExecutableTask...tasks) 
 	{
 		
-		final UntypedActorFactory workerFactory = new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Actor create() throws Exception {
-				return new AsyncTaskWorker<ExecutableTask>();
-			}
-
-		};
+		final UntypedActorFactory workerFactory = createAsyncActorFactory();
 		return executeActors(new StepCallbackHandler(), workerFactory, null, tasks);
 		
 	}
@@ -235,49 +243,11 @@ public class StepBuilder {
 			final ExecutableTask...tasks) 
 	{
 		
-		final UntypedActorFactory workerFactory = new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Actor create() throws Exception {
-				return new AsyncPollTaskWorker<ExecutableTask>(pollMonitor);
-			}
-
-		};
+		final UntypedActorFactory workerFactory = createAsyncPollActorFactory(pollMonitor);
 		return executeActors(new StepCallbackHandler(), workerFactory, null, tasks);
 		
 	}	
 
-	/**
-	 * run one or more subflows, with result handler
-	 * @param subFlows
-	 * @param resultHandler
-	 * @return
-	 */
-	public StepBuilder launchSubFlows(
-			final Collection<FlowSession> subFlows, 
-			final StepCallbackHandler resultHandler) 
-	{
-		// create tasks
-		List<FlowTask> tasks = new ArrayList<FlowTask>();
-		for (FlowSession subFlow : subFlows) {
-			tasks.add(new FlowTask(subFlow, new ExecuteOption(0, 0)));
-		}
-		
-		// create executable worker
-		final UntypedActorFactory workerFactory = new UntypedActorFactory() {
-				
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Actor create() throws Exception {
-				return new AsyncTaskWorker<FlowTask>();						
-			}
-		};
-
-		return executeActors(resultHandler, workerFactory, null, tasks.toArray(new Task[0]));
-	}
-	
 	/**
 	 * utility to create actor factory for async poll task
 	 * @param pollMonitor

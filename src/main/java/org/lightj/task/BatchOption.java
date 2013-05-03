@@ -1,5 +1,10 @@
 package org.lightj.task;
 
+/**
+ * batch option
+ * @author biyu
+ *
+ */
 public class BatchOption {
 	
 	private final int maxConcurrencyCount;

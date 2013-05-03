@@ -14,6 +14,7 @@ import org.lightj.task.ITaskListener;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +90,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		}
 		StepTransition trans = execute();
 		if (trans != null && trans.isEdge()) {
-			resumeFlowStep(trans);
+			this.flowStep.resume(trans);
 		}
 	}
 
@@ -103,7 +104,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		}
 		StepTransition trans = execute();
 		if (trans != null && trans.isEdge()) {
-			resumeFlowStep(trans);
+			this.flowStep.resume(trans);
 		}
 	}
 
@@ -117,7 +118,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		}
 		StepTransition trans = execute();
 		if (trans != null && trans.isEdge()) {
-			resumeFlowStep(trans);
+			this.flowStep.resume(trans);
 		}
 	}
 
@@ -128,9 +129,13 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		if (task != null) {
 			callbacks.offer(new CallbackWrapper(TYPE_COMPLETED, task));
 		}
-		StepTransition trans = execute();
-		if (trans != null && trans.isEdge()) {
-			resumeFlowStep(trans);
+		try {
+			StepTransition trans = execute();
+			if (trans != null && trans.isEdge()) {
+				this.flowStep.resume(trans);
+			}
+		} catch (Throwable t) {
+			this.flowStep.resume(t);
 		}
 	}
 
@@ -195,7 +200,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	 * @return
 	 * @throws FlowExecutionException
 	 */
-	public final synchronized StepTransition executeOnCompleted(Task task)
+	public synchronized StepTransition executeOnCompleted(Task task)
 			throws FlowExecutionException 
 	{
 		return processResults(results);
@@ -206,19 +211,26 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	 * override this for custom logic
 	 */
 	public StepTransition processResults(Map<String, TaskResult> results) {
-		StepTransition transition = defResult;
+		StepTransition transition = null;
 		TaskResult curRst = null;
 		for (Entry<String, TaskResult> entry : results.entrySet()) {
 			TaskResult result = entry.getValue();
 			TaskResultEnum status = result.getStatus();
-			if (mapOnResults.containsKey(status) && (curRst == null || result.isMoreSevere(curRst))) {
+			if ((curRst == null || result.isMoreSevere(curRst))) {
 				curRst = result;
-				transition = mapOnResults.get(status).execute();
-				transition.log(result.getMsg(), result.getStackTrace());
+				if (mapOnResults.containsKey(status)) {
+					transition = mapOnResults.get(status).execute();
+					transition.log(result.getMsg(), StringUtil.getStackTrace(result.getStackTrace()));
+				}
 			}
 		}
-		// if we want to move on when result comes back, find the next step
-		return transition;
+		if (transition != null) {
+			return transition;
+		} else if (curRst != null && curRst.getStatus().isAnyError()) {
+			throw new FlowExecutionException(curRst.getMsg(), curRst.getStackTrace());
+		} else {
+			return defResult;
+		}
 	}
 
 	/**
@@ -252,7 +264,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	 */
 	public synchronized StepTransition executeOnResult(Task task, TaskResult result) throws FlowExecutionException {
 		// remember result
-		return StepTransition.newLog((result.getStatus() + ": " + result.getMsg()), result.getStackTrace());
+		return StepTransition.newLog((result.getStatus() + ": " + result.getMsg()), StringUtil.getStackTrace(result.getStackTrace()));
 	}
 
 	/**

@@ -86,11 +86,4 @@ public abstract class StepExecution<T extends FlowContext> {
 		this.sessionContext = sessionContext;
 	}
 	
-	/**
-	 * resume flow step on callback
-	 */
-	public final void resumeFlowStep(StepTransition trans) {
-		this.flowStep.resume(trans);
-	}
-	
 }

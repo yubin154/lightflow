@@ -19,6 +19,8 @@ import com.ning.http.client.Response;
 public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTask<T> {
 	
 	protected AsyncHttpClient client;
+	private String targetUrl;
+
 	public AsyncHttpTask(AsyncHttpClient client, 
 			ExecuteOption execOptions) 
 	{
@@ -39,14 +41,21 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 		return client.getConfig();
 	}
 	
-	@Override
-	public String getTaskDetail() {
-		return String.format("Request http");
+	public String toString() {
+		return String.format("Request http %s", targetUrl);
+	}
+
+	public String getTargetUrl() {
+		return targetUrl;
+	}
+	public void setTargetUrl(String targetUrl) {
+		this.targetUrl = targetUrl;
 	}
 
 	@Override
 	public TaskResult execute(ActorRef executingActor) throws TaskExecutionException {
 		BoundRequestBuilder request = createRequest();
+		targetUrl = request.toString();
 		try {
 			request.execute(new HttpAsyncHandler(this, executingActor));
 		} catch (IOException e) {

@@ -21,8 +21,7 @@ public class BatchTask extends Task<FlowContext> {
 		this.batchOption = batchOption;
 	}
 
-	@Override
-	public String getTaskDetail() {
+	public String toString() {
 		return "batching tasks";
 	}
 	

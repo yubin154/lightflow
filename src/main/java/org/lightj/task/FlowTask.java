@@ -9,35 +9,34 @@ import org.lightj.session.IFlowEventListener;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 import org.lightj.task.WorkerMessage.CallbackType;
-import org.lightj.util.StringUtil;
 
 import akka.actor.ActorRef;
 
 @SuppressWarnings("rawtypes")
-public class FlowTask extends ExecutableTask {
+public abstract class FlowTask extends ExecutableTask {
 
-	/**
-	 * subflows to be run
-	 */
-	private final FlowSession subFlow;
-	
-	public FlowTask(FlowSession subFlow, ExecuteOption execOption) {
+	private FlowSession subFlow;
+	public FlowTask() {
+		super();
+	}
+	public FlowTask(ExecuteOption execOption) {
 		super(execOption);
-		this.subFlow = subFlow;
 	}
 
-	@Override
-	public String getTaskDetail() {
-		return "Run subflow id=" + subFlow.getKey();
+	public String toString() {
+		return "Run subflow id=" + (subFlow!=null ? subFlow.getKey() : "not initialized");
 	}
+	
+	public abstract FlowSession createSubFlow(); 
 
 	@Override
 	public TaskResult execute(ActorRef executingActor) {
 		try {
+			subFlow = createSubFlow();
 			long parentFlowId = context.getSessionId();
 			if (subFlow.getParentId() <= 0) {
 				subFlow.setParentId(parentFlowId);
-				FlowSessionFactory.getInstance().update(subFlow);
+				FlowSessionFactory.getInstance().save(subFlow);
 			}
 			subFlow.addEventListener(new SubFlowEventListener(this, executingActor));
 			subFlow.runFlow();
@@ -46,7 +45,7 @@ public class FlowTask extends ExecutableTask {
 			return null;
 		} 
 		catch (Throwable t) {
-			return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), StringUtil.getStackTrace(t));
+			return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
 		}
 	}
 

@@ -1,11 +1,9 @@
 package org.lightj.task;
 
-import org.lightj.util.StringUtil;
-
-import com.ning.http.client.ListenableFuture;
-
 import akka.actor.ActorRef;
 import akka.actor.UntypedActor;
+
+import com.ning.http.client.ListenableFuture;
 
 /**
  * simple actor to execute a task
@@ -44,8 +42,8 @@ public class ExecutableTaskWorker<T extends ExecutableTask> extends UntypedActor
 			else {
 				unhandled(message);
 			}
-		} catch (Exception e) {
-			reply(task.createErrorResult(TaskResultEnum.Failed, e.getMessage(), StringUtil.getStackTrace(e)));
+		} catch (Throwable e) {
+			reply(task.createErrorResult(TaskResultEnum.Failed, e.getMessage(), e));
 		}
 	}
 	

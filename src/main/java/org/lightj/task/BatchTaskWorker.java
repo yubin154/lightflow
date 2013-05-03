@@ -3,8 +3,6 @@ package org.lightj.task;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lightj.util.StringUtil;
-
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 import akka.actor.ActorRef;
@@ -105,9 +103,9 @@ public class BatchTaskWorker extends UntypedActor implements IWorker {
 				unhandled(message);
 			}
 		} 
-		catch (Exception e) {
+		catch (Throwable e) {
 			// should have never happened
-			replyError(TaskResultEnum.Failed, e.toString(), StringUtil.getStackTrace(e));
+			replyError(TaskResultEnum.Failed, e.toString(), e);
 		}
 	}
 	
@@ -207,7 +205,7 @@ public class BatchTaskWorker extends UntypedActor implements IWorker {
 	 * @param msg
 	 * @param stackTrace
 	 */
-	private final void replyError(TaskResultEnum state, String msg, String stackTrace) {
+	private final void replyError(TaskResultEnum state, String msg, Throwable stackTrace) {
 		if (!sentReply) {
 			TaskResult tr = task.createErrorResult(state, msg, stackTrace);
 			listener.handleTaskResult(task, tr);

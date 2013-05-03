@@ -137,6 +137,27 @@ public class StepImpl implements IFlowStep {
 	}
 
 	/**
+	 * resume a parked step on asynch callback
+	 */
+	public void resume(final Throwable t) {
+		// this is to make sure this step is still the "current" step recognized by the flow driver
+		// and yes, we check reference equal
+		synchronized (driver) {
+			if (this.driver.getCurrentFlowStep() == this) {
+				final FlowDriver dvr = driver;
+				FlowModule.getExecutorService().submit(new Runnable() {
+					
+					@Override
+					public void run() {
+						dvr.driveWithError(t);
+					}
+					
+				});
+			}
+		}
+	}
+
+	/**
 	 * set error handler for error happend in execution phase
 	 * @param executionErrorHandler
 	 */
@@ -204,10 +225,10 @@ public class StepImpl implements IFlowStep {
 
 	@Override
 	public final void setIfNull(StepExecution exec, StepErrorHandler ehandler, StepCallbackHandler chandler) {
-		if (execution == null) execution = exec;
-		if (errorHandler == null) errorHandler = ehandler;
+		if (execution == null) this.setExecution(exec);
+		if (errorHandler == null) this.setErrorHandler(ehandler);
 		if (resultHandler == null) {
-			resultHandler = chandler;
+			this.setResultHandler(chandler);
 		} else if (chandler != null){
 			resultHandler.setDefIfNull(chandler.getDefResult());
 		}

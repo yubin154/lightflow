@@ -496,9 +496,10 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 					
 			FlowType ft = fromFlowTypeId(type.typeId());
 			if (ft == null) {
-//				validateSteps();
 				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass, type.group());
 				addFlowTypes(Arrays.asList(new FlowType[] {ft}));
+				FlowSession session = createSession(flowKlass);
+				session.validateSteps();
 			}
 		} catch (IllegalArgumentException e) {
 			throw e;

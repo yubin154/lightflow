@@ -11,21 +11,4 @@
 
 	<context:annotation-config />
 	
-	<bean id="springApplicationContext" class="org.lightj.util.SpringApplicationContext"/>
-
-	<!-- mongo -->
-	<bean id="sessionDataManager" class="org.lightj.session.dal.mongo.MongoSessionDataManagerImpl" />
-	<bean id="sessionMetaDataManager" class="org.lightj.session.dal.mongo.MongoSessionMetaDataManagerImpl" />
-	<bean id="sessionStepLogManager" class="org.lightj.session.dal.mongo.MongoSessionStepLogManagerImpl" />
-	
-	<!-- rdbms -->
-	<!-- 
-	<bean id="sessionDataManager" class="org.lightj.session.dal.SessionDataManagerImpl" factory-method="getInstance" />
-	<bean id="sessionMetaDataManager" class="org.lightj.session.dal.SessionMetaDataManagerImpl" factory-method="getInstance" />
-	<bean id="sessionStepLogManager" class="org.lightj.session.dal.SessionStepLogManagerImpl" factory-method="getInstance" />
-	-->
-	
-	<bean id="sessionDataFactory" class="org.lightj.session.dal.SessionDataFactory" factory-method="getInstance" />
-	<bean id="flowFactory" class="org.lightj.session.FlowSessionFactory" factory-method="getInstance" />
-	
 </beans>

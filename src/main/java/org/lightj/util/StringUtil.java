@@ -521,10 +521,15 @@ public class StringUtil {
 	 *         <code>printStackTrace(PrintWriter)</code> method
 	 */
 	public static String getStackTrace(Throwable throwable, int trimToLength) {
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw, true);
-		throwable.printStackTrace(pw);
-		return trimToLength > 0 ? trimToLength(sw.getBuffer().toString(), trimToLength) : sw.getBuffer().toString();
+		if (throwable != null) {
+			StringWriter sw = new StringWriter();
+			PrintWriter pw = new PrintWriter(sw, true);
+			throwable.printStackTrace(pw);
+			return trimToLength > 0 ? trimToLength(sw.getBuffer().toString(), trimToLength) : sw.getBuffer().toString();
+		}
+		else {
+			return null;
+		}
 	}
 
 	/**

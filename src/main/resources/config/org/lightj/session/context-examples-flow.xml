@@ -9,15 +9,7 @@
 
 	<context:annotation-config />
 	
-	<bean id="asyncTaskStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildAsyncTaskStep" scope="prototype"/>
-	<bean id="sessionJoinStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildJoinStep" scope="prototype"/>
-	<bean id="delayStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildDelayStep" scope="prototype"/>
-	<bean id="retryStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildRetryStep" scope="prototype"/>
-	<bean id="timeoutStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildTimeoutStep" scope="prototype"/>
-	<bean id="actorStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildActorStep" scope="prototype"/>
-	<bean id="actorPollStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildActorPollStep" scope="prototype"/>
-	<bean id="actorBatchStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildActorBatchStep" scope="prototype"/>
-	<bean id="testFailureStep" class="org.lightj.example.session.HelloWorldFlowStepsImpl" factory-method="buildTestFailureStep" scope="prototype"/>
+	<bean id="helloWorldFlowFactory" class="org.lightj.example.session.HelloWorldFlowStepsImpl"/>
 	<bean id="helloWorldFlow" class="org.lightj.example.session.HelloWorldFlow" scope="prototype"/>
 	<bean id="skeletonFlow" class="org.lightj.example.session.SkeletonFlow" scope="prototype"/>
 	
