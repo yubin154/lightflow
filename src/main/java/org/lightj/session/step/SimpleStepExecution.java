@@ -6,6 +6,14 @@ import org.lightj.session.FlowExecutionException;
 @SuppressWarnings("rawtypes")
 public class SimpleStepExecution<T extends FlowContext> extends StepExecution<T> {
 
+
+	/**
+	 * constructor
+	 */
+	public SimpleStepExecution() {
+		super(null);
+	}
+
 	/**
 	 * constructor
 	 * @param transition

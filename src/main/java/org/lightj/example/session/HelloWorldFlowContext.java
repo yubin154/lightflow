@@ -11,7 +11,7 @@ import org.lightj.session.FlowContext;
 public class HelloWorldFlowContext extends FlowContext {
 	
 	// private context
-	private String goodHost = "http://www.ebay.com";
+	private String goodHost = "phx7b02c-719818.stratus.phx.ebay.com:12020";
 	private String badHost = "http://asdfewerasdfk";
 	private boolean injectFailure = false;
 	private boolean controlledFailure = true;

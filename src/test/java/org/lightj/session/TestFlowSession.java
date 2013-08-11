@@ -35,7 +35,8 @@ public class TestFlowSession extends BaseTestCase {
 		session.save();
 		session.addEventListener(new HelloWorldFlowEventListener(lock, cond));
 		session.runFlow();
-		ConcurrentUtil.wait(lock, cond);
+		ConcurrentUtil.wait(lock, cond, 30 * 1000);
+		System.out.println(new ObjectMapper().writeValueAsString(session.getFlowInfo()));
 		Assert.assertEquals(1, session.getSessionContext().getTaskCount());
 		Assert.assertEquals(2, session.getSessionContext().getSplitCount());
 		Assert.assertEquals(2, session.getSessionContext().getRetryCount());
@@ -43,7 +44,6 @@ public class TestFlowSession extends BaseTestCase {
 		Assert.assertEquals(2, session.getSessionContext().getBatchCount());
 		Assert.assertEquals(0, session.getSessionContext().getErrorStepCount());
 		
-		System.out.println(new ObjectMapper().writeValueAsString(session.getFlowInfo()));
 	}
 
 	@Test
@@ -61,6 +61,7 @@ public class TestFlowSession extends BaseTestCase {
 		Assert.assertEquals(HelloWorldFlow.steps.testFailureStep.name(), session.getCurrentAction());
 		Assert.assertEquals(FlowResult.Failed, session.getResult());
 		Assert.assertEquals(FlowState.Completed, session.getState());
+		System.out.println(new ObjectMapper().writeValueAsString(session.getSessionContext().getLastErrors()));
 	}
 	
 	@Test
@@ -77,6 +78,7 @@ public class TestFlowSession extends BaseTestCase {
 		Assert.assertEquals(HelloWorldFlow.steps.testFailureStep.name(), session.getCurrentAction());
 		Assert.assertEquals(FlowResult.Failed, session.getResult());
 		Assert.assertEquals(FlowState.Completed, session.getState());
+		System.out.println(new ObjectMapper().writeValueAsString(session.getSessionContext().getLastErrors()));
 	}
 
 	@Test
@@ -95,7 +97,7 @@ public class TestFlowSession extends BaseTestCase {
 		Assert.assertEquals(FlowResult.Failed, session.getResult());
 		Assert.assertEquals(FlowState.Paused, session.getState());
 		
-		// reset current step to the desireable step and resume flow
+		// reset current step to the desirable step and resume flow
 		HelloWorldFlow session1 = (HelloWorldFlow) FlowSessionFactory.getInstance().findByKey(session.getKey());
 		session1.setCurrentAction(steps.testFailureStep.name());
 		// don't pause this time

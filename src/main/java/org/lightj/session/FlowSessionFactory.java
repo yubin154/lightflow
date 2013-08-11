@@ -19,6 +19,7 @@ import org.lightj.dal.Query;
 import org.lightj.locking.LockException;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.ISessionMetaData;
+import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.util.ClassUtils;
 import org.lightj.util.DBUtil;
@@ -404,6 +405,26 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	}
 	
 	/**
+	 * delete a session
+	 * @param session
+	 */
+	public void deleteSession(FlowSession session) {
+		try {
+			List<ISessionStepLog> logs = SessionDataFactory.getInstance().getStepLogManager().findByFlowId(session.getId());
+			for (ISessionStepLog log : logs) {
+				SessionDataFactory.getInstance().getStepLogManager().delete(log);
+			}
+			List<ISessionMetaData> metas = SessionDataFactory.getInstance().getMetaDataManager().findByFlowId(session.getId());
+			for (ISessionMetaData meta : metas) {
+				SessionDataFactory.getInstance().getMetaDataManager().delete(meta);
+			}
+			SessionDataFactory.getInstance().getDataManager().delete(session.getSessionData());
+		} catch (DataAccessException e) {
+			logger.error(null, e);
+		}
+	}
+	
+	/**
 	 * recover sessions from runBy
 	 * @param lockManager
 	 * @param runBy
@@ -517,7 +538,6 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 */
 	public synchronized void addFlowTypes(Collection<? extends FlowType> flowType) {
 		for (FlowType type : flowType) {
-//			validateSession(type);
 			String typeId = type.value();
 			if (flowTypes.containsKey(typeId)) {
 				FlowType another = flowTypes.get(typeId);
@@ -529,17 +549,6 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 			flowClassTypes.putIfAbsent(type.getFlowKlass(), type);
 		}
 	}
-	
-	/**
-	 * calculate and cache type ids
-	 */
-//	private Integer[] _typeIds;
-//	private Integer[] getTypeIds() {
-//		if (_typeIds == null) {
-//			_typeIds = flowTypes.keySet().toArray(new Integer[0]);
-//		}
-//		return _typeIds;
-//	}
 	
 	/**
 	 * get flow type from its id

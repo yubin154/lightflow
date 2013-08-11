@@ -121,6 +121,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 	        
 	        if (!StringUtil.isNullOrEmpty(defErrorStep) && validateStepByName(defErrorStep)) {
 	        	ehandler = StepErrorHandler.onException(defErrorStep);
+	        	chandler.mapResult(nextStep.name(), defErrorStep);
 	        }
 	        if (!StringUtil.isNullOrEmpty(onSuccess) && !StringUtil.isNullOrEmpty(onElse)
 	        		&& validateStepByName(onSuccess) && validateStepByName(onElse)) {
@@ -409,7 +410,6 @@ public class FlowDriver implements Runnable, IQueueTask {
 
 	/** notify registered {@link IFlowEventListener} of flow error */
 	public void handleError(Throwable t) {
-		session.getSessionContext().setLastError(t);
 		for (Entry<Class, IFlowEventListener> l : eventListeners.entrySet()) {
 			try {
 				l.getValue().handleError(t, session);

@@ -86,4 +86,13 @@ public abstract class StepExecution<T extends FlowContext> {
 		this.sessionContext = sessionContext;
 	}
 	
+	/**
+	 * set default transition if null
+	 * @param transition
+	 */
+	public void setDefIfNull(StepTransition transition) {
+		if (defResult == null) {
+			defResult = transition;
+		}
+	}
 }

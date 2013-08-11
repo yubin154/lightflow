@@ -42,9 +42,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 		@FlowStepProperties(stepWeight=1)
 		timeoutStep,
 		@FlowStepProperties(stepWeight=1)
-		actorStep,
-		@FlowStepProperties(stepWeight=1)
-		actorPollStep,
+		asyncPollStep,
 		@FlowStepProperties(stepWeight=1)
 		actorBatchStep,
 		@FlowStepProperties(stepWeight=1)
@@ -69,9 +67,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	@Autowired(required=true)
 	private IFlowStep helloWorldTimeoutStep;
 	@Autowired(required=true)
-	private IFlowStep helloWorldActorStep;
-	@Autowired(required=true)
-	private IFlowStep helloWorldActorPollStep;
+	private IFlowStep helloWorldAsyncPollStep;
 	@Autowired(required=true)
 	private IFlowStep helloWorldActorBatchStep;
 	@Autowired(required=true)
@@ -147,19 +143,11 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	}
 
 	/**
-	 * step with actor
-	 * @return
-	 */
-	public IFlowStep actorStep() {
-		return helloWorldActorStep;
-	}
-	
-	/**
 	 * step with actor and poll
 	 * @return
 	 */
-	public IFlowStep actorPollStep() {
-		return helloWorldActorPollStep;
+	public IFlowStep asyncPollStep() {
+		return helloWorldAsyncPollStep;
 	}
 	
 	/**

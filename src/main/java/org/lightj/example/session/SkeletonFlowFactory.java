@@ -1,6 +1,5 @@
 package org.lightj.example.session;
 
-import org.lightj.example.session.SkeletonFlow.SkeletonSteps;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.step.IFlowStep;
@@ -14,8 +13,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
-import akka.actor.ActorRef;
-
 @Configuration
 public class SkeletonFlowFactory {
 	
@@ -26,7 +23,7 @@ public class SkeletonFlowFactory {
 	@Bean(name="skeletonStartStep")
 	@Scope("prototype")
 	public static IFlowStep skeletonStartStep() {
-		return new StepBuilder().runTo(SkeletonSteps.step1).getFlowStep();
+		return new StepBuilder().getFlowStep();
 	}
 	
 	@Bean 
@@ -47,7 +44,7 @@ public class SkeletonFlowFactory {
 		return new StepBuilder().executeAsyncTasks(new ExecutableTask() {
 
 			@Override
-			public TaskResult execute(ActorRef exeuctingActor)
+			public TaskResult execute()
 					throws TaskExecutionException {
 				// do something useful here
 				try {
@@ -57,7 +54,7 @@ public class SkeletonFlowFactory {
 				}
 				return this.createTaskResult(TaskResultEnum.Success, "task complete");
 				
-			}}).onSuccess(SkeletonSteps.stop).getFlowStep();
+			}}).getFlowStep();
 	}
 
 }

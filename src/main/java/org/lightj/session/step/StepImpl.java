@@ -225,12 +225,17 @@ public class StepImpl implements IFlowStep {
 
 	@Override
 	public final void setIfNull(StepExecution exec, StepErrorHandler ehandler, StepCallbackHandler chandler) {
-		if (execution == null) this.setExecution(exec);
+		if (execution == null) {
+			this.setExecution(exec);
+		} else if (exec != null) {
+			execution.setDefIfNull(exec.getDefResult());
+		}
 		if (errorHandler == null) this.setErrorHandler(ehandler);
 		if (resultHandler == null) {
 			this.setResultHandler(chandler);
 		} else if (chandler != null){
 			resultHandler.setDefIfNull(chandler.getDefResult());
+			resultHandler.setResultMapIfNull(chandler);
 		}
 		
 	}

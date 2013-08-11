@@ -23,7 +23,9 @@ import org.lightj.session.CtxProp.CtxSaveType;
 import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.IFlowStep;
+import org.lightj.session.step.StepErrorLog;
 import org.lightj.session.step.StepLog;
+import org.lightj.session.step.StepLog.TaskLog;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.util.JsonUtil;
@@ -66,9 +68,6 @@ public class FlowContext {
 	/** step execution history */
 	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.AutoSave)
 	private LinkedHashMap<String, StepLog> executionLogs = new LinkedHashMap<String, StepLog>();
-	
-	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.SaveOnChange)
-	private Throwable lastError = null;
 	
 	/**
 	 * Constructor
@@ -444,9 +443,42 @@ public class FlowContext {
 	public LinkedHashMap<String, StepLog> getExecutionLogs() {
 		return executionLogs;
 	}
-
+	
+	public List<StepErrorLog> getLastErrors() {
+		ArrayList<StepErrorLog> errorLogs = new ArrayList<StepErrorLog>();
+		for (Entry<String, StepLog> entry : executionLogs.entrySet()) {
+			StepLog stepLog = entry.getValue();
+			if (!StringUtil.isNullOrEmpty(stepLog.getStackTrace())) {
+				errorLogs.add(0, new StepErrorLog(stepLog.getStepName(), stepLog.getStackTrace()));
+			}
+			for (Entry<String, TaskLog> taskEntry : stepLog.getTasks().entrySet()) {
+				TaskLog taskLog = taskEntry.getValue();
+				if (!StringUtil.isNullOrEmpty(taskLog.getStackTrace())) {
+					errorLogs.add(0, new StepErrorLog(stepLog.getStepName(), taskLog.getStackTrace()));
+				}
+			}
+		}
+		return errorLogs;
+	}
+	
 	public void setExecutionLogs(LinkedHashMap<String, StepLog> executionLogs) {
-		this.executionLogs = executionLogs;
+		if(executionLogs == null || executionLogs.size() == 0) {
+			return;
+		}
+		LinkedHashMap<String, StepLog> _execLogs = new LinkedHashMap<String, StepLog>(executionLogs.size());
+		for(String key : executionLogs.keySet()) {
+			Object o = executionLogs.get(key);
+			if(o instanceof Map) {
+				try {
+					_execLogs.put(key, JsonUtil.decode((Map)o, StepLog.class));
+				} catch (Exception e) {
+					throw new RuntimeException("Couldn't convert step log", e);
+				}
+			} else {
+				_execLogs.put(key, (StepLog)o);
+			}
+		}
+		this.executionLogs = _execLogs;
 	}
 
 	public void addStep(IFlowStep step) {
@@ -482,14 +514,6 @@ public class FlowContext {
 	
 	/////////////// execution exceptions ////////////////
 
-	public Throwable getLastError() {
-		return lastError;
-	}
-
-	public void setLastError(Throwable lastError) {
-		this.lastError = lastError;
-	}
-	
 	static class CtxPropWrapper {
 		CtxProp ctxProp;
 		Class klazz;
@@ -502,5 +526,14 @@ public class FlowContext {
 			this.getter = getter;
 		}
 	}
-	
+
+	private String flowKey;
+
+	public String getFlowKey() {
+		return flowKey;
+	}
+
+	public void setFlowKey(String flowKey) {
+		this.flowKey = flowKey;
+	}
 }

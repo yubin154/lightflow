@@ -5,10 +5,9 @@ import java.io.IOException;
 import org.lightj.session.FlowContext;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
+import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskExecutionException;
 import org.lightj.task.TaskResult;
-
-import akka.actor.ActorRef;
 
 import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -16,13 +15,26 @@ import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.Response;
 
+/**
+ * execute a http call via Ning asynchronous http client
+ * @author biyu
+ *
+ * @param <T>
+ */
 public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTask<T> {
 	
+	/** http client */
 	protected AsyncHttpClient client;
+	/** target url */
 	private String targetUrl;
 
-	public AsyncHttpTask(AsyncHttpClient client, 
-			ExecuteOption execOptions) 
+	public AsyncHttpTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
+	{
+		super(execOptions, monitorOption);
+		this.client = client;
+	}
+
+	public AsyncHttpTask(AsyncHttpClient client, ExecuteOption execOptions) 
 	{
 		super(execOptions);
 		this.client = client;
@@ -53,11 +65,11 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 	}
 
 	@Override
-	public TaskResult execute(ActorRef executingActor) throws TaskExecutionException {
+	public TaskResult execute() throws TaskExecutionException {
 		BoundRequestBuilder request = createRequest();
-		targetUrl = request.toString();
+		targetUrl = request.build().getUrl();
 		try {
-			request.execute(new HttpAsyncHandler(this, executingActor));
+			request.execute(new HttpAsyncHandler(this));
 		} catch (IOException e) {
 			throw new TaskExecutionException(e);
 		}
@@ -92,22 +104,20 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 	 */
 	@SuppressWarnings("rawtypes")
 	static class HttpAsyncHandler extends AsyncCompletionHandler<TaskResult> {
-		private final ActorRef executingActor;
 		private final AsyncHttpTask task;
-		public HttpAsyncHandler(AsyncHttpTask task, ActorRef executingActor) {
+		public HttpAsyncHandler(AsyncHttpTask task) {
 			this.task = task;
-			this.executingActor = executingActor;
 		}
 		@Override
 		public TaskResult onCompleted(Response response) throws Exception {
 			TaskResult res = task.onComplete(response);
-			executingActor.tell(res, null);
+			task.reply(res);
 			return res;
 		}
 
 	    public void onThrowable(Throwable t) {
 	    	TaskResult res = task.onThrowable(t);
-			executingActor.tell(res, null);
+	    	task.reply(res);
 	    }
 
 	}

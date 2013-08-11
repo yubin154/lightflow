@@ -7,7 +7,6 @@ import java.util.concurrent.TimeUnit;
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowResult;
-import org.lightj.task.AsyncPollMonitor;
 import org.lightj.task.AsyncPollTaskWorker;
 import org.lightj.task.AsyncTaskWorker;
 import org.lightj.task.BatchOption;
@@ -180,7 +179,6 @@ public class StepBuilder {
 	 * @return
 	 */
 	public StepBuilder executeActors(
-			final StepCallbackHandler resultHandler,
 			final UntypedActorFactory actorFactory,
 			final BatchOption batchOption,
 			final Task...tasks) 
@@ -211,10 +209,6 @@ public class StepBuilder {
 				}
 		});
 		
-		if (resultHandler != null) {
-			this.onResult(resultHandler);
-		}
-
 		return this;
 	}
 	
@@ -228,7 +222,7 @@ public class StepBuilder {
 	{
 		
 		final UntypedActorFactory workerFactory = createAsyncActorFactory();
-		return executeActors(new StepCallbackHandler(), workerFactory, null, tasks);
+		return executeActors(workerFactory, null, tasks);
 		
 	}
 	
@@ -239,12 +233,41 @@ public class StepBuilder {
 	 * @return
 	 */
 	public StepBuilder executeAsyncPollTasks(
-			final AsyncPollMonitor pollMonitor,
 			final ExecutableTask...tasks) 
 	{
 		
-		final UntypedActorFactory workerFactory = createAsyncPollActorFactory(pollMonitor);
-		return executeActors(new StepCallbackHandler(), workerFactory, null, tasks);
+		final UntypedActorFactory workerFactory = createAsyncPollActorFactory();
+		return executeActors(workerFactory, null, tasks);
+		
+	}	
+
+	/**
+	 * execute one or more executable tasks, with result handler
+	 * @param resultHandler
+	 * @param tasks
+	 * @return
+	 */
+	public StepBuilder batchExecuteAsyncTasks(final BatchOption batchOption, final ExecutableTask...tasks) 
+	{
+		
+		final UntypedActorFactory workerFactory = createAsyncActorFactory();
+		return executeActors(workerFactory, batchOption, tasks);
+		
+	}
+	
+	/**
+	 * execute one or more executable tasks, with result handler
+	 * @param resultHandler
+	 * @param tasks
+	 * @return
+	 */
+	public StepBuilder batchExecuteAsyncPollTasks(
+			final BatchOption batchOption,
+			final ExecutableTask...tasks) 
+	{
+		
+		final UntypedActorFactory workerFactory = createAsyncPollActorFactory();
+		return executeActors(workerFactory, batchOption, tasks);
 		
 	}	
 
@@ -253,13 +276,13 @@ public class StepBuilder {
 	 * @param pollMonitor
 	 * @return
 	 */
-	public static UntypedActorFactory createAsyncPollActorFactory(final AsyncPollMonitor pollMonitor) {
+	public static UntypedActorFactory createAsyncPollActorFactory() {
 		return new UntypedActorFactory() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public Actor create() throws Exception {
-				return new AsyncPollTaskWorker<ExecutableTask>(pollMonitor);
+				return new AsyncPollTaskWorker<ExecutableTask>();
 			}
 
 		};

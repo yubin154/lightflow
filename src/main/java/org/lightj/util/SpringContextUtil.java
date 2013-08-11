@@ -68,7 +68,19 @@ public class SpringContextUtil {
 	}
 	
 	/**
-	 * 
+	 * get bean of a class
+	 * @param key
+	 * @param beanName
+	 * @param beanKlazz
+	 * @return
+	 */
+	public static <T> T getBean(String key, String beanName, Class<T> beanKlazz) {
+		if (!ctxes.containsKey(key)) throw new IllegalArgumentException("application context " + key + " not exist");
+		return ctxes.get(key).getBean(beanName, beanKlazz);
+	}
+
+	/**
+	 * get a bean of a class, it requires there can be only one bean registered in the context for the class
 	 * @param beanKlazz
 	 * @return
 	 */

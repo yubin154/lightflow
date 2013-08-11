@@ -3,6 +3,7 @@ package org.lightj.util;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
@@ -23,6 +24,8 @@ public class JsonUtil {
 		DeserializationConfig deserializationConfig = mapper.getDeserializationConfig();
 		deserializationConfig.setDateFormat(dateFormat);
 		mapper.configure(SerializationConfig.Feature.WRITE_DATES_AS_TIMESTAMPS, false);
+		mapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+		mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 	}
 
 	public static final String encode(Object value) throws JsonGenerationException, JsonMappingException, IOException {
@@ -36,6 +39,9 @@ public class JsonUtil {
 	public static final <T> T decode(String jsonStr, Class<T> klazz) throws JsonParseException, JsonMappingException, IOException {
 		return "null".equalsIgnoreCase(jsonStr) ? null : mapper.readValue(jsonStr, klazz);
 	}
-	
+
+	public static final <T> T decode(Map<String, String> jsonMap, Class<T> klazz) throws JsonParseException, JsonMappingException, IOException {
+		return mapper.convertValue(jsonMap, klazz);
+	}
 }
 

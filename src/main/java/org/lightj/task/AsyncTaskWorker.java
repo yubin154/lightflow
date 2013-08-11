@@ -68,6 +68,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	public void onReceive(Object message) throws Exception 
 	{
 		try {
+			// original task
 			if (message instanceof Task) {
 				task = (T) message;
 				sender = getSender();
@@ -76,10 +77,12 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 					replyTask(CallbackType.created, task);
 				}
 			}
+			// task result
 			else if (message instanceof TaskResult) {
 				final TaskResult r = (TaskResult) message;
 				processRequestResult(r);
 			} 
+			// internal message for timeout
 			else if (message instanceof InternalMessageType) {
 				switch ((InternalMessageType) message) {
 
@@ -90,6 +93,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 					
 				}
 			} 
+			// something not expecting
 			else {
 				unhandled(message);
 			}
@@ -153,7 +157,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 				}
 			}
 		}
-		
+
 	}
 	
 	/**

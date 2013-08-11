@@ -99,6 +99,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	protected void setSessionData(ISessionData sessionDo) {
 		this.sessionDo = sessionDo;
 		sessionContext.setSessionId(sessionDo.getFlowId());
+		sessionContext.setFlowKey(getKey());
 	}
 
 	/**
@@ -273,6 +274,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		if (!isUpdate) {
 			if (sessionContext.getSessionId() <= 0) {
 				sessionContext.setSessionId(this.getId());
+				sessionContext.setFlowKey(this.getKey());
 			}
 		}
 	}

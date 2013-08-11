@@ -72,11 +72,9 @@ public class StepLog implements Serializable {
 	public String getStackTrace() {
 		return stackTrace;
 	}
-
 	public void setStackTrace(String stackTrace) {
 		this.stackTrace = stackTrace;
 	}
-
 	public Date getStartTime() {
 		return startTime;
 	}

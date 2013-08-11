@@ -29,11 +29,9 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	
 	/** task, poll option */
 	private T task;
-	private final AsyncPollMonitor monitor;
 	
 	/** intermediate result */
 	private TaskResult taskSubmissionResult;
-	private TaskResult taskPollResult;
 	private TaskResult curResult;
 	private boolean requestDone;
 	
@@ -41,6 +39,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	private final SupervisorStrategy supervisorStrategy;
 	private ActorRef asyncWorker = null;
 	private ActorRef pollWorker = null;
+	private ExecutableTask pollTask = null;
 
 	/** requester */
 	private ActorRef sender = null;
@@ -66,9 +65,8 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * @param monitorOptions
 	 * @param listener
 	 */
-	public AsyncPollTaskWorker(AsyncPollMonitor monitor) {
+	public AsyncPollTaskWorker() {
 		super();
-		this.monitor = monitor;
 		
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
@@ -103,12 +101,12 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 					processRequest();
 					break;
 
-				case POLL_PROGRESS:
-					pollProgress();
-					break;
-
 				case PROCESS_REQUEST_RESULT:
 					processRequestResult();
+					break;
+					
+				case POLL_PROGRESS:
+					pollProgress();
 					break;
 					
 				case PROCESS_POLL_RESULT:
@@ -116,11 +114,15 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 					break;
 				}
 				
-			} 
+			}
+			
+			// task result
 			else if (message instanceof TaskResult) {
 				final TaskResult r = (TaskResult) message;
 				handleWorkerResponse(r);
-			} 
+			}
+			
+			// something unexpected
 			else {
 				unhandled(message);
 			}
@@ -135,12 +137,17 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 */
 	private final void processRequest() 
 	{
+		if (task.getMonitorOption() == null) {
+			replyError(TaskResultEnum.Failed, "monitor option missing", null);
+			return;
+		}
+		
 		if (asyncWorker == null) {
 			asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
 				private static final long serialVersionUID = 1L;
 
 				public Actor create() {
-					return createRequestWorker(task);
+					return createRequestWorker();
 				}
 				
 			}));
@@ -173,7 +180,31 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			taskSubmissionResult = curResult;
 			requestDone = true;
 			replyTask(CallbackType.submitted, task);
-			getSelf().tell(InternalMessageType.POLL_PROGRESS, getSelf());
+			if (curResult.getRealResult() instanceof ExecutableTask) {
+
+				if (pollWorker == null) {
+					pollWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
+						private static final long serialVersionUID = 1L;
+
+						public Actor create() {
+							return createPollWorker(task, taskSubmissionResult);
+						}
+						
+					}));
+				}
+				if (pollTask == null) {
+					pollTask = (ExecutableTask) curResult.getRealResult();
+				}
+
+				// start polling
+				pollProgress();
+
+			}
+			// we don't know how to poll, just return
+			else {
+				reply(curResult);
+			}
+
 		}
 		
 	}
@@ -182,19 +213,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * poll progress
 	 */
 	private final void pollProgress() {
-		
-		if (pollWorker == null) {
-			pollWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-				private static final long serialVersionUID = 1L;
 
-				public Actor create() {
-					return createPollWorker(task, taskSubmissionResult);
-				}
-				
-			}));
-		}
-
-		ExecutableTask pollTask = monitor.createPollTask(task, curResult);
 		pollWorker.tell(pollTask, getSelf());
 		
 	}
@@ -203,15 +222,13 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * process polling result
 	 */
 	private final void processPollResult() {
-
-		boolean scheduleNextPoll = true;
+		
+		boolean scheduleNextPoll = false;
 		if (curResult.getStatus().isAnyError()) {
-			retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
+			scheduleNextPoll = retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
 		}
-		else if (curResult.getStatus().isComplete()) {
-			TaskResult realResult = monitor.processPollResult(curResult);
-			taskPollResult = realResult;
-			scheduleNextPoll = (realResult == null || !realResult.isComplete()); 
+		else if (!curResult.getStatus().isComplete()) {
+			scheduleNextPoll = true;
 		}
 
 		if (scheduleNextPoll) {
@@ -219,11 +236,11 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			pollMessageCancellable = getContext()
 					.system()
 					.scheduler()
-					.scheduleOnce(Duration.create(monitor.getMonitorOption().getMonitorIntervalMs(), TimeUnit.MILLISECONDS), getSelf(),
+					.scheduleOnce(Duration.create(task.getMonitorOption().getMonitorIntervalMs(), TimeUnit.MILLISECONDS), getSelf(),
 							InternalMessageType.POLL_PROGRESS, getContext().system().dispatcher());
 		}
 		else {
-			reply(taskPollResult);
+			reply(curResult);
 		}
 		
 	}
@@ -246,11 +263,11 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * @param errorMessage
 	 * @param stackTrace
 	 */
-	private final void retry(final TaskResultEnum status, final String errorMessage, final Throwable stackTrace) {
+	private final boolean retry(final TaskResultEnum status, final String errorMessage, final Throwable stackTrace) {
 		// Error response
 		boolean retried = false;
 		if (requestDone) {
-			if (pollTryCount++ < monitor.getMonitorOption().getMaxRetry()) {
+			if (pollTryCount++ < task.getMonitorOption().getMaxRetry()) {
 				// noop, scheduled poll is same as retry
 				retried = true;
 			} 
@@ -270,6 +287,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			// with the error message
 			replyError(status, (requestDone ? "request" : "poll") + " retry limit reached, last error: " + errorMessage, stackTrace);
 		}
+		return retried;
 	}
 
 	@Override
@@ -335,7 +353,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * @param task
 	 * @return
 	 */
-	public Actor createRequestWorker(T task) {
+	public Actor createRequestWorker() {
 		return new ExecutableTaskWorker();
 	}
 	

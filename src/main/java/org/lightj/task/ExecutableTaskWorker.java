@@ -13,9 +13,6 @@ import com.ning.http.client.ListenableFuture;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class ExecutableTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	
-	/** logger */
-//	private static Log4jProxy logger = Log4jProxy.getInstance(ExecutableTaskWorker.class);
-
 	/** the task*/
 	private T task;
 	
@@ -31,22 +28,30 @@ public class ExecutableTaskWorker<T extends ExecutableTask> extends UntypedActor
 	@Override
 	public void onReceive(Object message) throws Exception {
 		try {
+			
 			if (message instanceof ExecutableTask) {
 				task = (T) message;
 				processRequest();
-			}			
+			}
+			
 			else if (message instanceof TaskResult) {
 				final TaskResult r = (TaskResult) message;
 				handleWorkerResponse(r);
-			} 
+			}
+			
 			else {
 				unhandled(message);
 			}
+			
 		} catch (Throwable e) {
 			reply(task.createErrorResult(TaskResultEnum.Failed, e.getMessage(), e));
 		}
 	}
 	
+	/**
+	 * execute task
+	 * @throws TaskExecutionException
+	 */
 	private final void processRequest() throws TaskExecutionException {
 		sender = getSender();
 
@@ -66,7 +71,7 @@ public class ExecutableTaskWorker<T extends ExecutableTask> extends UntypedActor
 	 */
 	private final void handleWorkerResponse(TaskResult r) throws Exception {
 		
-		if (r != null && r.getStatus().isComplete()) {
+		if (r != null) {
 			reply(r);
 		}
 		

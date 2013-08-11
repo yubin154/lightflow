@@ -21,10 +21,12 @@ import com.ning.http.client.Response;
 @SuppressWarnings("rawtypes")
 public class TaskWorkerUtil {
 
-	public static void runTasks(final ITaskListener listener,
+	public static void runTasks(
+			final ITaskListener listener,
 			final UntypedActorFactory actorFactory,
-			final BatchOption batchOption, final Task... tasks)
-			throws Exception {
+			final BatchOption batchOption, 
+			final ExecutableTask... tasks) throws Exception 
+	{
 		final BatchTask batchTask = new BatchTask(tasks);
 		ActorRef batchWorker = ActorUtil.createActor(new UntypedActorFactory() {
 
@@ -36,8 +38,7 @@ public class TaskWorkerUtil {
 			}
 		});
 		final FiniteDuration timeout = Duration.create(10, TimeUnit.MINUTES);
-		Patterns.ask(batchWorker, IWorker.WorkerMessageType.REPROCESS_REQUEST,
-				new Timeout(timeout));
+		Patterns.ask(batchWorker, IWorker.WorkerMessageType.REPROCESS_REQUEST, new Timeout(timeout));
 
 	}
 
@@ -47,14 +48,13 @@ public class TaskWorkerUtil {
 	 * @param pollMonitor
 	 * @return
 	 */
-	public static UntypedActorFactory createAsyncPollActorFactory(
-			final AsyncPollMonitor pollMonitor) {
+	public static UntypedActorFactory createAsyncPollActorFactory() {
 		return new UntypedActorFactory() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public Actor create() throws Exception {
-				return new AsyncPollTaskWorker<ExecutableTask>(pollMonitor);
+				return new AsyncPollTaskWorker<ExecutableTask>();
 			}
 
 		};

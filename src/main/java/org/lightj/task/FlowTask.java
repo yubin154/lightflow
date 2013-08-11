@@ -1,16 +1,11 @@
 package org.lightj.task;
 
-import static akka.pattern.Patterns.ask;
-
 import org.lightj.session.FlowEvent;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.IFlowEventListener;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
-import org.lightj.task.WorkerMessage.CallbackType;
-
-import akka.actor.ActorRef;
 
 @SuppressWarnings("rawtypes")
 public abstract class FlowTask extends ExecutableTask {
@@ -30,7 +25,7 @@ public abstract class FlowTask extends ExecutableTask {
 	public abstract FlowSession createSubFlow(); 
 
 	@Override
-	public TaskResult execute(ActorRef executingActor) {
+	public TaskResult execute() {
 		try {
 			subFlow = createSubFlow();
 			long parentFlowId = context.getSessionId();
@@ -38,10 +33,9 @@ public abstract class FlowTask extends ExecutableTask {
 				subFlow.setParentId(parentFlowId);
 				FlowSessionFactory.getInstance().save(subFlow);
 			}
-			subFlow.addEventListener(new SubFlowEventListener(this, executingActor));
+			subFlow.addEventListener(new SubFlowEventListener(this));
 			subFlow.runFlow();
 			this.setExtTaskUuid(subFlow.getKey());
-			ask(executingActor, new WorkerMessage(CallbackType.submitted, this, null), 5000);
 			return null;
 		} 
 		catch (Throwable t) {
@@ -57,11 +51,9 @@ public abstract class FlowTask extends ExecutableTask {
 	 */
 	static class SubFlowEventListener implements IFlowEventListener {
 		
-		private Task task;
-		private ActorRef executingActor;
-		public SubFlowEventListener(FlowTask task, ActorRef executingActor) {
+		private FlowTask task;
+		public SubFlowEventListener(FlowTask task) {
 			this.task = task;
-			this.executingActor = executingActor;
 		}
 		
 		@Override
@@ -75,7 +67,7 @@ public abstract class FlowTask extends ExecutableTask {
 		public void handleFlowEvent(FlowEvent event, FlowSession session) {
 			if (event == FlowEvent.stop) {
 				TaskResultEnum status = session.getResult().toTaskResult();
-				ask(executingActor, task.createTaskResult(status, session.getStatus()), 5000);
+				task.reply(task.createTaskResult(status, session.getStatus()));
 			}
 		}
 

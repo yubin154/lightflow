@@ -14,7 +14,9 @@ import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepImpl;
-import org.lightj.task.Task;
+import org.lightj.task.ExecutableTask;
+import org.lightj.task.TaskExecutionException;
+import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -29,7 +31,11 @@ public class TestFlowContext extends BaseTestCase {
 		test.setParam4(new HashMap<String, String>());
 		test.setParam5(new ArrayList<String>());
 		IFlowStep step = new StepImpl();
-		Task<DummyFlowContext> task = new Task<DummyFlowContext>(){};
+		ExecutableTask<DummyFlowContext> task = new ExecutableTask<DummyFlowContext>(){
+			@Override
+			public TaskResult execute() throws TaskExecutionException {
+				return null;
+		}};
 		test.addStep(step);		
 		test.addTask(task.getTaskId(), task);
 		test.saveTaskResult(step.getStepId(), task, task.createTaskResult(TaskResultEnum.Success, "success"));

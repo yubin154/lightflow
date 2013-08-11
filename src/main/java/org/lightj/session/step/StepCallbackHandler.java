@@ -42,17 +42,15 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	/** all results */
 	protected ConcurrentMap<String, TaskResult> results = new ConcurrentHashMap<String, TaskResult>();
 	
-	/**
-	 * map a result status to a flow step result
-	 */
+	/** map a result status to a flow step result */
 	protected HashMap<TaskResultEnum, StepExecution> mapOnResults = new HashMap<TaskResultEnum, StepExecution>();
 	
 	/**
 	 * constructor with no defaul transition
 	 * @param transition
 	 */
-	StepCallbackHandler() {
-		super(StepTransition.NOOP);
+	public StepCallbackHandler() {
+		super(null);
 	}
 
 	/**
@@ -195,6 +193,51 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	}
 
 	/**
+	 * do the work when task submitted
+	 * @param task
+	 * @return
+	 * @throws FlowExecutionException
+	 */
+	public StepTransition executeOnSubmitted(Task task) throws FlowExecutionException {
+		StepTransition transition = StepTransition.newLog(task.getTaskId(), null);
+		return transition;
+	}
+
+	/**
+	 * do the work when task is created
+	 * @param task
+	 * @return
+	 * @throws FlowExecutionException
+	 */
+	public StepTransition executeOnCreated(Task task) throws FlowExecutionException {
+		return StepTransition.NOOP;
+	}
+
+	/**
+	 * do the work when task generates some result
+	 * move the flow to the transitions predefined in the result to transition map,
+	 * or to default transition if nothing matches
+	 * @param result
+	 * @return
+	 * @throws FlowExecutionException
+	 */
+	public synchronized StepTransition executeOnResult(Task task, TaskResult result) throws FlowExecutionException {
+		// remember result
+		handleResult(task, result);
+		return StepTransition.newLog((result.getStatus() + ": " + result.getMsg()), StringUtil.getStackTrace(result.getStackTrace()));
+	}
+
+	/**
+	 * custom logic to handle result
+	 * @param task
+	 * @param result
+	 * @throws FlowExecutionException
+	 */
+	protected void handleResult(Task task, TaskResult result) throws FlowExecutionException {
+		// override me
+	}
+	
+	/**
 	 * do the work when task completed
 	 * @param result
 	 * @return
@@ -234,39 +277,16 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	}
 
 	/**
-	 * do the work when task submitted
-	 * @param task
-	 * @return
-	 * @throws FlowExecutionException
+	 * add default mapping if null
+	 * @param def
 	 */
-	public StepTransition executeOnSubmitted(Task task) throws FlowExecutionException {
-		StepTransition transition = StepTransition.newLog(task.getTaskId(), null);
-		return transition;
+	@SuppressWarnings("unchecked")
+	public void setResultMapIfNull(StepCallbackHandler def) {
+		if (mapOnResults.isEmpty()) {
+			mapOnResults.putAll(def.mapOnResults);
+		}
 	}
-
-	/**
-	 * do the work when task is created
-	 * @param task
-	 * @return
-	 * @throws FlowExecutionException
-	 */
-	public StepTransition executeOnCreated(Task task) throws FlowExecutionException {
-		return StepTransition.NOOP;
-	}
-
-	/**
-	 * do the work when task generates some result
-	 * move the flow to the transitions predefined in the result to transition map,
-	 * or to default transition if nothing matches
-	 * @param result
-	 * @return
-	 * @throws FlowExecutionException
-	 */
-	public synchronized StepTransition executeOnResult(Task task, TaskResult result) throws FlowExecutionException {
-		// remember result
-		return StepTransition.newLog((result.getStatus() + ": " + result.getMsg()), StringUtil.getStackTrace(result.getStackTrace()));
-	}
-
+	
 	/**
 	 * register a status with result(s)
 	 * @param status
@@ -303,15 +323,6 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		return this;
 	}
 	
-	/**
-	 * set default transition if null
-	 * @param transition
-	 */
-	public void setDefIfNull(StepTransition transition) {
-		if (defResult == null) {
-			defResult = transition;
-		}
-	}
 	
 	@SuppressWarnings("unchecked")
 	public void merge(StepCallbackHandler another) {
