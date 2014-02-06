@@ -8,21 +8,18 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.lightj.example.dal.SampleDatabaseEnum;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationProcessor;
-import org.lightj.locking.LockManagerImpl;
-import org.lightj.session.FlowDefinition;
 import org.lightj.session.FlowModule;
 import org.lightj.session.FlowProperties;
-import org.lightj.session.FlowSaveException;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.FlowStepProperties;
+import org.lightj.session.exception.FlowSaveException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-@FlowDefinition(typeId="Skeleton", desc="Bare minimal of a flow", group="Group_LowPriority")
-@FlowProperties(clustered=false, interruptible=false, lockTarget=false, priority=5, timeoutInSec=0, killNonRecoverable=true)
+@FlowProperties(typeId="Skeleton", desc="Bare minimal of a flow", clustered=false, interruptible=false, timeoutInSec=0)
 @SuppressWarnings("rawtypes")
 public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 
@@ -43,7 +40,7 @@ public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 	}
 
 	@Override
-	protected Enum getFirstStepEnum() {
+	public Enum getFirstStepEnum() {
 		return SkeletonSteps.start;
 	}
 
@@ -78,7 +75,7 @@ public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 		InitializationProcessor initializer = new InitializationProcessor(
 			new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.FLOW_MONGO)
-								.enableCluster(new LockManagerImpl(SampleDatabaseEnum.FLOW_MONGO))
+								.enableCluster()
 								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))
 								.getModule()

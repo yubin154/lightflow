@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 
 import org.lightj.session.FlowContext;
-import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowResult;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.task.ITaskListener;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;

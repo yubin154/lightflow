@@ -10,6 +10,8 @@ import java.util.Map.Entry;
 import org.lightj.Constants;
 import org.lightj.dal.DataAccessException;
 import org.lightj.session.dal.SessionDataFactory;
+import org.lightj.session.exception.FlowExecutionException;
+import org.lightj.session.exception.FlowSaveException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepCallbackHandler;
@@ -30,7 +32,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class FlowDriver implements Runnable, IQueueTask {
+public class FlowDriver implements Runnable {
 
 	/** logger */
 	static final Logger logger = LoggerFactory.getLogger(FlowDriver.class);
@@ -169,9 +171,7 @@ public class FlowDriver implements Runnable, IQueueTask {
 		}
 		// run the flow
 		try {
-			// initialize flow stats
-			session.getStats();
-			handleFlowEvent(evt);
+			handleFlowEvent(evt, null);
 			drive(new StepTransition()
 					.toStep(session.getCurrentAction())
 					.inState(session.getState()));
@@ -398,10 +398,10 @@ public class FlowDriver implements Runnable, IQueueTask {
 	}
 
 	/** notify registered {@link IFlowEventListener} of flow change event */
-	public void handleFlowEvent(FlowEvent event) {
+	public void handleFlowEvent(FlowEvent event, String msg) {
 		for (Entry<Class, IFlowEventListener> l : eventListeners.entrySet()) {
 			try {
-				l.getValue().handleFlowEvent(event, session);
+				l.getValue().handleFlowEvent(event, session, msg);
 			} catch (Throwable t) {
 				logger.warn("Flow event handling exception : " + t.getMessage());
 			}
@@ -536,21 +536,6 @@ public class FlowDriver implements Runnable, IQueueTask {
 	 */
 	public void run() {
 		drive();
-	}
-
-	@Override
-	public String getName() {
-		return session.getKey();
-	}
-
-	@Override
-	public String getGroup() {
-		return session.getTaskGroup();
-	}
-
-	@Override
-	public int getPriority() {
-		return session.getPriority();
 	}
 
 }

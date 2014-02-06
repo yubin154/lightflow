@@ -13,19 +13,23 @@ import org.lightj.dal.DataAccessException;
 import org.lightj.dal.Locatable;
 import org.lightj.dal.Locator;
 import org.lightj.dal.LocatorUtil;
-import org.lightj.dal.Query;
 import org.lightj.dal.SimpleLocatable;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.SessionDataFactory;
+import org.lightj.session.eventlistener.FlowRecoverEventListener;
+import org.lightj.session.eventlistener.FlowSaver;
+import org.lightj.session.eventlistener.FlowStatsTracker;
+import org.lightj.session.eventlistener.FlowTimer;
+import org.lightj.session.exception.FlowSaveException;
+import org.lightj.session.exception.FlowValidationException;
+import org.lightj.session.exception.StateChangeException;
 import org.lightj.session.step.StepLog;
 import org.lightj.util.AnnotationDefaults;
-import org.lightj.util.DBUtil;
 import org.lightj.util.DateUtil;
 import org.lightj.util.NetUtil;
 import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.mongodb.core.query.Criteria;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -50,9 +54,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	/** flow driver */
 	protected FlowDriver driver;
 	
-	/** flow statistics */
-	protected FlowStatistics stats;
-
 	/** run time flow event listener */
 	protected List<IFlowEventListener> flowEventListeners = new ArrayList<IFlowEventListener>();
 	
@@ -89,11 +90,11 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	}
 	
 	/** first step */
-	abstract protected Enum getFirstStepEnum();
+	abstract public Enum getFirstStepEnum();
 	
 	////////////////// proxy to managerDO ////////////////////
 	
-	protected ISessionData getSessionData() {
+	public ISessionData getSessionData() {
 		return sessionDo;
 	}
 	protected void setSessionData(ISessionData sessionDo) {
@@ -393,10 +394,12 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		for (IFlowEventListener listener : flowEventListeners) {
 			driver.addFlowEventListener(listener);
 		}
+		
 		// add the system default listener, no choice of removing
 		driver.addFlowEventListener(new FlowSaver());
 		driver.addFlowEventListener(new FlowTimer());
 		driver.addFlowEventListener(new FlowStatsTracker());
+		driver.addFlowEventListener(new FlowRecoverEventListener());
 		
 		return driver;
 	}
@@ -477,7 +480,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 			}
 			final FlowEvent event = actionStatus.isComplete() ? FlowEvent.stop : FlowEvent.pause;
 			if (driver != null) {
-				driver.handleFlowEvent(event);
+				driver.handleFlowEvent(event, message);
 			}
 		}
 	}
@@ -527,7 +530,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		finally {
 			cleanup();
 			if (driver != null) {
-				driver.handleFlowEvent(FlowEvent.stop);
+				driver.handleFlowEvent(FlowEvent.stop, message);
 			}
 		}
 	}
@@ -570,15 +573,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		// wipe out next step
 		setNextAction(null);
 		// stop all non-completed child sessions if any
-		Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
-		if (q instanceof org.lightj.dal.Query) {
-			((Query)q).and("parent_id", "=", this.getId()).and("flow_id", "!=", this.getId()).and("end_date is null");
-		}
-		else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
-			((org.springframework.data.mongodb.core.query.Query)q).addCriteria(
-					Criteria.where("parentId").is(this.getId()).and("flowId").ne(this.getId()).and("endDate").is(null));
-		}
-		
+		Object q = SessionDataFactory.getInstance().getDataManager().queryIncompleteChildFlows(this.getId());
 		for (FlowSession child : FlowSessionFactory.getInstance().getSessionsByQuery(q)) {
 			child.killFlow(this.getState(), this.getResult(), "Parent was stopped");
 		}
@@ -594,7 +589,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * 
 	 * @return
 	 */
-	protected FlowProperties getFlowProperties() {
+	public FlowProperties getFlowProperties() {
 		FlowProperties fp = this.getClass().getAnnotation(FlowProperties.class);
 		return fp == null ? AnnotationDefaults.of(FlowProperties.class) : fp;
 	}
@@ -612,16 +607,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		driver.removeFlowEventListenerOfType(listenerKlass);
 	}
 	
-	/** session priority compare to other sessions in the same group */
-	public int getPriority() {
-		return getFlowProperties().priority();
-	}
-	
-	/** task group used when submitting task to thread pool */
-	public String getTaskGroup() {
-		return _type != null?_type.getTaskGroup(): "UNKNOWN";
-	}
-
 	/**
 	 * recover a crashed session from a running state 
 	 *
@@ -630,18 +615,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		String msg = null;
 		try {
 			// first cancel all non complete child flows
-			Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
-			if (q instanceof org.lightj.dal.Query) {
-				((Query)q).and("end_date is null")
-				.and("flow_state in (" + 
-						DBUtil.dbC(FlowState.Running.name()) + ',' +
-						DBUtil.dbC(FlowState.Callback.name())+ ")")
-				.and("parent_id", "=", this.getId());
-			}
-			else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
-				((org.springframework.data.mongodb.core.query.Query)q).addCriteria(
-						Criteria.where("endDate").is(null).and("actionStatus").in(FlowState.Running.name(), FlowState.Callback.name()).and("parentId").is(this.getId()));
-			}			
+			Object q = SessionDataFactory.getInstance().getDataManager().queryActiveChildFlows(this.getId());
 			List<FlowSession> children = FlowSessionFactory.getInstance().getSessionsByQuery(q);
 			for (FlowSession child : children) {
 				child.killFlow(FlowState.Canceled, FlowResult.Failed, "Parent recover from an unexpected stop");
@@ -649,58 +623,35 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		} catch (Throwable t) {
 			logger.error("cancel child sessions failed", t);
 		}
-		
+
+		FlowEvent evt = null;
 		try {
 			driver = this.createFlowDriver();
 			if (this.getFlowProperties().clustered()) {
+				evt = FlowEvent.recover;
 				this.setState(FlowState.Paused);
 				msg = "Session recovered from an unexpected stop";
 				this.getSessionData().setStatus(msg);
 				this.runFlow();
-				driver.handleFlowEvent(FlowEvent.recover);
 			}
 			else {
-				if (this.getFlowProperties().killNonRecoverable()) {
-					driver.handleFlowEvent(FlowEvent.recoverNot);
-					msg = "Cancel a non-crashsafe session from an unexpected stop";
-					this.killFlow(FlowState.Canceled, FlowResult.Canceled, msg);
-				}
-				else {
-					driver.handleFlowEvent(FlowEvent.recoverNot);
-					msg = "Pause a non-crashsafe session from an unexpected stop";
-					this.pauseFlow(FlowResult.Success, msg);
-				}
+				evt = FlowEvent.recoverNot;
+				msg = "Non-crashsafe session not recoverable from an unexpected stop";
 			}
 		} catch (Throwable t) {
 			logger.error("Failed to recover session from an unexpected stop ", t);
-			msg = "Failed to recover session from an unexpected stop: " + (t.getMessage()!=null ? t.getMessage() : "");
-			driver.handleFlowEvent(FlowEvent.recoverFailure);
-			if (this.getFlowProperties().killNonRecoverable()) {
-				// cancel the session if we can't recover it
-				this.killFlow(FlowState.Canceled, FlowResult.Failed, msg);
-			}
-			else {
-				try {
-					this.pauseFlow(FlowResult.Failed, msg);
-				} catch (StateChangeException e) {
-					// ignore
-				}
-			}
+			msg = String.format("Failed to recover session from an unexpected stop: %s", t.getMessage());
+			evt = FlowEvent.recoverFailure;
+			driver.handleFlowEvent(FlowEvent.recoverFailure, t.getMessage());
+		} finally {
+			driver.handleFlowEvent(evt, msg);
 		}
-	}
-	
-	/** get stats */
-	FlowStatistics getStats() {
-		if (stats == null) {
-			stats = new FlowStatistics(getFirstStepEnum().getClass(), getCurrentAction());
-		}
-		return stats;
 	}
 	
 	/** percent complete */
 	public int getPercentComplete() {
 		if (this.getEndDate() != null) return 100;
-		return getStats().getPercentComplete();
+		return getSessionContext().getPctComplete();
 	}
 	
 	/** execution logs */
@@ -713,7 +664,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * @return
 	 */
 	protected String generateFlowKey() {
-		return String.format("%s|%s|%s", DateUtil.format(new Date(), date_fmt), UUID.randomUUID().toString(), _type.value());
+		return String.format("%s|%s|%s", DateUtil.format(new Date(), date_fmt), _type.value(), UUID.randomUUID().toString());
 	}
 	
 	/**
@@ -731,7 +682,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		flowInfo.setFlowState(getState().getLabel());
 		flowInfo.setFlowStatus(getStatus());
 		flowInfo.setFlowType(getFlowType().value());
-		flowInfo.setProgress("" + getStats().getPercentComplete() + "%");
+		flowInfo.setProgress(String.format("%s", getPercentComplete()));
 		flowInfo.setRequester(getKeyOfRequester());
 		flowInfo.setTarget(getKeyOfTarget());
 		flowInfo.setFlowContext(sessionContext.getSearchableContext());

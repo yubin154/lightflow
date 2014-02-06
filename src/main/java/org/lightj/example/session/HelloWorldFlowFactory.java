@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lightj.example.session.HelloWorldFlow.steps;
-import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.DelayedEnclosure;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.RetryEnclosure;

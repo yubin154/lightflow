@@ -11,15 +11,14 @@ import org.lightj.dal.BaseDatabaseType;
 import org.lightj.dal.ConnectionHelper;
 import org.lightj.dal.DatabaseModule;
 import org.lightj.dal.HsqlDatabaseType;
-import org.lightj.dal.ITransactional;
 import org.lightj.initialization.BaseInitializable;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
-import org.lightj.locking.ILockManager;
-import org.lightj.locking.LockException;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.util.SpringContextUtil;
 import org.springframework.context.ApplicationContext;
+
+import akka.actor.ActorSystem;
 
 import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 
@@ -73,9 +72,9 @@ public class FlowModule {
 		return s_Module.dbEnum;
 	}
 	
-	/** enable clustering, session from failed nodes will be recovered by other nodes in the cluster */
-	public FlowModule enableCluster(ILockManager lm) {
-		return this.enableCluster(lm, 10000, 60000);
+	/** get actor system */
+	public ActorSystem getActorSystem() {
+		return s_Module.system;
 	}
 	
 	/** add flows from spring context */
@@ -91,28 +90,16 @@ public class FlowModule {
 	 * @param recoverDelayMaxMs
 	 * @return
 	 */
-	public FlowModule enableCluster(ILockManager semaphore, int recoverDelayMinMs, int recoverDelayMaxMs) {
+	public FlowModule enableCluster() {
 		s_Module.validateForChange();
 		s_Module.addDependentModule(new ClusteringModule().getModule());
 		s_Module.clusterEnabled = true;
-		s_Module.lockManager = semaphore;
-		s_Module.recoverMinDelayMs = recoverDelayMinMs;
-		s_Module.recoverMaxDelayMs = recoverDelayMaxMs;
 		return this;
 	}
 
 	/** cluster enablement */
 	public static boolean isClusterEnabled() {
 		return s_Module==null ? false : s_Module.clusterEnabled;
-	}
-	
-	/**
-	 * global semaphore
-	 * @return
-	 */
-	public static ILockManager getLockManager() {
-		if (s_Module == null) throw new RuntimeException("FlowModule not initialized");
-		return s_Module.lockManager;
 	}
 	
 	/**
@@ -124,37 +111,15 @@ public class FlowModule {
 		
 		/** enable cluster support */
 		private boolean clusterEnabled;
-		private ILockManager lockManager = new ILockManager() {
-
-			@Override
-			public void lock(String targetKey) throws LockException {
-				throw new LockException("not implemented");
-			}
-
-			@Override
-			public void unlock(String targetKey) throws LockException {
-				throw new LockException("not implemented");
-			}
-
-			@Override
-			public void synchronizeObject(String semaphoreKey,
-					ITransactional context) throws LockException {
-				throw new LockException("not implemented");
-			}
-
-			@Override
-			public int getLockCount(String targetKey) {
-				return 0;
-			}
-			
-		};
-		private int recoverMinDelayMs;
-		private int recoverMaxDelayMs;
 		/** database */
 		private BaseDatabaseType dbEnum;
 		/** executor service */
 		private ExecutorService es;
+		/** spring context */
 		private ApplicationContext flowCtx;
+		/** create actor system */
+		private ActorSystem system; 
+
 		
 		/**
 		 * constructor
@@ -171,15 +136,13 @@ public class FlowModule {
 						cleanupMemTables(dbEnum);
 					}
 					clusterEnabled = false;
-					recoverMaxDelayMs = 0;
-					recoverMinDelayMs = 0;
 					dbEnum = null;
 					es = null;
 					flowCtx = null;
 				}
 				
-				@SuppressWarnings("rawtypes")
 				@Override
+				@SuppressWarnings("rawtypes")
 				protected void initialize() 
 				{
 					if (es == null) {
@@ -194,6 +157,9 @@ public class FlowModule {
 					if (flowCtx == null) {
 						throw new InitializationException("session flow application context not set");
 					}
+					
+					// create actor system
+					system = ActorSystem.create();
 					
 					SessionDataFactory f = SessionDataFactory.getInstance();
 					f.setDbEnum(dbEnum);
@@ -219,7 +185,7 @@ public class FlowModule {
 							ClusteringManager.getInstance().startOrJoin(
 									new ClusteringModule().getClusterName(), 
 									MemberType.CORE, 
-									new FlowClusteringEventHandler(recoverMinDelayMs, recoverMaxDelayMs));
+									new FlowClusteringEventHandler());
 						} catch (ClusteringException e) {
 							throw new InitializationException(e);
 						}

@@ -6,6 +6,11 @@ import java.util.LinkedHashMap;
 
 import org.lightj.session.step.StepLog;
 
+/**
+ * flow information persisted
+ * @author binyu
+ *
+ */
 public class FlowInfo {
 	
 	private String flowKey;

@@ -4,9 +4,9 @@ import java.util.UUID;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowDriver;
-import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowModule;
 import org.lightj.session.FlowStepProperties;
+import org.lightj.session.exception.FlowExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +22,7 @@ public class StepImpl implements IFlowStep {
 	static Logger logger = LoggerFactory.getLogger(StepImpl.class);
 	
 	/** unique step id */
-	private final String stepId = "Step|" + UUID.randomUUID().toString();
+	private final String uid = UUID.randomUUID().toString();
 	
 	/**
 	 * step it represents in the flow, set by framework
@@ -242,7 +242,7 @@ public class StepImpl implements IFlowStep {
 
 	@Override
 	public String getStepId() {
-		return stepId;
+		return String.format("Step|%s|%s", stepName, uid);
 	}
 
 	@Override

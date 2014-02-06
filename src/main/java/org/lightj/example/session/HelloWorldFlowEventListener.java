@@ -36,7 +36,7 @@ public class HelloWorldFlowEventListener implements IFlowEventListener {
 //		}
 	}
 
-	public void handleFlowEvent(FlowEvent event, FlowSession session) {
+	public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 		if (event == FlowEvent.stop || event == FlowEvent.pause) {
 			if (l != null && c != null) {
 				ConcurrentUtil.signalAll(l, c);

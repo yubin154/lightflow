@@ -3,6 +3,8 @@ package org.lightj.session;
 import org.lightj.ILabelledValue;
 
 public enum FlowEvent implements ILabelledValue {
+	
+	// flow events //
 	/** session start */
 	start("Session Start"),
 	/** session paused */
@@ -17,6 +19,8 @@ public enum FlowEvent implements ILabelledValue {
 	recoverFailure("Session Recover Failure"),
 	/** session complete */
 	stop("Session Stop"),
+	
+	// step events //
 	/** build a step */
 	stepBuild("Build Step"),
 	/** enter in a step */
@@ -25,7 +29,7 @@ public enum FlowEvent implements ILabelledValue {
 	stepOngoing("Continue Step"),
 	/** leaving a step */
 	stepExit("Complete Step"),
-	/** log an event */
+	/** something notable */
 	log("Log"),
 	;
 

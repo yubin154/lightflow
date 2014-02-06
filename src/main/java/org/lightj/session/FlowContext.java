@@ -22,6 +22,8 @@ import org.lightj.session.CtxProp.CtxDbType;
 import org.lightj.session.CtxProp.CtxSaveType;
 import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.SessionDataFactory;
+import org.lightj.session.exception.FlowContextException;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepErrorLog;
 import org.lightj.session.step.StepLog;
@@ -68,6 +70,10 @@ public class FlowContext {
 	/** step execution history */
 	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.AutoSave)
 	private LinkedHashMap<String, StepLog> executionLogs = new LinkedHashMap<String, StepLog>();
+	
+	/** pct complete */
+	@CtxProp(dbType= CtxDbType.VARCHAR, saveType=CtxSaveType.SaveOnChange)
+	private int pctComplete;
 	
 	/**
 	 * Constructor
@@ -470,7 +476,7 @@ public class FlowContext {
 			Object o = executionLogs.get(key);
 			if(o instanceof Map) {
 				try {
-					_execLogs.put(key, JsonUtil.decode((Map)o, StepLog.class));
+					_execLogs.put(key, (StepLog) JsonUtil.decode((Map)o, StepLog.class));
 				} catch (Exception e) {
 					throw new RuntimeException("Couldn't convert step log", e);
 				}
@@ -510,6 +516,14 @@ public class FlowContext {
 		if (executionLogs.containsKey(stepId)) {
 			executionLogs.get(stepId).setComplete();
 		}
+	}
+	
+	/////////////// flow pct complete ////////////////
+	public int getPctComplete() {
+		return pctComplete;
+	}
+	public void setPctComplete(int pctComplete) {
+		this.pctComplete = pctComplete;
 	}
 	
 	/////////////// execution exceptions ////////////////

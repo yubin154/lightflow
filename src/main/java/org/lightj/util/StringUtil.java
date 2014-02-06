@@ -585,4 +585,18 @@ public class StringUtil {
 		}
 		return source;
 	}
+	
+	/**
+	 * return first not null or empty value of an string array
+	 * @param strings
+	 * @return
+	 */
+	public static String firstNotNullEmpty(String...strings) {
+		for (String str : strings) {
+			if (!StringUtil.isNullOrEmpty(str)) {
+				return str;
+			}
+		}
+		return null;
+	}
 }

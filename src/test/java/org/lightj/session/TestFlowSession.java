@@ -11,13 +11,13 @@ import org.junit.Test;
 import org.lightj.BaseTestCase;
 import org.lightj.example.dal.SampleDatabaseEnum;
 import org.lightj.example.session.HelloWorldFlow;
-import org.lightj.example.session.HelloWorldFlow.steps;
 import org.lightj.example.session.HelloWorldFlowEventListener;
+import org.lightj.example.session.HelloWorldFlow.steps;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
-import org.lightj.locking.LockManagerImpl;
 import org.lightj.util.ConcurrentUtil;
+import org.lightj.util.JsonUtil;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 
@@ -36,7 +36,7 @@ public class TestFlowSession extends BaseTestCase {
 		session.addEventListener(new HelloWorldFlowEventListener(lock, cond));
 		session.runFlow();
 		ConcurrentUtil.wait(lock, cond, 30 * 1000);
-		System.out.println(new ObjectMapper().writeValueAsString(session.getFlowInfo()));
+		System.out.println(JsonUtil.encode(session.getFlowInfo()));
 		Assert.assertEquals(1, session.getSessionContext().getTaskCount());
 		Assert.assertEquals(2, session.getSessionContext().getSplitCount());
 		Assert.assertEquals(2, session.getSessionContext().getRetryCount());
@@ -130,7 +130,7 @@ public class TestFlowSession extends BaseTestCase {
 		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
 		return new BaseModule[] {
 				new FlowModule().setDb(SampleDatabaseEnum.TEST)
-								.enableCluster(new LockManagerImpl(SampleDatabaseEnum.TEST))
+								.enableCluster()
 								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))
 								.getModule(),

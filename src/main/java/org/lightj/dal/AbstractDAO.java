@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * 					 int, long, double - map to number, 
  * 					 date - map to date/time
  */
-@SuppressWarnings({"rawtypes","unchecked"})
+@SuppressWarnings({"unchecked"})
 public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 
 	// logger
@@ -640,100 +640,6 @@ public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 		return true;
 	}
 	
-	/**
-	 * Search for result and process it by a external ResultSet handler
-	 * @param query			query to be executed
-	 * @param handler		ResultSet handler
-	 * @throws DataAccessException
-	 */
-	public void search(final Query query, final IDataAccess.IResultSetHandler handler, final boolean lock) 
-		throws DataAccessException 
-	{
-		StringBuffer sql = new StringBuffer();
-		if (query.isFullQuery()) {
-			sql.append(query.toString());
-		} 
-		else  {
-			sql.append("SELECT * FROM ").append(this.tableName).append(query.daoString());
-		}
-		if (lock) {
-			sql.append(" ").append("FOR UPDATE");
-		}
-		logger.debug(this.getClass().getName() + ".search(...) is executing " + query.debugString());
-		final String sqlStr = sql.toString();
-		final List args = query.getArgs();
-		try {
-			if (lock) {
-				// SELECT ..... FOR UPDATE have to be done in a transaction context
-				final BaseDatabaseType db = this.getDbEnum(); 
-				TransactionManager.execute(this.getDbEnum(), new ITransactional() {
-					public void execute() throws Exception {
-						int count = query.getTop();
-						boolean noTop = (query.getTop() <= 0);
-						Connection conn = null;
-						PreparedStatement stmt = null;
-						ResultSet rs = null;
-						try {
-							conn = ConnectionHelper.getConnection(db);
-							stmt = conn.prepareStatement(sqlStr);
-							for (int i = 1, len = args.size(); i <= len; i++) {
-								stmt.setObject(i, args.get(i-1));
-							}
-							rs = stmt.executeQuery();
-							if (rs.next()) {
-								do {
-									handler.next(conn, rs);
-								} while (rs.next() && (noTop || --count > 0));
-									handler.postProcess(conn);
-							}
-							else {
-								handler.handleEmptyResult();
-							}
-						}
-						finally {
-							ConnectionHelper.cleanupDBResources(rs, stmt, conn);
-						}
-					}
-				});
-			}
-			else {
-				Connection conn = null;
-				PreparedStatement stmt = null;
-				ResultSet rs = null;
-				int count = query.getTop();
-				boolean noTop = (query.getTop() <= 0);
-				try {
-					conn = ConnectionHelper.getConnection(this.getDbEnum());
-					stmt = conn.prepareStatement(sqlStr);
-					for (int i = 1, len = args.size(); i <= len; i++) {
-						stmt.setObject(i, args.get(i-1));
-					}
-					rs = stmt.executeQuery();
-					if (rs.next()) {
-						do {
-							handler.next(conn, rs);
-						} while (rs.next() && (noTop || --count > 0));
-						handler.postProcess(conn);
-					}
-					else {
-						handler.handleEmptyResult();
-					}
-				}
-				finally {
-					ConnectionHelper.cleanupDBResources(rs, stmt, conn);
-				}
-			}
-		}
-		catch (Exception e) {
-			logger.error("Exception locking " + doKlass.getName() + " because " + e.getMessage());
-			throw new DataAccessException(e);
-		}
-		catch (Throwable t) {
-			logger.error("Exception locking " + doKlass.getName() + " because " + t.getMessage());
-			throw new DataAccessException(t.getMessage());
-		}
-	}
-
 	/**
 	 * To determine if an entity is persistent.
 	 * default implementation, check {@link IData#getPrimaryKey()}

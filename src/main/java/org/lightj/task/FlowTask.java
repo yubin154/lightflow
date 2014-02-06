@@ -64,7 +64,7 @@ public abstract class FlowTask extends ExecutableTask {
 		}
 
 		@Override
-		public void handleFlowEvent(FlowEvent event, FlowSession session) {
+		public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 			if (event == FlowEvent.stop) {
 				TaskResultEnum status = session.getResult().toTaskResult();
 				task.reply(task.createTaskResult(status, session.getStatus()));

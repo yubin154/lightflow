@@ -1,12 +1,9 @@
 package org.lightj.session.step;
 
-import static akka.pattern.Patterns.ask;
-
-import java.util.concurrent.TimeUnit;
-
 import org.lightj.session.FlowContext;
-import org.lightj.session.FlowExecutionException;
+import org.lightj.session.FlowModule;
 import org.lightj.session.FlowResult;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.task.AsyncPollTaskWorker;
 import org.lightj.task.AsyncTaskWorker;
 import org.lightj.task.BatchOption;
@@ -16,16 +13,13 @@ import org.lightj.task.ExecutableTask;
 import org.lightj.task.IWorker;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.util.ActorUtil;
 
-import scala.concurrent.duration.Duration;
-import scala.concurrent.duration.FiniteDuration;
 import akka.actor.Actor;
 import akka.actor.ActorRef;
+import akka.actor.Props;
 import akka.actor.UntypedActorFactory;
-import akka.util.Timeout;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes","unchecked"})
 public class StepBuilder {
 
 	/**
@@ -59,7 +53,7 @@ public class StepBuilder {
 	 * @return
 	 */
 	public StepBuilder runTo(String step) {
-		flowStep.setExecution(new SimpleStepExecution(StepTransition.runToStep(step)));
+		this.execute(new SimpleStepExecution(StepTransition.runToStep(step)));
 		return this;
 	}
 
@@ -69,7 +63,7 @@ public class StepBuilder {
 	 * @return
 	 */
 	public StepBuilder runTo(Enum step) {
-		flowStep.setExecution(new SimpleStepExecution(StepTransition.runToStep(step)));
+		this.execute(new SimpleStepExecution(StepTransition.runToStep(step)));
 		return this;
 	}
 	
@@ -79,7 +73,7 @@ public class StepBuilder {
 	 * @return
 	 */
 	public StepBuilder parkInState(StepTransition trans) {
-		flowStep.setExecution(new SimpleStepExecution(trans));
+		this.execute(new SimpleStepExecution(trans));
 		return this;
 	}
 	
@@ -194,7 +188,8 @@ public class StepBuilder {
 						// inject the context
 						task.setContext(mycontext);
 					}
-					ActorRef batchWorker = ActorUtil.createActor(new UntypedActorFactory() {
+					ActorRef batchWorker = new FlowModule().getActorSystem().actorOf(
+							new Props(new UntypedActorFactory() {
 					
 						private static final long serialVersionUID = 1L;
 
@@ -202,9 +197,8 @@ public class StepBuilder {
 						public Actor create() throws Exception {
 							return new BatchTaskWorker(batchTask, actorFactory, chandler);
 						}
-					});
-					final FiniteDuration timeout = Duration.create(10, TimeUnit.MINUTES);
-					ask(batchWorker, IWorker.WorkerMessageType.REPROCESS_REQUEST, new Timeout(timeout));
+					}));
+					batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST);
 					return super.execute();
 				}
 		});
@@ -232,8 +226,7 @@ public class StepBuilder {
 	 * @param tasks
 	 * @return
 	 */
-	public StepBuilder executeAsyncPollTasks(
-			final ExecutableTask...tasks) 
+	public StepBuilder executeAsyncPollTasks(final ExecutableTask...tasks) 
 	{
 		
 		final UntypedActorFactory workerFactory = createAsyncPollActorFactory();

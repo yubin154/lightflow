@@ -16,10 +16,6 @@ public class FlowTypeImpl implements FlowType {
 	/** flow context class */
 	private final Class<? extends FlowContext> ctxKlass;
 
-	/** optional grouping for better concurrency */
-	private final String taskGroup;
-
-	
 	public String value() {
 		return value;
 	}
@@ -36,18 +32,13 @@ public class FlowTypeImpl implements FlowType {
 		return ctxKlass;
 	}
 
-	public String getTaskGroup() {
-		return taskGroup;
-	}
-
 	protected FlowTypeImpl(String value, String desc, Class<? extends FlowSession> klass,
-			Class<? extends FlowContext> ctxKlass, String taskGroup) {
+			Class<? extends FlowContext> ctxKlass) {
 
 		this.value = value;
 		this.desc = desc;
 		this.klass = klass;
 		this.ctxKlass = ctxKlass;
-		this.taskGroup = taskGroup;
 	}
 	
 	public String getLabel() {

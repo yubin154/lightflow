@@ -1,7 +1,12 @@
-package org.lightj.session;
+package org.lightj.session.eventlistener;
 
 import java.util.Date;
 
+import org.lightj.session.FlowEvent;
+import org.lightj.session.FlowResult;
+import org.lightj.session.FlowSession;
+import org.lightj.session.FlowSessionFactory;
+import org.lightj.session.IFlowEventListener;
 import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.IFlowStep;
@@ -75,21 +80,19 @@ public class FlowSaver implements IFlowEventListener {
 	 * @param event
 	 * @param session
 	 */
-	public void handleFlowEvent(FlowEvent event, FlowSession session) {
+	public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 		// persist log ALWAYS on flow event start/stop
 		switch (event) {
 		case start:
 		case resume:
 		case log:
-			persistStepHistory(session, event.getLabel(), event.getLabel());
-			break;
 		case recover:
-			persistStepHistory(session, (session.getStatus() != null ? session.getStatus() : event.getLabel()), event.getLabel());
+			persistStepHistory(session, StringUtil.firstNotNullEmpty(msg, session.getStatus(), event.getLabel()), event.getLabel());
 			break;
 		case stop:
 		case pause:
 			FlowSessionFactory.getInstance().removeSessionFromCache(session.getKey());
-			persistStepHistory(session, (session.getStatus() != null ? session.getStatus() : event.getLabel()), event.getLabel());
+			persistStepHistory(session, StringUtil.firstNotNullEmpty(msg, session.getStatus(), event.getLabel()), event.getLabel());
 			break;
 			
 		}

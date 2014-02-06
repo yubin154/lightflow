@@ -5,10 +5,19 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.lightj.session.eventlistener.FlowTimer;
+import org.lightj.session.exception.FlowExistException;
+
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface FlowProperties {
 	
+	/** flow type */
+	public String typeId();
+	
+	/** flow desc */
+	public String desc()	default "";
+
 	/**
 	 * if the flow should be synchronized on target, 
 	 * et. when active flow exist on the target, no new flow of the same time is allowed
@@ -36,17 +45,5 @@ public @interface FlowProperties {
 	 * @return
 	 */
 	int timeoutInSec()		default -1;
-	
-	/**
-	 * priority of the session compared to other sessions in the same task group
-	 * @return
-	 */
-	int priority()				default 5;
-	
-	/**
-	 * if recover fails, whether to terminate session or pause it as is
-	 * @return
-	 */
-	boolean killNonRecoverable()	default true;
 	
 	}

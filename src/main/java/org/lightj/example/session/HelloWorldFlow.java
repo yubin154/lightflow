@@ -1,16 +1,14 @@
 package org.lightj.example.session;
 
-import org.lightj.session.FlowDefinition;
-import org.lightj.session.FlowExecutionException;
 import org.lightj.session.FlowProperties;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowState;
 import org.lightj.session.FlowStepProperties;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepBuilder;
-import org.lightj.session.step.StepExecution;
 import org.lightj.session.step.StepImpl;
 import org.lightj.session.step.StepTransition;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * @author biyu
  *
  */
-@SuppressWarnings("rawtypes")
-@FlowDefinition(typeId="HelloWorld", desc="hello world", group="TEST")
-@FlowProperties(interruptible=false,clustered=true)
+@FlowProperties(typeId="HelloWorld", desc="hello world", interruptible=false,clustered=true)
 public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	
 	public static enum steps {
@@ -74,7 +70,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	private IFlowStep helloWorldTestFailureStep;
 
 	@Override
-	protected Enum getFirstStepEnum() {
+	public Enum getFirstStepEnum() {
 		return steps.start;
 	}
 
@@ -85,8 +81,8 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 */
 	public IFlowStep start() {
 		
-		StepExecution execution = new SimpleStepExecution(new StepTransition(getParentId()>0 ? steps.stop : (sessionContext.isInjectFailure() ? steps.testFailureStep : steps.syncTaskStep)));
-		return new StepBuilder().execute(execution).getFlowStep();
+		Enum nextStep = getParentId()>0 ? steps.stop : (sessionContext.isInjectFailure() ? steps.testFailureStep : steps.syncTaskStep);
+		return new StepBuilder().runTo(nextStep).getFlowStep();
 	}
 	
 	/**

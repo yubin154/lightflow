@@ -1,10 +1,11 @@
-package org.lightj.session;
+package org.lightj.session.eventlistener;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.lightj.session.FlowStepProperties;
 import org.lightj.util.StringUtil;
 
 public class FlowStatistics {

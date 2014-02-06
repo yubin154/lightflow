@@ -9,6 +9,8 @@ import org.lightj.example.session.HelloWorldFlow;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
+import org.lightj.session.eventlistener.FlowStatistics;
+import org.lightj.session.eventlistener.FlowStatsTracker;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepImpl;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -31,7 +33,7 @@ public class TestFlowStats extends BaseTestCase {
 	public void testStatsTracker() throws Exception {
 		FlowStatsTracker statsTracker = new FlowStatsTracker();
 		HelloWorldFlow session = FlowSessionFactory.getInstance().createSession(HelloWorldFlow.class);
-		statsTracker.handleFlowEvent(FlowEvent.start, session);
+		statsTracker.handleFlowEvent(FlowEvent.start, session, null);
 		assertEquals(0, session.getPercentComplete());
 		
 		IFlowStep step = new StepImpl();
@@ -43,7 +45,7 @@ public class TestFlowStats extends BaseTestCase {
 		statsTracker.handleStepEvent(FlowEvent.stepExit, session, step, null);
 		assertTrue(session.getPercentComplete()>0 && session.getPercentComplete()<100);
 		
-		statsTracker.handleFlowEvent(FlowEvent.stop, session);
+		statsTracker.handleFlowEvent(FlowEvent.stop, session, null);
 		assertEquals(100, session.getPercentComplete());
 		
 	}

@@ -1,5 +1,9 @@
-package org.lightj.session;
+package org.lightj.session.eventlistener;
 
+import org.lightj.session.FlowEvent;
+import org.lightj.session.FlowSession;
+import org.lightj.session.FlowSessionFactory;
+import org.lightj.session.IFlowEventListener;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 import org.lightj.util.JsonUtil;
@@ -31,7 +35,7 @@ public class FlowLogger implements IFlowEventListener {
 	 * @param event
 	 * @param session
 	 */
-	public void handleFlowEvent(FlowEvent event, FlowSession session) {
+	public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 		// persist log ALWAYS on flow event start/stop
 		switch (event) {
 		case stop:

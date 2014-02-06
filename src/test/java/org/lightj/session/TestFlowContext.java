@@ -41,7 +41,7 @@ public class TestFlowContext extends BaseTestCase {
 		test.saveTaskResult(step.getStepId(), task, task.createTaskResult(TaskResultEnum.Success, "success"));
 		test.setStepComplete(step.getStepId());
 		test.prepareSave();
-		assertEquals(6, test.getDirtyMetas().size());
+		assertEquals(7, test.getDirtyMetas().size());
 	}
 	
 	@Override

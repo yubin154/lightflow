@@ -5,6 +5,9 @@ import java.util.List;
 import org.lightj.dal.BaseDatabaseType;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.DataAccessRuntimeException;
+import org.lightj.session.FlowResult;
+import org.lightj.session.FlowState;
+import org.lightj.session.FlowType;
 
 /**
  * session data manager interface
@@ -72,5 +75,11 @@ public interface ISessionDataManager<T extends ISessionData, Q> {
 	 * @param dbEnum
 	 */
 	public void setDbEnum(BaseDatabaseType dbEnum);
-
+	
+	
+	public Q queryActiveChildFlows(long parentId);
+	public Q queryIncompleteChildFlows(long parentId);
+	public Q queryIncompleteSessionsLike(ISessionData me);
+	public Q queryFlows(FlowType wfType, FlowState wfState, FlowResult wfStatus, String targetKey);
+	public Q queryActiveFlows(String runBy);
 }

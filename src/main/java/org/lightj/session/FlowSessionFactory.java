@@ -13,22 +13,21 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.lightj.dal.DataAccessException;
-import org.lightj.dal.ITransactional;
 import org.lightj.dal.Locator;
-import org.lightj.dal.Query;
-import org.lightj.locking.LockException;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.SessionDataFactory;
+import org.lightj.session.exception.FlowExistException;
+import org.lightj.session.exception.FlowSaveException;
+import org.lightj.session.exception.FlowValidationException;
+import org.lightj.session.exception.NoSuchFlowException;
 import org.lightj.util.ClassUtils;
-import org.lightj.util.DBUtil;
 import org.lightj.util.NetUtil;
 import org.lightj.util.SpringContextUtil;
 import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.mongodb.core.query.Criteria;
 
 /**
  * Business object factory for flow session
@@ -36,7 +35,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
  * @author biyu
  *
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class FlowSessionFactory implements Locator<FlowSession> {
 	
 	/**
@@ -121,42 +120,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 * @return
 	 */
 	private List<ISessionData> getActiveSessionsLike(ISessionData likeMe) {
-		Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
-		if (q instanceof org.lightj.dal.Query) {
-			Query query = (Query) q;
-			// only care about the same type
-			query.and("flow_type", "=", likeMe.getType());
-			// don't count my parent
-			if (likeMe.getParentId() > 0) {
-				query.and("flow_id", "!=", likeMe.getParentId());
-			}
-			// don't count myself
-			if (likeMe.getFlowId() > 0) {
-				query.and("flow_id", "!=", likeMe.getFlowId());
-			}
-			// on the same component
-			if (!StringUtil.isNullOrEmpty(likeMe.getTargetKey())) {
-				query.and("target", "=", likeMe.getTargetKey());
-			}
-			// open session
-			query.and("END_DATE IS NULL");
-		}
-		else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
-			org.springframework.data.mongodb.core.query.Query query = (org.springframework.data.mongodb.core.query.Query) q;
-			Criteria criteria = Criteria.where("type").is(likeMe.getType()).and("endDate").is(null);
-			if (likeMe.getParentId() > 0) {
-				criteria.and("flowId").ne(likeMe.getParentId());
-			}
-			// don't count myself
-			if (likeMe.getFlowId() > 0) {
-				criteria.and("flowId").ne(likeMe.getFlowId());
-			}
-			// on the same component
-			if (!StringUtil.isNullOrEmpty(likeMe.getTargetKey())) {
-				criteria.and("targetKey").is(likeMe.getTargetKey());
-			}
-			query.addCriteria(criteria);
-		}
+		Object q = SessionDataFactory.getInstance().getDataManager().queryIncompleteSessionsLike(likeMe);
 		try {
 			return SessionDataFactory.getInstance().getDataManager().search(q);
 		} catch (DataAccessException e) {
@@ -325,40 +289,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 */
 	public List<FlowSession> getSessions(FlowType wfType, FlowState wfState, FlowResult wfStatus, String targetKey) 
 	{
-		Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
-		if (q instanceof org.lightj.dal.Query) {
-			Query query = (Query) q; 
-			query.orderBy(" id desc");
-			if (wfType != null) {
-				query.and("flow_type", "=", wfType.value());
-			}
-			if (wfState != null) {
-				query.and("flow_state", "=", wfState.name());
-			}
-			if (wfStatus != null) {
-				query.and("flow_result", "=", wfStatus.name());
-			}
-			if (targetKey != null) {
-				query.and("target", "=", targetKey);
-			}
-		}
-		else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
-			org.springframework.data.mongodb.core.query.Query query = (org.springframework.data.mongodb.core.query.Query) q;
-			Criteria criteria = new Criteria();
-			if (wfType != null) {
-				criteria.and("type").is(wfType.value());
-			}
-			if (wfState != null) {
-				criteria.and("actionStatus").is(wfState.name());
-			}
-			if (wfStatus != null) {
-				criteria.and("resultStatus").is(wfStatus.name());
-			}
-			if (targetKey != null) {
-				criteria.and("targetKey").is(targetKey);
-			}
-			query.addCriteria(criteria);
-		}		
+		Object q = SessionDataFactory.getInstance().getDataManager().queryFlows(wfType, wfState, wfStatus, targetKey);
 		return getSessionsByQuery(q);
 	}
 
@@ -430,49 +361,15 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 * @param runBy
 	 */
 	private void recoverSession(final String runBy) {
-		
-		ITransactional operation = new ITransactional() {
 
-			public void execute() throws Throwable {
-				
-				Object q = SessionDataFactory.getInstance().getDataManager().newQuery();
-				if (q instanceof org.lightj.dal.Query) {
-					((Query) q).and("end_date is null")
-					.and("run_by", "=", runBy)
-					.and("flow_state in (" + 
-							DBUtil.dbC(FlowState.Running.name()) + ',' +
-							DBUtil.dbC(FlowState.Callback.name())+ ")")
-					.and("parent_id is null");
-				}
-				else if (q instanceof org.springframework.data.mongodb.core.query.Query) {
-					((org.springframework.data.mongodb.core.query.Query) q)
-						.addCriteria(Criteria.where("endDate").is(null).and("runBy").is(runBy).and("actionStatus").in(FlowState.Running.name(), FlowState.Callback.name()).and("parentId").is(null));
-				}
-
-				// first time run since the VM starts, reclaim any of my session from last crash/reboot
-				List<FlowSession> sessionsToRecover = FlowSessionFactory.this.getSessionsByQuery(q);
-				for (FlowSession session : sessionsToRecover) {
-					if (session.getFlowProperties().clustered()) {
-						session.recoverFromCrash();
-					}
-				}
-				
-			}};
-			
-		if (FlowModule.isClusterEnabled()) {
-			try {
-				FlowModule.getLockManager().synchronizeObject(FlowSessionFactory.class.getName(), operation);
-			} catch (RuntimeException e) {
-				logger.error("Recover session failed", e);
-			} catch (LockException e) {
-				logger.error("Recover session failed", e);
-			}
-		} else {
-			logger.warn("Flow framework is not cluster safe, possible concurrent recover operation");
-			try {
-				operation.execute();
-			} catch (Throwable e) {
-				logger.error("Recover session failed", e);
+		Object q = SessionDataFactory.getInstance().getDataManager().queryActiveFlows(runBy);
+		// first time run since the VM starts, reclaim any of my session from
+		// last crash/reboot
+		List<FlowSession> sessionsToRecover = FlowSessionFactory.this
+				.getSessionsByQuery(q);
+		for (FlowSession session : sessionsToRecover) {
+			if (session.getFlowProperties().clustered()) {
+				session.recoverFromCrash();
 			}
 		}
 
@@ -503,8 +400,8 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	 */
 	public synchronized void addFlowKlazz(Class<? extends FlowSession> flowKlass) {
 		try {
-			FlowDefinition type = flowKlass.getAnnotation(FlowDefinition.class);
-			if (type == null) throw new IllegalArgumentException("No flow definition annontation found");
+			FlowProperties type = flowKlass.getAnnotation(FlowProperties.class);
+			if (type == null) throw new IllegalArgumentException("No flow properties annontation found");
 			Class<? extends FlowContext> ctxKlass = null;
 			Type[]  types = ClassUtils.getGenericType(flowKlass);
 			for (Type iType : types) {
@@ -517,7 +414,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 					
 			FlowType ft = fromFlowTypeId(type.typeId());
 			if (ft == null) {
-				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass, type.group());
+				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass);
 				addFlowTypes(Arrays.asList(new FlowType[] {ft}));
 				FlowSession session = createSession(flowKlass);
 				session.validateSteps();

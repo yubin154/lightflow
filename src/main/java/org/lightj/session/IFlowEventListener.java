@@ -26,7 +26,8 @@ public interface IFlowEventListener {
 	 */
 	public void handleFlowEvent(
 			FlowEvent event,
-			FlowSession session);
+			FlowSession session,
+			String msg);
 	
 	/**
 	 * error event

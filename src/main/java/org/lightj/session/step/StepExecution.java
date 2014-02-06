@@ -1,7 +1,7 @@
 package org.lightj.session.step;
 
 import org.lightj.session.FlowContext;
-import org.lightj.session.FlowExecutionException;
+import org.lightj.session.exception.FlowExecutionException;
 
 
 /**

@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.lightj.session.FlowContext;
-import org.lightj.session.FlowExecutionException;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

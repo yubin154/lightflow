@@ -1,5 +1,8 @@
 package org.lightj.session;
 
+import org.lightj.session.exception.FlowValidationException;
+import org.lightj.session.exception.StateChangeException;
+
 
 /**
  * interface for flow control

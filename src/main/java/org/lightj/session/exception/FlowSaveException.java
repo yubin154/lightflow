@@ -1,4 +1,4 @@
-package org.lightj.session;
+package org.lightj.session.exception;
 
 /**
  * @author biyu
