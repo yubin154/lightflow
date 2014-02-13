@@ -23,6 +23,14 @@ import com.ning.http.client.Response;
  */
 public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTask<T> {
 	
+	public static enum HttpMethod {
+		GET,
+		POST,
+		PUT,
+		DELETE
+		;
+	}
+	
 	/** http client */
 	protected AsyncHttpClient client;
 	/** target url */

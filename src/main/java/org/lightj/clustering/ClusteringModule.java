@@ -1,8 +1,40 @@
 package org.lightj.clustering;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+
 import org.lightj.RuntimeContext;
 import org.lightj.initialization.BaseInitializable;
 import org.lightj.initialization.BaseModule;
+import org.lightj.initialization.InitializationException;
+import org.lightj.util.NetUtil;
+import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.enterprise.ee.cms.core.CallBack;
+import com.sun.enterprise.ee.cms.core.FailureNotificationSignal;
+import com.sun.enterprise.ee.cms.core.FailureSuspectedSignal;
+import com.sun.enterprise.ee.cms.core.GMSConstants;
+import com.sun.enterprise.ee.cms.core.GMSException;
+import com.sun.enterprise.ee.cms.core.GMSFactory;
+import com.sun.enterprise.ee.cms.core.GMSNotEnabledException;
+import com.sun.enterprise.ee.cms.core.GMSNotInitializedException;
+import com.sun.enterprise.ee.cms.core.GroupLeadershipNotificationSignal;
+import com.sun.enterprise.ee.cms.core.GroupManagementService;
+import com.sun.enterprise.ee.cms.core.JoinNotificationSignal;
+import com.sun.enterprise.ee.cms.core.JoinedAndReadyNotificationSignal;
+import com.sun.enterprise.ee.cms.core.PlannedShutdownSignal;
+import com.sun.enterprise.ee.cms.core.Signal;
+import com.sun.enterprise.ee.cms.impl.client.FailureNotificationActionFactoryImpl;
+import com.sun.enterprise.ee.cms.impl.client.FailureSuspectedActionFactoryImpl;
+import com.sun.enterprise.ee.cms.impl.client.GroupLeadershipNotificationActionFactoryImpl;
+import com.sun.enterprise.ee.cms.impl.client.JoinNotificationActionFactoryImpl;
+import com.sun.enterprise.ee.cms.impl.client.JoinedAndReadyNotificationActionFactoryImpl;
+import com.sun.enterprise.ee.cms.impl.client.PlannedShutdownActionFactoryImpl;
+import com.sun.enterprise.mgmt.ClusterManager;
 
 /**
  * module initializing cluster capability
@@ -10,6 +42,16 @@ import org.lightj.initialization.BaseModule;
  *
  */
 public class ClusteringModule  {
+
+	/** logger */
+	static Logger logger = LoggerFactory.getLogger(ClusterManager.class);
+
+	/** delimiter */
+	public static final String NODEID_DELIMITER = ":";
+	public static Map<String, String> hostNameEncoding = new HashMap<String, String>();
+	static {
+		hostNameEncoding.put(NODEID_DELIMITER, "#colon#");
+	}
 
 	/** inner module that controls singleton behavior */
 	private static ClusteringInnerModule s_Module = null;
@@ -30,12 +72,196 @@ public class ClusteringModule  {
 		return s_Module;
 	}
 	
-	public void setClusterName(String clusterName) {
+	static void validateChange() {
+		if (s_Module == null) {
+			throw new InitializationException("ClusteringModule not initialized");
+		}
 		s_Module.validateForChange();
-		s_Module.clusterName = clusterName;
 	}
 	
-	public String getClusterName() {
+	static void validateInit() {
+		if (s_Module == null) {
+			throw new InitializationException("ClusteringModule not initialized");
+		}
+	}
+	
+	/**
+	 * parse and escape nodeid token and return tokens
+	 * 
+	 * @param nodeId
+	 * @return tokens array [hostname, uuid]
+	 */
+	public static String[] getNodeTokens(String nodeId) {
+		String[] result = new String[0];
+		if (!StringUtil.isNullOrEmpty(nodeId)) {
+			result = nodeId.split(NODEID_DELIMITER);
+			for (int idx = 0; idx < result.length; idx++) {
+				result[idx] = StringUtil.decode(hostNameEncoding, result[idx]);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * is master node within the cluster
+	 * @param group
+	 * @return
+	 */
+	public static boolean isMaster(String group) {
+		validateInit();
+		if (GMSFactory.isGMSEnabled(group)) {
+			try {
+				return GMSFactory.getGMSModule(group).getGroupHandle().isGroupLeader();
+			} catch (GMSNotEnabledException e) {
+				// ignore
+			} catch (GMSNotInitializedException e) {
+				// ignore
+			} catch (GMSException e) {
+				// ignore
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * is master node within the default cluster
+	 * @return
+	 */
+	public static boolean isMaster() {
+		return isMaster(ClusteringModule.getClusterName());
+	}
+
+	/**
+	 * start or join with default cluster name
+	 * 
+	 * @param type
+	 * @param evtHandler
+	 * @throws ClusteringException
+	 */
+	public static synchronized void startOrJoin(
+			GroupManagementService.MemberType type,
+			ClusteringEventHandler evtHandler) throws ClusteringException {
+		startOrJoin(ClusteringModule.getClusterName(), type, evtHandler);
+	}
+
+	/**
+	 * start or join a cluster
+	 * 
+	 * @param group
+	 * @param type
+	 * @param evtHandler
+	 * @throws ClusteringException
+	 */
+	public static synchronized void startOrJoin(String group,
+			GroupManagementService.MemberType type,
+			ClusteringEventHandler evtHandler) throws ClusteringException 
+	{
+		validateInit();
+		if (StringUtil.isNullOrEmpty(group)) {
+			throw new IllegalArgumentException("Cluster group cannot be empty");
+		}
+
+		GroupManagementService gms = null;
+		EventHandler handler = new EventHandler(evtHandler);
+
+		if (!GMSFactory.isGMSEnabled(group)) {
+			String serverName = StringUtil.encode(hostNameEncoding,
+					NetUtil.getMyHostName())
+					+ NODEID_DELIMITER + UUID.randomUUID().toString();
+
+			// initialize Group Management Service
+			logger.info("Initializing Shoal for member: " + serverName + " group:" + group);
+			gms = (GroupManagementService) GMSFactory.startGMSModule(serverName, group, type, new Properties());
+
+			// register for Group Events
+			logger.info("Registering for group event notifications");
+			gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
+			gms.addActionFactory(new FailureNotificationActionFactoryImpl(handler));
+			gms.addActionFactory(new FailureSuspectedActionFactoryImpl(handler));
+			gms.addActionFactory(new GroupLeadershipNotificationActionFactoryImpl(handler));
+			gms.addActionFactory(new JoinedAndReadyNotificationActionFactoryImpl(handler));
+			gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
+			gms.addActionFactory(new PlannedShutdownActionFactoryImpl(handler));
+
+			// join group
+			logger.info("Joining Group " + group);
+			try {
+				gms.join();
+			} catch (GMSException e) {
+				throw new ClusteringException(e);
+			}
+		} else {
+			try {
+				gms = GMSFactory.getGMSModule(group);
+
+				// register for Group Events
+				logger.info("Registering for group event notifications");
+				gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
+				gms.addActionFactory(new FailureNotificationActionFactoryImpl(handler));
+				gms.addActionFactory(new FailureSuspectedActionFactoryImpl(handler));
+				gms.addActionFactory(new GroupLeadershipNotificationActionFactoryImpl(handler));
+				gms.addActionFactory(new JoinedAndReadyNotificationActionFactoryImpl(handler));
+				gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
+				gms.addActionFactory(new PlannedShutdownActionFactoryImpl(handler));
+
+			} catch (GMSNotEnabledException e1) {
+				throw new ClusteringException(e1);
+			} catch (GMSNotInitializedException e1) {
+				throw new ClusteringException(e1);
+			} catch (GMSException e1) {
+				throw new ClusteringException(e1);
+			}
+
+		}
+
+	}
+
+	/**
+	 * deligate event for internal handling
+	 * 
+	 * @author biyu
+	 * 
+	 */
+	private static class EventHandler implements CallBack {
+
+		private ClusteringEventHandler handler;
+
+		EventHandler(ClusteringEventHandler handler) {
+			this.handler = handler;
+		}
+
+		public void processNotification(Signal notification) {
+			logger.info("***Cluster signal received: GroupName = "
+					+ notification.getGroupName()
+					+ ", Signal.getMemberToken() = "
+					+ notification.getMemberToken());
+			if (notification instanceof FailureNotificationSignal) {
+				handler.handleFailureNotificationSignal((FailureNotificationSignal) notification);
+			} else if (notification instanceof FailureSuspectedSignal) {
+				handler.handleFailureSuspectedSignal((FailureSuspectedSignal) notification);
+			} else if (notification instanceof GroupLeadershipNotificationSignal) {
+				handler.handleGroupLeadershipSignal((GroupLeadershipNotificationSignal) notification);
+			} else if (notification instanceof JoinedAndReadyNotificationSignal) {
+				handler.handleJoinedAndReadySignal((JoinedAndReadyNotificationSignal) notification);
+			} else if (notification instanceof JoinNotificationSignal) {
+				handler.handleJoinNotificationSignal((JoinNotificationSignal) notification);
+			} else if (notification instanceof PlannedShutdownSignal) {
+				handler.handlePlannedShutdownSignal((PlannedShutdownSignal) notification);
+			} else {
+				logger.error("received unkown notification type:"
+						+ notification);
+			}
+		}
+
+	}
+
+	public ClusteringModule setClusterName(String clusterName) {
+		s_Module.validateForChange();
+		s_Module.clusterName = clusterName;
+		return this;
+	}
+	
+	public static String getClusterName() {
 		return s_Module.clusterName!=null ? s_Module.clusterName : RuntimeContext.getClusterName();
 	}
 	
@@ -50,16 +276,26 @@ public class ClusteringModule  {
 			addInitializable(new BaseInitializable() {
 				@Override
 				protected void initialize() {
-					ClusteringManager.getInstance();
 				}
 
 				@Override
 				protected void shutdown() {
-					ClusteringManager.getInstance().shutdown();
+//					shutdownAllClusters();
 				}
 
 			});
 
 		}
+
+		/**
+		 * shutdown all groups
+		 * 
+		 */
+//		private synchronized void shutdownAllClusters() {
+//			for (Object service : GMSFactory.getAllGMSInstancesForMember()) {
+//				((GroupManagementService) service).shutdown(GMSConstants.shutdownType.INSTANCE_SHUTDOWN);
+//			}
+//		}
+
 	}
 }

@@ -1,7 +1,7 @@
 package org.lightj.session;
 
 import org.lightj.clustering.ClusteringEventHandler;
-import org.lightj.clustering.ClusteringManager;
+import org.lightj.clustering.ClusteringModule;
 import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +57,7 @@ public class FlowClusteringEventHandler implements ClusteringEventHandler {
 			signal.acquire();
 			String nodeId = signal.getMemberToken();
 			if (!StringUtil.isNullOrEmpty(nodeId)) {
-				final String runBy = ClusteringManager.getNodeTokens(nodeId)[0];
+				final String runBy = ClusteringModule.getNodeTokens(nodeId)[0];
 				logger.info("Try to recover sessions from remote crash/down server " + runBy);
 				FlowSessionFactory.getInstance().recoverCrashedSession(runBy);
 			}

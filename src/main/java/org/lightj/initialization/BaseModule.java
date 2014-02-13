@@ -136,7 +136,7 @@ public abstract class BaseModule implements Initializable {
 	public InitializationStateEnum getState() {
 		return m_state;
 	}
-
+	
 	/**
 	 * change to the module is allowed only before initialiation or after shutdown
 	 */

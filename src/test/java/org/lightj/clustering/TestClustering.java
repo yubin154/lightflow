@@ -17,13 +17,13 @@ import org.slf4j.LoggerFactory;
 import com.sun.enterprise.ee.cms.core.FailureNotificationSignal;
 import com.sun.enterprise.ee.cms.core.FailureSuspectedSignal;
 import com.sun.enterprise.ee.cms.core.GroupLeadershipNotificationSignal;
+import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 import com.sun.enterprise.ee.cms.core.JoinNotificationSignal;
 import com.sun.enterprise.ee.cms.core.JoinedAndReadyNotificationSignal;
 import com.sun.enterprise.ee.cms.core.PlannedShutdownSignal;
 import com.sun.enterprise.ee.cms.core.Signal;
 import com.sun.enterprise.ee.cms.core.SignalAcquireException;
 import com.sun.enterprise.ee.cms.core.SignalReleaseException;
-import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 
 public class TestClustering extends BaseTestCase {
 	
@@ -48,22 +48,28 @@ public class TestClustering extends BaseTestCase {
 				@Override
 				public void run() {
 					try {
-						ClusteringManager.getInstance().startOrJoin(group, MemberType.CORE, new EvtHandler());
+						ClusteringModule.startOrJoin(group, MemberType.CORE, new EvtHandler());
 					} catch (ClusteringException e) {
 						e.printStackTrace();
 					}
 				}
 			}).start();
 		}
-		ConcurrentUtil.wait(lock, cond, 10000L);
+		ConcurrentUtil.wait(lock, cond, 5000L);
+	}
+
+	@Test
+	public void testSingleLeader() throws Exception {
+		final String group = "group";
+		ClusteringModule.startOrJoin(group, MemberType.CORE, new EvtHandler());
+		ConcurrentUtil.wait(lock, cond, 5000L);
 	}
 	
 	@Test
 	public void testFlowClusterHandler() throws Exception {
 		for (int i = 0; i < 3; i++) {
-			ClusteringManager.getInstance().startOrJoin(RuntimeContext.getClusterName(), MemberType.CORE, new FlowClusteringEventHandler());
+			ClusteringModule.startOrJoin(RuntimeContext.getClusterName(), MemberType.CORE, new FlowClusteringEventHandler());
 		}
-		ClusteringManager.getInstance().leave(RuntimeContext.getClusterName());
 		ConcurrentUtil.wait(lock, cond, 5000L);
 	}
 	
@@ -78,10 +84,12 @@ public class TestClustering extends BaseTestCase {
 		}
 
 		public void handleGroupLeadershipSignal(GroupLeadershipNotificationSignal signal) {
+			logger.info(String.format("I'm leader %s,%s", signal.getGroupName(), signal.getMemberToken()));
 			getDetails(signal);
 		}
 
 		public void handleJoinNotificationSignal(JoinNotificationSignal signal) {
+			logger.info(String.format("I joined %s,%s", signal.getGroupName(), signal.getMemberToken()));
 			getDetails(signal);
 		}
 
@@ -96,8 +104,7 @@ public class TestClustering extends BaseTestCase {
 		private void getDetails(Signal signal) {
 			try {
 				signal.acquire();
-				getLogger().info(signal.getGroupName());
-				getLogger().info(signal.getMemberToken());
+				logger.info(String.format("processed %s,%s,%s", signal.toString(), signal.getGroupName(), signal.getMemberToken()));
 			} catch (SignalAcquireException e) {
 				e.printStackTrace();
 			} finally {

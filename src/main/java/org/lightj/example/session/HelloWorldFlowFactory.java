@@ -25,6 +25,7 @@ import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.asynchttp.AsyncHttpTask;
+import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.util.JsonUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -174,82 +175,96 @@ public class HelloWorldFlowFactory {
 		// poll every second, up to 5 seconds
 		final MonitorOption monitorOption = new MonitorOption(1000, 5000);
 		
-		// build http task
-		final AsyncHttpTask<HelloWorldFlowContext> task = new AsyncHttpTask<HelloWorldFlowContext>(client, new ExecuteOption(), monitorOption) {
+		final SimpleHttpAsyncPollTask<HelloWorldFlowContext> task = new SimpleHttpAsyncPollTask<HelloWorldFlowContext>(client, new ExecuteOption(), monitorOption) {
 
 			@Override
-			public BoundRequestBuilder createRequest() {
-				return client.preparePost("https://" + context.getGoodHost() + "/admin/executeCmd")
-						.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
-						.addHeader("content-type", "application/json")
-						.addHeader("AUTHZ_TOKEN", "donoevil")
-						.setBody("{\"cmd\": \"netstat\"}");
-			}
-
-			@Override
-			public TaskResult onComplete(Response response) {
-				TaskResult res = createTaskResult(TaskResultEnum.Success, "");
-				try {
-					res.setRealResult(response.getResponseBody());
-					AgentStatus aStatus = JsonUtil.decode((String) res.getRealResult(), AgentStatus.class);
-					final String pollUrl = "https://" + context.getGoodHost() + aStatus.getStatus();
-					this.setExtTaskUuid(pollUrl);
-					AsyncHttpTask pollTask = createPollTask(pollUrl);
-					res.setRealResult(pollTask);
-				} catch (IOException e) {
-					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
-				}
-				return res;
-			}
-
-			@Override
-			public TaskResult onThrowable(Throwable t) {
-				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+			public UrlTemplate createHttpRequest() {
+				UrlTemplate req = new UrlTemplate();
+				req.setUrl("http://#host");
+				req.setMethod(HttpMethod.GET);
+				req.setHost("www.ebay.com");
+				return req;
 			}
 			
-			/** create poll task */
-			private AsyncHttpTask createPollTask(final String pollUrl) {
-				
-				return new AsyncHttpTask<HelloWorldFlowContext>(client) {
-
-					@Override
-					public BoundRequestBuilder createRequest() {
-						return client.prepareGet(pollUrl);
-					}
-
-					@Override
-					public TaskResult onComplete(Response response) {
-						TaskResult res = null;
-						try {
-							AgentStatus aStatus = JsonUtil.decode((String) response.getResponseBody(), AgentStatus.class);
-							if (aStatus.getProgress() == 100) {
-								if (aStatus.getError() == 0) {
-									res = createTaskResult(TaskResultEnum.Success, aStatus.getStatus());
-								}
-								else {
-									res = createTaskResult(TaskResultEnum.Failed, aStatus.getErrorMsg());
-								}
-								res.setRealResult(aStatus);
-							}
-							else {
-								res = createTaskResult(TaskResultEnum.Running, null);
-								res.setRealResult(this);
-							}
-							
-						} catch (IOException e) {
-							return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
-						}
-						return res;
-					}
-
-					@Override
-					public TaskResult onThrowable(Throwable t) {
-						return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
-					}
-				};
-
-			}
 		};
+		
+		
+//		// build http task
+//		final AsyncHttpTask<HelloWorldFlowContext> task = new AsyncHttpTask<HelloWorldFlowContext>(client, new ExecuteOption(), monitorOption) {
+//
+//			@Override
+//			public BoundRequestBuilder createRequest() {
+//				return client.preparePost("https://" + context.getGoodHost() + "/admin/executeCmd")
+//						.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
+//						.addHeader("content-type", "application/json")
+//						.addHeader("AUTHZ_TOKEN", "donoevil")
+//						.setBody("{\"cmd\": \"netstat\"}");
+//			}
+//
+//			@Override
+//			public TaskResult onComplete(Response response) {
+//				TaskResult res = createTaskResult(TaskResultEnum.Success, "");
+//				try {
+//					res.setRealResult(response.getResponseBody());
+//					AgentStatus aStatus = JsonUtil.decode((String) res.getRealResult(), AgentStatus.class);
+//					final String pollUrl = "https://" + context.getGoodHost() + aStatus.getStatus();
+//					this.setExtTaskUuid(pollUrl);
+//					AsyncHttpTask pollTask = createPollTask(pollUrl);
+//					res.setRealResult(pollTask);
+//				} catch (IOException e) {
+//					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
+//				}
+//				return res;
+//			}
+//
+//			@Override
+//			public TaskResult onThrowable(Throwable t) {
+//				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+//			}
+//			
+//			/** create poll task */
+//			private AsyncHttpTask createPollTask(final String pollUrl) {
+//				
+//				return new AsyncHttpTask<HelloWorldFlowContext>(client) {
+//
+//					@Override
+//					public BoundRequestBuilder createRequest() {
+//						return client.prepareGet(pollUrl);
+//					}
+//
+//					@Override
+//					public TaskResult onComplete(Response response) {
+//						TaskResult res = null;
+//						try {
+//							AgentStatus aStatus = JsonUtil.decode((String) response.getResponseBody(), AgentStatus.class);
+//							if (aStatus.getProgress() == 100) {
+//								if (aStatus.getError() == 0) {
+//									res = createTaskResult(TaskResultEnum.Success, aStatus.getStatus());
+//								}
+//								else {
+//									res = createTaskResult(TaskResultEnum.Failed, aStatus.getErrorMsg());
+//								}
+//								res.setRealResult(aStatus);
+//							}
+//							else {
+//								res = createTaskResult(TaskResultEnum.Running, null);
+//								res.setRealResult(this);
+//							}
+//							
+//						} catch (IOException e) {
+//							return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
+//						}
+//						return res;
+//					}
+//
+//					@Override
+//					public TaskResult onThrowable(Throwable t) {
+//						return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+//					}
+//				};
+//
+//			}
+//		};
 			
 		return new StepBuilder().executeAsyncPollTasks(task).getFlowStep();
 	}

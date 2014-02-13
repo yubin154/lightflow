@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import org.lightj.clustering.ClusteringException;
-import org.lightj.clustering.ClusteringManager;
 import org.lightj.clustering.ClusteringModule;
 import org.lightj.dal.BaseDatabaseType;
 import org.lightj.dal.ConnectionHelper;
@@ -182,8 +181,8 @@ public class FlowModule {
 					// enabled cluster
 					if (clusterEnabled) {
 						try {
-							ClusteringManager.getInstance().startOrJoin(
-									new ClusteringModule().getClusterName(), 
+							ClusteringModule.startOrJoin(
+									ClusteringModule.getClusterName(), 
 									MemberType.CORE, 
 									new FlowClusteringEventHandler());
 						} catch (ClusteringException e) {
