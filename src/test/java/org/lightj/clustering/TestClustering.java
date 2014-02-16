@@ -43,7 +43,6 @@ public class TestClustering extends BaseTestCase {
 	public void testMultiNodesCluster() throws Exception {
 		final String group = "group";
 		for (int i = 0; i < 3; i++) {
-			final int j = i;
 			new Thread(new Runnable() {
 				@Override
 				public void run() {
@@ -62,7 +61,8 @@ public class TestClustering extends BaseTestCase {
 	public void testSingleLeader() throws Exception {
 		final String group = "group";
 		ClusteringModule.startOrJoin(group, MemberType.CORE, new EvtHandler());
-		ConcurrentUtil.wait(lock, cond, 5000L);
+		ConcurrentUtil.wait(lock, cond, 10000L);
+		assertTrue(ClusteringModule.isMaster(group));
 	}
 	
 	@Test

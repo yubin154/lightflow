@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.lightj.initialization.BaseInitializable;
 import org.lightj.initialization.BaseModule;
+import org.lightj.initialization.InitializationException;
 import org.lightj.util.StringUtil;
 
 /**
@@ -22,14 +23,21 @@ public class DatabaseModule {
 		init();
 	}
 	
-	public BaseDatabaseType getDataSourceOfName(String name) {
-		return s_Module.initializable.getDataSourceOfName(name);
-	}
-
 	private synchronized void init() {
 		if (s_Module == null) s_Module = new DatabaseModuleInner();
 	}
 	
+	private static final void validateInit() {
+		if (s_Module == null) {
+			throw new InitializationException("DatabaseModule not initialized");
+		}
+	}
+	
+	public static BaseDatabaseType getDataSourceOfName(String name) {
+		validateInit();
+		return s_Module.initializable.getDataSourceOfName(name);
+	}
+
 	public DatabaseModule addDatabases(BaseDatabaseType...databases) {
 		s_Module.validateForChange();
 		s_Module.initializable.addDatabase(databases);

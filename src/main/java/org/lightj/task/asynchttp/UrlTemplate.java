@@ -1,20 +1,23 @@
 package org.lightj.task.asynchttp;
 
 import java.util.HashMap;
-import java.util.Map.Entry;
 
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 
-
+/**
+ * a http request
+ * @author binyu
+ *
+ */
 public class UrlTemplate {
 	
-	private String url;
-	private String host;
-	private HttpMethod method;
-	private String body;
-	private HashMap<String, String> headers = new HashMap<String, String>();
-	private HashMap<String, String> replacement = new HashMap<String, String>();
-	private boolean isStatus = false;
+	protected String url;
+	protected HttpMethod method;
+	protected String body;
+	protected HashMap<String, String> headers = new HashMap<String, String>();
+	protected boolean isStatus = false;
+	
+	/** constructor */
 	public UrlTemplate() {}
 	public UrlTemplate(String url) {
 		this.url = url;
@@ -25,12 +28,7 @@ public class UrlTemplate {
 		this.method = method;
 		this.body = body;
 	}
-	public String getHost() {
-		return host;
-	}
-	public void setHost(String host) {
-		this.host = host;
-	}
+	
 	public boolean isStatus() {
 		return isStatus;
 	}
@@ -44,50 +42,45 @@ public class UrlTemplate {
 		this.method = method;
 	}
 	public String getBody() {
-		String bodyV = body;
-		for (Entry<String, String> entry : replacement.entrySet()) {
-			bodyV = bodyV.replaceAll(entry.getKey(), entry.getValue());
-		}
-		return bodyV;
+		return this.body;
 	}
 	public void setBody(String body) {
 		this.body = body;
+	}
+	
+	public String getUrl() {
+		return this.url;
+	}
+	public void setUrl(String url) {
+		this.url = url;
+	}
+	
+	public HashMap<String, String> getHeaders() {
+		return headers;
 	}
 	public UrlTemplate addHeader(String k, String v) {
 		this.headers.put(k, v);
 		return this;
 	}
-	public UrlTemplate addVariableReplacement(String k, String v) {
-		this.replacement.put(k, v);
-		return this;
-	}
-	public String getVariableReplacement(String k) {
-		return replacement.get(k);
-	}
-	public HashMap<String, String> getReplacement() {
-		return replacement;
-	}
-	public String getUrl() {
-		String urlV = url;
-		for (Entry<String, String> entry : replacement.entrySet()) {
-			urlV = urlV.replaceAll(entry.getKey(), entry.getValue());
-		}
-		return urlV;
-	}
-	public void setUrl(String url) {
-		this.url = url;
-	}
-	public HashMap<String, String> getHeaders() {
-		return headers;
-	}
-	public UrlTemplate makeCopy() {
-		UrlTemplate another = new UrlTemplate();
+
+	public UrlRequest createRequest() {
+		UrlRequest another = new UrlRequest();
 		another.body = this.body;
 		another.headers = new HashMap<String, String>(this.headers);
 		another.isStatus = this.isStatus;
 		another.method = this.method;
-		another.replacement = new HashMap<String, String>(this.replacement);
 		another.url = this.url;
+		return another;
+	}
+	
+	public UrlRequest createRequest(String...nvp) {
+		if (nvp.length%2 != 0) {
+			throw new IllegalArgumentException("Replacement nvp has to be in pairs");
+		}
+		UrlRequest another = this.createRequest();
+		for (int i = 0; i < nvp.length; i+=2) {
+			another.addVariableReplacement(nvp[i], nvp[i+1]);
+		}
 		return another;
 	}
 

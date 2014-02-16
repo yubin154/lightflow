@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * 					 int, long, double - map to number, 
  * 					 date - map to date/time
  */
-@SuppressWarnings({"unchecked"})
+@SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class AbstractDAO<T extends IData> extends AbstractDbBasic {
 
 	// logger

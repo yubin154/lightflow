@@ -31,6 +31,8 @@ public class FlowModule {
 
 	/** singleton */
 	private static FlowModuleInner s_Module = null;
+	
+	/** key */
 	public static final String FLOW_CTX = "CTX_FLOW_MODULE";
 	
 	/** constructor */
@@ -46,7 +48,13 @@ public class FlowModule {
 	public BaseModule getModule() {
 		return s_Module;
 	}
-	
+
+	private static final void validateInit() {
+		if (s_Module == null) {
+			throw new InitializationException("FlowModule not initialized");
+		}
+	}
+
 	public FlowModule setExectuorService(ExecutorService es) {
 		s_Module.validateForChange();
 		s_Module.es = es;
@@ -54,7 +62,7 @@ public class FlowModule {
 	}
 	
 	public static ExecutorService getExecutorService() {
-		if (s_Module == null) throw new RuntimeException("FlowModule not initialized");
+		validateInit();
 		return s_Module.es;
 	}
 	
@@ -67,12 +75,14 @@ public class FlowModule {
 	}
 	
 	/** get session database */
-	public BaseDatabaseType getDbEnum() {
+	public static BaseDatabaseType getDbEnum() {
+		validateInit();
 		return s_Module.dbEnum;
 	}
 	
 	/** get actor system */
-	public ActorSystem getActorSystem() {
+	public static ActorSystem getActorSystem() {
+		validateInit();
 		return s_Module.system;
 	}
 	
@@ -98,7 +108,8 @@ public class FlowModule {
 
 	/** cluster enablement */
 	public static boolean isClusterEnabled() {
-		return s_Module==null ? false : s_Module.clusterEnabled;
+		validateInit();
+		return s_Module.clusterEnabled;
 	}
 	
 	/**

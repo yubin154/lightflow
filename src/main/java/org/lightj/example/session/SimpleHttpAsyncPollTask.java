@@ -1,6 +1,7 @@
 package org.lightj.example.session;
 
 import java.io.IOException;
+import java.util.Map.Entry;
 
 import org.lightj.session.FlowContext;
 import org.lightj.task.ExecuteOption;
@@ -9,6 +10,7 @@ import org.lightj.task.RuntimeTaskExecutionException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.asynchttp.AsyncHttpTask;
+import org.lightj.task.asynchttp.UrlRequest;
 import org.lightj.task.asynchttp.UrlTemplate;
 
 import com.ning.http.client.AsyncHttpClient;
@@ -18,25 +20,64 @@ import com.ning.http.client.Response;
 @SuppressWarnings("rawtypes")
 public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	
-	static final String STATUS_TEMPLATE = "http://#host";
+	/** polling template */
+	private UrlTemplate pollTemplate;
 	
-	private UrlTemplate params;
+	/** request template */
+	private UrlTemplate reqTemplate;
 	
+	/** variables to be copied from req to poll template */
+	private String[] transferableVariables = null;
+	
+	/** keep transient materialized req and poll req */
+	private UrlRequest req;
+	private UrlRequest pollReq;
+	
+	/** constructor */
 	public SimpleHttpAsyncPollTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
 	{
 		super(client, execOptions, monitorOption);
 		this.client = client;
 	}
 	
-	public abstract UrlTemplate createHttpRequest();
+	public UrlTemplate getPollTemplate() {
+		return pollTemplate;
+	}
+	public void setPollTemplate(UrlTemplate pollTemplate) {
+		this.pollTemplate = pollTemplate;
+	}
+	public UrlTemplate getReqTemplate() {
+		return reqTemplate;
+	}
+	public void setReqTemplate(UrlTemplate reqTemplate) {
+		this.reqTemplate = reqTemplate;
+	}
+	public String[] getTransferableVariables() {
+		return transferableVariables;
+	}
+	public void setTransferableVariables(String... transferableVariables) {
+		this.transferableVariables = transferableVariables;
+	}
 
-	@Override
-	public BoundRequestBuilder createRequest() {
+	public void setHttpParams(UrlTemplate reqTemplate, UrlTemplate pollTemplate, String...transferableVariables) {
+		this.reqTemplate = reqTemplate;
+		this.pollTemplate = pollTemplate;
+		this.transferableVariables = transferableVariables;
+	}
+	
+	public abstract UrlRequest createRequest(UrlTemplate reqTemplate);
+	
+	public abstract UrlRequest createPollRequest(UrlTemplate pollTemplate, Response response);
+
+	/**
+	 * build a ning http request builder
+	 * @param req
+	 * @return
+	 */
+	private BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
-		params = createHttpRequest();
-		String url = params.getUrl();
-		url = url.replace("#host", params.getHost());
-		switch (params.getMethod()) {
+		String url = req.getUrlReal();
+		switch (req.getMethod()) {
 		case GET:
 			builder = client.preparePost(url);
 			break;
@@ -55,15 +96,34 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 		if (builder == null) {
 			throw new RuntimeTaskExecutionException("Failed to build agent request, unknown method");
 		}
+		else {
+			for (Entry<String, String> header : req.getHeadersReal().entrySet()) {
+				builder.addHeader(header.getKey(), header.getValue());
+			}
+			if (req.getBody() != null) {
+				builder.setBody(req.getBodyReal());
+			}
+		}
 		return builder;
+	}
+	
+	@Override
+	public BoundRequestBuilder createRequest() {
+		
+		req = createRequest(reqTemplate);
+		return buildHttpRequest(req);
+		
 	}
 
 	@Override
 	public TaskResult onComplete(Response response) {
 		TaskResult res = createTaskResult(TaskResultEnum.Success, "");
-		final String pollUrl = STATUS_TEMPLATE.replace("#host", params.getHost());
-		this.setExtTaskUuid(pollUrl);
-		AsyncHttpTask pollTask = createPollTask(pollUrl);
+		pollReq = createPollRequest(pollTemplate, response);
+		for (String transferableVariable : this.transferableVariables) {
+			pollReq.addVariableReplacement(transferableVariable, req.getVariableReplacement(transferableVariable));
+		}
+		this.setExtTaskUuid(pollReq.getUrlReal());
+		AsyncHttpTask pollTask = createPollTask(pollReq);
 		res.setRealResult(pollTask);
 		return res;
 	}
@@ -74,13 +134,14 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 	}
 	
 	/** create poll task */
-	private AsyncHttpTask createPollTask(final String pollUrl) {
+	private AsyncHttpTask createPollTask(final UrlRequest pollReq) {
 		
 		return new AsyncHttpTask<FlowContext>(client) {
 
 			@Override
 			public BoundRequestBuilder createRequest() {
-				return client.prepareGet(pollUrl);
+				
+				return buildHttpRequest(pollReq);
 			}
 
 			@Override

@@ -163,8 +163,19 @@ public class ClusteringModule  {
 
 		GroupManagementService gms = null;
 		EventHandler handler = new EventHandler(evtHandler);
+		boolean existing = true; 
+		
+		try {
+			gms = GMSFactory.getGMSModule(group);
+		} catch (GMSNotEnabledException e1) {
+			existing = false;
+		} catch (GMSNotInitializedException e1) {
+			existing = false;
+		} catch (GMSException e1) {
+			throw new ClusteringException(e1);
+		}
 
-		if (!GMSFactory.isGMSEnabled(group)) {
+		if (!existing) {
 			String serverName = StringUtil.encode(hostNameEncoding,
 					NetUtil.getMyHostName())
 					+ NODEID_DELIMITER + UUID.randomUUID().toString();
@@ -173,16 +184,6 @@ public class ClusteringModule  {
 			logger.info("Initializing Shoal for member: " + serverName + " group:" + group);
 			gms = (GroupManagementService) GMSFactory.startGMSModule(serverName, group, type, new Properties());
 
-			// register for Group Events
-			logger.info("Registering for group event notifications");
-			gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
-			gms.addActionFactory(new FailureNotificationActionFactoryImpl(handler));
-			gms.addActionFactory(new FailureSuspectedActionFactoryImpl(handler));
-			gms.addActionFactory(new GroupLeadershipNotificationActionFactoryImpl(handler));
-			gms.addActionFactory(new JoinedAndReadyNotificationActionFactoryImpl(handler));
-			gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
-			gms.addActionFactory(new PlannedShutdownActionFactoryImpl(handler));
-
 			// join group
 			logger.info("Joining Group " + group);
 			try {
@@ -190,29 +191,17 @@ public class ClusteringModule  {
 			} catch (GMSException e) {
 				throw new ClusteringException(e);
 			}
-		} else {
-			try {
-				gms = GMSFactory.getGMSModule(group);
-
-				// register for Group Events
-				logger.info("Registering for group event notifications");
-				gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
-				gms.addActionFactory(new FailureNotificationActionFactoryImpl(handler));
-				gms.addActionFactory(new FailureSuspectedActionFactoryImpl(handler));
-				gms.addActionFactory(new GroupLeadershipNotificationActionFactoryImpl(handler));
-				gms.addActionFactory(new JoinedAndReadyNotificationActionFactoryImpl(handler));
-				gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
-				gms.addActionFactory(new PlannedShutdownActionFactoryImpl(handler));
-
-			} catch (GMSNotEnabledException e1) {
-				throw new ClusteringException(e1);
-			} catch (GMSNotInitializedException e1) {
-				throw new ClusteringException(e1);
-			} catch (GMSException e1) {
-				throw new ClusteringException(e1);
-			}
-
 		}
+		
+		// register for Group Events
+		logger.info("Registering for group event notifications");
+		gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
+		gms.addActionFactory(new FailureNotificationActionFactoryImpl(handler));
+		gms.addActionFactory(new FailureSuspectedActionFactoryImpl(handler));
+		gms.addActionFactory(new GroupLeadershipNotificationActionFactoryImpl(handler));
+		gms.addActionFactory(new JoinedAndReadyNotificationActionFactoryImpl(handler));
+		gms.addActionFactory(new JoinNotificationActionFactoryImpl(handler));
+		gms.addActionFactory(new PlannedShutdownActionFactoryImpl(handler));
 
 	}
 
@@ -280,7 +269,7 @@ public class ClusteringModule  {
 
 				@Override
 				protected void shutdown() {
-//					shutdownAllClusters();
+					shutdownAllClusters();
 				}
 
 			});
@@ -291,11 +280,11 @@ public class ClusteringModule  {
 		 * shutdown all groups
 		 * 
 		 */
-//		private synchronized void shutdownAllClusters() {
-//			for (Object service : GMSFactory.getAllGMSInstancesForMember()) {
-//				((GroupManagementService) service).shutdown(GMSConstants.shutdownType.INSTANCE_SHUTDOWN);
-//			}
-//		}
+		private synchronized void shutdownAllClusters() {
+			for (Object service : GMSFactory.getAllGMSInstancesForMember()) {
+				((GroupManagementService) service).shutdown(GMSConstants.shutdownType.INSTANCE_SHUTDOWN);
+			}
+		}
 
 	}
 }

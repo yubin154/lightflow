@@ -1,6 +1,5 @@
 package org.lightj.example.session;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,15 +23,13 @@ import org.lightj.task.MonitorOption;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.AsyncHttpTask;
+import org.lightj.task.asynchttp.UrlRequest;
 import org.lightj.task.asynchttp.UrlTemplate;
-import org.lightj.util.JsonUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
 import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.AsyncHttpClientConfigBean;
 import com.ning.http.client.Response;
 
@@ -178,15 +175,18 @@ public class HelloWorldFlowFactory {
 		final SimpleHttpAsyncPollTask<HelloWorldFlowContext> task = new SimpleHttpAsyncPollTask<HelloWorldFlowContext>(client, new ExecuteOption(), monitorOption) {
 
 			@Override
-			public UrlTemplate createHttpRequest() {
-				UrlTemplate req = new UrlTemplate();
-				req.setUrl("http://#host");
-				req.setMethod(HttpMethod.GET);
-				req.setHost("www.ebay.com");
-				return req;
+			public UrlRequest createRequest(UrlTemplate reqTemplate) {
+				return reqTemplate.createRequest("#host", "www.ebay.com");
+			}
+
+			@Override
+			public UrlRequest createPollRequest(UrlTemplate pollTemplate,
+					Response response) {
+				return pollTemplate.createRequest();
 			}
 			
 		};
+		task.setHttpParams(new UrlTemplate("http://#host"), new UrlTemplate("http://#host"), "#host");
 		
 		
 //		// build http task
