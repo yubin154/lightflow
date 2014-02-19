@@ -17,57 +17,33 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
-@SuppressWarnings("rawtypes")
-public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends AsyncHttpTask<T> {
-	
-	/** polling template */
-	private UrlTemplate pollTemplate;
+public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	
 	/** request template */
 	private UrlTemplate reqTemplate;
 	
-	/** variables to be copied from req to poll template */
-	private String[] transferableVariables = null;
-	
 	/** keep transient materialized req and poll req */
 	private UrlRequest req;
-	private UrlRequest pollReq;
-	
 	/** constructor */
-	public SimpleHttpAsyncPollTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
+	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
 	{
 		super(client, execOptions, monitorOption);
 		this.client = client;
 	}
 	
-	public UrlTemplate getPollTemplate() {
-		return pollTemplate;
-	}
-	public void setPollTemplate(UrlTemplate pollTemplate) {
-		this.pollTemplate = pollTemplate;
-	}
 	public UrlTemplate getReqTemplate() {
 		return reqTemplate;
 	}
 	public void setReqTemplate(UrlTemplate reqTemplate) {
 		this.reqTemplate = reqTemplate;
 	}
-	public String[] getTransferableVariables() {
-		return transferableVariables;
-	}
-	public void setTransferableVariables(String... transferableVariables) {
-		this.transferableVariables = transferableVariables;
-	}
 
 	public void setHttpParams(UrlTemplate reqTemplate, UrlTemplate pollTemplate, String...transferableVariables) {
 		this.reqTemplate = reqTemplate;
-		this.pollTemplate = pollTemplate;
-		this.transferableVariables = transferableVariables;
 	}
 	
 	public abstract UrlRequest createRequest(UrlTemplate reqTemplate);
 	
-	public abstract UrlRequest createPollRequest(UrlTemplate pollTemplate, Response response);
 
 	/**
 	 * build a ning http request builder
@@ -76,7 +52,7 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 	 */
 	private BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
-		UrlRequest realReq = createRequest(req);
+		UrlRequest realReq = createRequest(reqTemplate);
 		String url = realReq.getUrlReal();
 		switch (req.getMethod()) {
 		case GET:
@@ -122,21 +98,14 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 		String statusCode = Integer.toString(response.getStatusCode());
 		if (statusCode.matches("2[0-9][0-9]")) {
 			res = createTaskResult(TaskResultEnum.Success, statusCode);
-			pollReq = createPollRequest(pollTemplate, response);
-			for (String transferableVariable : this.transferableVariables) {
-				pollReq.addVariableReplacement(transferableVariable, req.getVariableReplacement(transferableVariable));
-			}
-			this.setExtTaskUuid(pollReq.getUrlReal());
-			AsyncHttpTask pollTask = createPollTask(pollReq);
-			res.setRealResult(pollTask);
 		}
 		else {
 			res = createTaskResult(TaskResultEnum.Failed, statusCode);
-			try {
-				res.setRealResult(response.getResponseBody());
-			} catch (IOException e) {
-				res.setRealResult(e.getMessage());
-			}
+		}
+		try {
+			res.setRealResult(response.getResponseBody());
+		} catch (IOException e) {
+			res.setRealResult(e.getMessage());
 		}
 		return res;
 	}
@@ -144,34 +113,6 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 	@Override
 	public TaskResult onThrowable(Throwable t) {
 		return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
-	}
-	
-	/** create poll task */
-	private AsyncHttpTask createPollTask(final UrlRequest pollReq) {
-		
-		return new AsyncHttpTask<FlowContext>(client) {
-
-			@Override
-			public BoundRequestBuilder createRequest() {
-				
-				return buildHttpRequest(pollReq);
-			}
-
-			@Override
-			public TaskResult onComplete(Response response) {
-				try {
-					return createTaskResult(TaskResultEnum.Success, response.getResponseBody());
-				} catch (IOException e) {
-					return createTaskResult(TaskResultEnum.Failed, e.getMessage());
-				}
-			}
-
-			@Override
-			public TaskResult onThrowable(Throwable t) {
-				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
-			}
-		};
-
 	}
 	
 }

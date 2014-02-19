@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * @author biyu
  *
  */
+@SuppressWarnings("rawtypes")
 @FlowProperties(typeId="HelloWorld", desc="hello world", interruptible=false,clustered=true)
 public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	
