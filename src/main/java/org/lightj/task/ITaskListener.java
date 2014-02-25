@@ -10,6 +10,12 @@ package org.lightj.task;
 public interface ITaskListener {
 	
 	/**
+	 * task getting counted for later processing
+	 * @param numOfResults
+	 */
+	public void setExpectedResultCount(int numOfResults);
+	
+	/**
 	 * task is created and accepted by task runner/engine
 	 * @param task
 	 */
@@ -25,12 +31,6 @@ public interface ITaskListener {
 	 * called when task results are available
 	 * @param result
 	 */
-	public void handleTaskResult(Task task, TaskResult result);
-
-	/**
-	 * task is completed, ok to detach listeners is any
-	 * @param result
-	 */
-	public void taskCompleted(Task result);
+	public int handleTaskResult(Task task, TaskResult result);
 	
 }

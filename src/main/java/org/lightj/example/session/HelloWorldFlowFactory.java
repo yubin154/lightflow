@@ -16,6 +16,7 @@ import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepExecution;
 import org.lightj.session.step.StepTransition;
 import org.lightj.task.BatchOption;
+import org.lightj.task.BatchOption.Strategy;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.FlowTask;
@@ -278,7 +279,7 @@ public class HelloWorldFlowFactory {
 		
 		// build tasks
 		List<ExecutableTask> tasks = new ArrayList<ExecutableTask>();
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 10; i++) {
 			tasks.add(new DummyTask() {
 				public TaskResult execute() {
 					context.incBatchCount();
@@ -288,7 +289,7 @@ public class HelloWorldFlowFactory {
 		}
 		
 		// build execution with batching option of max concurrency of 5 tasks
-		return new StepBuilder().batchExecuteAsyncTasks(new BatchOption(1), tasks.toArray(new ExecutableTask[0])).getFlowStep();
+		return new StepBuilder().batchExecuteAsyncTasks(new BatchOption(10, Strategy.MAX_CONCURRENT_RATE_SLIDING), tasks.toArray(new ExecutableTask[0])).getFlowStep();
 	}
 
 

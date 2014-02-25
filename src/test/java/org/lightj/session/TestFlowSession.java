@@ -41,7 +41,7 @@ public class TestFlowSession extends BaseTestCase {
 		Assert.assertEquals(2, session.getSessionContext().getSplitCount());
 		Assert.assertEquals(2, session.getSessionContext().getRetryCount());
 		Assert.assertEquals(1, session.getSessionContext().getTimeoutCount());
-		Assert.assertEquals(2, session.getSessionContext().getBatchCount());
+		Assert.assertEquals(10, session.getSessionContext().getBatchCount());
 		Assert.assertEquals(0, session.getSessionContext().getErrorStepCount());
 		
 	}

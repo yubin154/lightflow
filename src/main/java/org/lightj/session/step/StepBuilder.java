@@ -188,7 +188,7 @@ public class StepBuilder {
 						// inject the context
 						task.setContext(mycontext);
 					}
-					ActorRef batchWorker = new FlowModule().getActorSystem().actorOf(
+					ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
 							new Props(new UntypedActorFactory() {
 					
 						private static final long serialVersionUID = 1L;

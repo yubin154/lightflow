@@ -4,12 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowResult;
 import org.lightj.session.exception.FlowExecutionException;
+import org.lightj.task.BatchTask;
 import org.lightj.task.ITaskListener;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
@@ -28,22 +29,20 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("rawtypes")
 public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T> implements ITaskListener {
 	
+	/** logger */
 	static Logger logger = LoggerFactory.getLogger(StepCallbackHandler.class.getName());
 
-	/** callback types */
-	public static final int TYPE_CREATED		=	1;
-	public static final int TYPE_SUBMITTED		=	2;
-	public static final int TYPE_TASKRESULT		=	3;
-	public static final int TYPE_COMPLETED		=	4;
-
-	/** all callbacks */
-	private ConcurrentLinkedQueue<CallbackWrapper> callbacks = new ConcurrentLinkedQueue<StepCallbackHandler.CallbackWrapper>();
-	
 	/** all results */
-	protected ConcurrentMap<String, TaskResult> results = new ConcurrentHashMap<String, TaskResult>();
+	protected ConcurrentMap<String, TaskResult> results = 
+			new ConcurrentHashMap<String, TaskResult>();
 	
 	/** map a result status to a flow step result */
-	protected HashMap<TaskResultEnum, StepExecution> mapOnResults = new HashMap<TaskResultEnum, StepExecution>();
+	protected HashMap<TaskResultEnum, StepExecution> mapOnResults = 
+			new HashMap<TaskResultEnum, StepExecution>();
+	
+	/** number of tasks for tracking */
+	protected int numOfTasks = 1;
+	protected AtomicInteger numOfTaskResults = new AtomicInteger(0);
 	
 	/**
 	 * constructor with no defaul transition
@@ -76,20 +75,43 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	public StepCallbackHandler(StepTransition transition) {
 		super(transition);
 	}
-	
+
 	/**
 	 * result handle task completed event
 	 */
-	public final void handleTaskResult(Task task, TaskResult result) {
-		if (result != null) {
-			callbacks.offer(new CallbackWrapper(TYPE_TASKRESULT, task, result));
-			results.put(task.getTaskId(), result);
-			sessionContext.saveTaskResult(flowStep.getStepId(), task, result);
+	public final int handleTaskResult(Task task, TaskResult result) 
+	{
+		// if this is the last result expected
+		int resultRemaining = (task instanceof BatchTask) ? 0 : (numOfTasks - numOfTaskResults.incrementAndGet()); 
+		
+		try {
+			// handle result
+			if (task != null && result != null) {
+				results.put(task.getTaskId(), result);
+				sessionContext.saveTaskResult(flowStep.getStepId(), task, result);
+			}
+			StepTransition trans = executeOnResult(task, result);
+			if (trans != null && trans.isEdge()) {
+				this.flowStep.resume(trans);
+			}
+		} catch (Throwable t) {
+			this.flowStep.resume(t);
 		}
-		StepTransition trans = execute();
-		if (trans != null && trans.isEdge()) {
-			this.flowStep.resume(trans);
+		
+		// all task completed
+		if (resultRemaining == 0 && task != null) {
+			try {
+				StepTransition trans = executeOnCompleted(task);
+				if (trans != null && trans.isEdge()) {
+					this.flowStep.resume(trans);
+				}
+			} catch (Throwable t) {
+				this.flowStep.resume(t);
+			}
 		}
+		
+		return resultRemaining;
+
 	}
 
 	/**
@@ -97,12 +119,15 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	 */
 	public final void taskSubmitted(Task task) {
 		if (task != null) {
-			callbacks.offer(new CallbackWrapper(TYPE_SUBMITTED, task));
 			sessionContext.addTask(flowStep.getStepId(), task);
-		}
-		StepTransition trans = execute();
-		if (trans != null && trans.isEdge()) {
-			this.flowStep.resume(trans);
+			try {
+				StepTransition trans = executeOnSubmitted(task);
+				if (trans != null && trans.isEdge()) {
+					this.flowStep.resume(trans);
+				}
+			} catch (Throwable t) {
+				this.flowStep.resume(t);
+			}
 		}
 	}
 
@@ -111,50 +136,22 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	 */
 	public final void taskCreated(Task task) {
 		if (task != null) {
-			callbacks.offer(new CallbackWrapper(TYPE_CREATED, task));
 			sessionContext.addTask(flowStep.getStepId(), task);
-		}
-		StepTransition trans = execute();
-		if (trans != null && trans.isEdge()) {
-			this.flowStep.resume(trans);
-		}
-	}
-
-	/**
-	 * result handle task completion event
-	 */
-	public final void taskCompleted(Task task) {
-		if (task != null) {
-			callbacks.offer(new CallbackWrapper(TYPE_COMPLETED, task));
-		}
-		try {
-			StepTransition trans = execute();
-			if (trans != null && trans.isEdge()) {
-				this.flowStep.resume(trans);
+			try {
+				StepTransition trans = executeOnCreated(task);
+				if (trans != null && trans.isEdge()) {
+					this.flowStep.resume(trans);
+				}
+			} catch (Throwable t) {
+				this.flowStep.resume(t);
 			}
-		} catch (Throwable t) {
-			this.flowStep.resume(t);
 		}
 	}
 
 	@Override
 	public final StepTransition execute() throws FlowExecutionException {
-		CallbackWrapper wrapper = null;
-		if ((wrapper = callbacks.poll()) != null) {
-	 		switch (wrapper.callbackType) {
-			case TYPE_SUBMITTED:
-				return executeOnSubmitted(wrapper.task);
-			case TYPE_TASKRESULT:
-				return executeOnResult(wrapper.task, wrapper.result);
-			case TYPE_CREATED:
-				return executeOnCreated(wrapper.task);
-			case TYPE_COMPLETED:
-				return executeOnCompleted(wrapper.task);
-			default:
-				throw new FlowExecutionException("Invalid callback type " + wrapper.callbackType);
-			}
-		}
-		return StepTransition.NOOP;
+		// noop
+		return null;
 	}
 	
 	/** convert {@link ICallableResult} status to {@link FlowResult} */
@@ -392,6 +389,11 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 			super(transition);
 		}
 		
+	}
+
+	@Override
+	public void setExpectedResultCount(int numOfTasks) {
+		this.numOfTasks = numOfTasks;
 	}
 	
 }
