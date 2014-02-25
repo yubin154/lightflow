@@ -77,7 +77,7 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 	private BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
 		UrlRequest realReq = createRequest(req);
-		String url = realReq.getUrlReal();
+		String url = realReq.generateUrl();
 		switch (req.getMethod()) {
 		case GET:
 			builder = client.preparePost(url);
@@ -98,11 +98,11 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 			throw new RuntimeTaskExecutionException("Failed to build agent request, unknown method");
 		}
 		else {
-			for (Entry<String, String> header : req.getHeadersReal().entrySet()) {
+			for (Entry<String, String> header : req.generateHeaders().entrySet()) {
 				builder.addHeader(header.getKey(), header.getValue());
 			}
 			if (req.getBody() != null) {
-				builder.setBody(req.getBodyReal());
+				builder.setBody(req.generateBody());
 			}
 		}
 		return builder;
@@ -124,9 +124,9 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Asy
 			res = createTaskResult(TaskResultEnum.Success, statusCode);
 			pollReq = createPollRequest(pollTemplate, response);
 			for (String transferableVariable : this.transferableVariables) {
-				pollReq.addVariableReplacement(transferableVariable, req.getVariableReplacement(transferableVariable));
+				pollReq.addTemplateValue(transferableVariable, req.getTemplateValue(transferableVariable));
 			}
-			this.setExtTaskUuid(pollReq.getUrlReal());
+			this.setExtTaskUuid(pollReq.generateUrl());
 			AsyncHttpTask pollTask = createPollTask(pollReq);
 			res.setRealResult(pollTask);
 		}

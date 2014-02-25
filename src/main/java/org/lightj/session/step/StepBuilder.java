@@ -198,7 +198,7 @@ public class StepBuilder {
 							return new BatchTaskWorker(batchTask, actorFactory, chandler);
 						}
 					}));
-					batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST);
+					batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
 					return super.execute();
 				}
 		});

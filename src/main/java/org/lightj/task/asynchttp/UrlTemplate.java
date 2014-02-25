@@ -15,7 +15,6 @@ public class UrlTemplate {
 	protected HttpMethod method;
 	protected String body;
 	protected HashMap<String, String> headers = new HashMap<String, String>();
-	protected boolean isStatus = false;
 	
 	/** constructor */
 	public UrlTemplate() {}
@@ -29,12 +28,6 @@ public class UrlTemplate {
 		this.body = body;
 	}
 	
-	public boolean isStatus() {
-		return isStatus;
-	}
-	public void setStatus(boolean isStatus) {
-		this.isStatus = isStatus;
-	}
 	public HttpMethod getMethod() {
 		return method;
 	}
@@ -67,7 +60,6 @@ public class UrlTemplate {
 		UrlRequest another = new UrlRequest();
 		another.body = this.body;
 		another.headers = new HashMap<String, String>(this.headers);
-		another.isStatus = this.isStatus;
 		another.method = this.method;
 		another.url = this.url;
 		return another;
@@ -79,7 +71,7 @@ public class UrlTemplate {
 		}
 		UrlRequest another = this.createRequest();
 		for (int i = 0; i < nvp.length; i+=2) {
-			another.addVariableReplacement(nvp[i], nvp[i+1]);
+			another.addTemplateValue(nvp[i], nvp[i+1]);
 		}
 		return another;
 	}

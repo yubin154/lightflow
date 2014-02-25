@@ -24,6 +24,7 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 	
 	/** keep transient materialized req and poll req */
 	private UrlRequest req;
+	
 	/** constructor */
 	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
 	{
@@ -38,7 +39,7 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 		this.reqTemplate = reqTemplate;
 	}
 
-	public void setHttpParams(UrlTemplate reqTemplate, UrlTemplate pollTemplate, String...transferableVariables) {
+	public void setHttpParams(UrlTemplate reqTemplate) {
 		this.reqTemplate = reqTemplate;
 	}
 	
@@ -53,7 +54,7 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 	private BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
 		UrlRequest realReq = createRequest(reqTemplate);
-		String url = realReq.getUrlReal();
+		String url = realReq.generateUrl();
 		switch (req.getMethod()) {
 		case GET:
 			builder = client.preparePost(url);
@@ -74,11 +75,11 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 			throw new RuntimeTaskExecutionException("Failed to build agent request, unknown method");
 		}
 		else {
-			for (Entry<String, String> header : req.getHeadersReal().entrySet()) {
+			for (Entry<String, String> header : req.generateHeaders().entrySet()) {
 				builder.addHeader(header.getKey(), header.getValue());
 			}
 			if (req.getBody() != null) {
-				builder.setBody(req.getBodyReal());
+				builder.setBody(req.generateBody());
 			}
 		}
 		return builder;
