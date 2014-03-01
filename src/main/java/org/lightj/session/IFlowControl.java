@@ -1,6 +1,5 @@
 package org.lightj.session;
 
-import org.lightj.session.exception.FlowValidationException;
 import org.lightj.session.exception.StateChangeException;
 
 
@@ -33,11 +32,5 @@ public interface IFlowControl {
 	 * @param message
 	 */
 	public void stopFlow(FlowState actionStatus, FlowResult resultStatus, String message) throws StateChangeException;
-
-	/**
-	 * validate a session, make sure all its steps are validate
-	 * @throws FlowValidationException
-	 */
-	public void validateSteps() throws FlowValidationException;
 
 }

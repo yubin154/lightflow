@@ -13,7 +13,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.lightj.dal.DataAccessException;
-import org.lightj.dal.Locator;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.ISessionStepLog;
@@ -36,7 +35,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class FlowSessionFactory implements Locator<FlowSession> {
+public class FlowSessionFactory {
 	
 	/**
 	 * logger
@@ -164,7 +163,7 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 						}
 						long existingSessionId = activeSession.get(0).getFlowId();
 						FlowExistException e = new FlowExistException("Unable to create flow on "
-								+ session.getKeyOfTarget() + ". Active flow exists flowid : " + existingSessionId);
+								+ session.getTarget() + ". Active flow exists flowid : " + existingSessionId);
 						e.setExistSessionId(Long.toString(existingSessionId));
 						throw e;
 					}
@@ -255,7 +254,6 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 	}
 	
 	/**
-	 * @see Locator#findByKey(java.lang.String)
 	 */
 	public FlowSession findByKey(String key) {
 		// try it in cache
@@ -416,8 +414,6 @@ public class FlowSessionFactory implements Locator<FlowSession> {
 			if (ft == null) {
 				ft = new FlowTypeImpl(type.typeId(), type.desc(), flowKlass, ctxKlass);
 				addFlowTypes(Arrays.asList(new FlowType[] {ft}));
-				FlowSession session = createSession(flowKlass);
-				session.validateSteps();
 			}
 		} catch (IllegalArgumentException e) {
 			throw e;

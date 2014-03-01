@@ -1,10 +1,11 @@
 package org.lightj.session.eventlistener;
 
-import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.lightj.session.FlowSession.StepPropTuple;
 import org.lightj.session.FlowStepProperties;
 import org.lightj.util.StringUtil;
 
@@ -16,13 +17,12 @@ public class FlowStatistics {
 	private Map<String, Integer> step2ProgressMap = new HashMap<String, Integer>();
 	
 	/** constructor */
-	@SuppressWarnings("rawtypes")
-	public FlowStatistics(Class enumKlass, String currentStep) {
+	public FlowStatistics(List<StepPropTuple> stepProps, String currentStep) {
 		int total = 0;
-		for (Field f : enumKlass.getFields()) {
-			FlowStepProperties sp = f.getAnnotation(FlowStepProperties.class);
+		for (StepPropTuple stepProp : stepProps) {
+			FlowStepProperties sp = stepProp.prop;
 			total += (sp!=null ? Math.max(0, sp.stepWeight()) : 1);
-			step2ProgressMap.put(f.getName(), total);
+			step2ProgressMap.put(stepProp.name, total);
 		}
 		if (total == 0) total = 1; // prevent DIV0
 		for (Entry<String, Integer> entry : step2ProgressMap.entrySet()) {

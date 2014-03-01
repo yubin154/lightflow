@@ -20,25 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @FlowProperties(typeId="SimpleHttp", desc="run a serials of http tasks", clustered=false, interruptible=false, timeoutInSec=0)
-@SuppressWarnings("rawtypes")
 public class SimpleHttpFlow extends FlowSession<SimpleHttpFlowContext> {
-
-	/**
-	 * flow steps
-	 * @author biyu
-	 *
-	 */
-	public static enum SimpleHttpSteps {
-		@FlowStepProperties(stepWeight=1)
-		runHttpTasks,
-		@FlowStepProperties(stepWeight=0, isErrorStep=true)
-		handleError
-	}
-
-	@Override
-	public Enum getFirstStepEnum() {
-		return SimpleHttpSteps.runHttpTasks;
-	}
 
 	//////////////// step implementation /////////////////
 	@Autowired(required=true)
@@ -47,9 +29,11 @@ public class SimpleHttpFlow extends FlowSession<SimpleHttpFlowContext> {
 	private IFlowStep handleErrorStep;
 	
 	// method with the same name as in flow step enum, framework will use reflection to run each step
+	@FlowStepProperties(stepWeight=0, isErrorStep=true, stepIdx=100)
 	public IFlowStep handleError() {
 		return handleErrorStep;
 	}
+	@FlowStepProperties(stepWeight=1, isFirstStep=true, stepIdx=1)
 	public IFlowStep runHttpTasks() {
 		return runHttpTasksStep;
 	}

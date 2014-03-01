@@ -12,7 +12,6 @@ import org.lightj.BaseTestCase;
 import org.lightj.example.dal.SampleDatabaseEnum;
 import org.lightj.example.session.helloworld.HelloWorldFlow;
 import org.lightj.example.session.helloworld.HelloWorldFlowEventListener;
-import org.lightj.example.session.helloworld.HelloWorldFlow.steps;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
@@ -59,7 +58,7 @@ public class TestFlowSession extends BaseTestCase {
 		session.runFlow();
 		ConcurrentUtil.wait(lock, cond);
 		Assert.assertEquals(1, session.getSessionContext().getErrorStepCount());
-		Assert.assertEquals(HelloWorldFlow.steps.testFailureStep.name(), session.getCurrentAction());
+		Assert.assertEquals("testFailureStep", session.getCurrentAction());
 		Assert.assertEquals(FlowResult.Failed, session.getResult());
 		Assert.assertEquals(FlowState.Completed, session.getState());
 		System.out.println(new ObjectMapper().writeValueAsString(session.getSessionContext().getLastErrors()));
@@ -76,7 +75,7 @@ public class TestFlowSession extends BaseTestCase {
 		session.runFlow();
 		ConcurrentUtil.wait(lock, cond);
 		Assert.assertEquals(1, session.getSessionContext().getErrorStepCount());
-		Assert.assertEquals(HelloWorldFlow.steps.testFailureStep.name(), session.getCurrentAction());
+		Assert.assertEquals("testFailureStep", session.getCurrentAction());
 		Assert.assertEquals(FlowResult.Failed, session.getResult());
 		Assert.assertEquals(FlowState.Completed, session.getState());
 		System.out.println(new ObjectMapper().writeValueAsString(session.getSessionContext().getLastErrors()));
@@ -94,13 +93,14 @@ public class TestFlowSession extends BaseTestCase {
 		session.addEventListener(new HelloWorldFlowEventListener(lock, cond));
 		session.runFlow();
 		ConcurrentUtil.wait(lock, cond);
-		Assert.assertEquals(HelloWorldFlow.steps.testFailureStep.name(), session.getCurrentAction());
+		Assert.assertEquals("testFailureStep", session.getCurrentAction());
+		Assert.assertEquals(1, session.getSessionContext().getErrorStepCount());
 		Assert.assertEquals(FlowResult.Failed, session.getResult());
 		Assert.assertEquals(FlowState.Paused, session.getState());
 		
 		// reset current step to the desirable step and resume flow
 		HelloWorldFlow session1 = (HelloWorldFlow) FlowSessionFactory.getInstance().findByKey(session.getKey());
-		session1.setCurrentAction(steps.testFailureStep.name());
+		session1.setCurrentAction("testFailureStep");
 		// don't pause this time
 		session1.getSessionContext().setPauseOnError(false);
 		session1.addEventListener(new HelloWorldFlowEventListener(lock, cond));
@@ -111,7 +111,7 @@ public class TestFlowSession extends BaseTestCase {
 
 		// second time we did not set private error flag in context, so flow did not go to the error step
 		Assert.assertEquals(1, session1.getSessionContext().getErrorStepCount());
-		Assert.assertEquals(HelloWorldFlow.steps.stop.name(), session1.getCurrentAction());
+		Assert.assertEquals("stop", session1.getCurrentAction());
 		Assert.assertEquals(FlowResult.Success, session1.getResult());
 		Assert.assertEquals(FlowState.Completed, session1.getState());
 		

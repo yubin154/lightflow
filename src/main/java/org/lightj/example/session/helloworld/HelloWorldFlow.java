@@ -19,37 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * @author biyu
  *
  */
-@SuppressWarnings("rawtypes")
 @FlowProperties(typeId="HelloWorld", desc="hello world", interruptible=false,clustered=true)
 public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	
-	public static enum steps {
-		@FlowStepProperties(stepWeight=0)
-		start,
-		@FlowStepProperties(stepWeight=1, onSuccess="asyncTaskStep", onException="asyncTaskStep")
-		syncTaskStep,
-		@FlowStepProperties(stepWeight=2)
-		asyncTaskStep,
-		@FlowStepProperties(stepWeight=3)
-		sessionJoinStep,
-		@FlowStepProperties(stepWeight=1)
-		delayStep,
-		@FlowStepProperties(stepWeight=1)
-		retryStep,
-		@FlowStepProperties(stepWeight=1)
-		timeoutStep,
-		@FlowStepProperties(stepWeight=1)
-		asyncPollStep,
-		@FlowStepProperties(stepWeight=1)
-		actorBatchStep,
-		@FlowStepProperties(stepWeight=1)
-		testFailureStep,
-		@FlowStepProperties(stepWeight=1)
-		stop,
-		@FlowStepProperties(stepWeight=0, isErrorStep=true)
-		error,
-	}
-
 	/**
 	 * demonstrate how to do DI for individual step, see {@link HelloWorldFlowFactory}
 	 */
@@ -70,19 +42,15 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	@Autowired(required=true)
 	private IFlowStep helloWorldTestFailureStep;
 
-	@Override
-	public Enum getFirstStepEnum() {
-		return steps.start;
-	}
-
 	/**
 	 * start step, synchronous
 	 * demonstrate how to execute a synchronous step
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=0, isFirstStep=true, stepIdx=1)
 	public IFlowStep start() {
 		
-		Enum nextStep = getParentId()>0 ? steps.stop : (sessionContext.isInjectFailure() ? steps.testFailureStep : steps.syncTaskStep);
+		String nextStep = getParentId()>0 ? "stop" : (sessionContext.isInjectFailure() ? "testFailureStep" : "syncTaskStep");
 		return new StepBuilder().runTo(nextStep).getFlowStep();
 	}
 	
@@ -90,6 +58,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * synchronous execution
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, onSuccess="asyncTaskStep", onException="asyncTaskStep", stepIdx=2)
 	public IFlowStep syncTaskStep() {
 		return new StepImpl();
 	}
@@ -99,6 +68,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * demonstrate how to execute a runtask asynchronous step
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=2, stepIdx=3)
 	public IFlowStep asyncTaskStep() 
 	{
 		return helloWorldAsyncTaskStep;
@@ -109,6 +79,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * demonstrate how to execute a session join asynchronous task
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=3, stepIdx=4)
 	public IFlowStep sessionJoinStep() throws Exception {
 		return helloWorldSessionJoinStep;
 	}
@@ -117,6 +88,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * delay step
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=5)
 	public IFlowStep delayStep() 
 	{
 		return helloWorldDelayStep;
@@ -126,6 +98,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * retry step
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=6)
 	public IFlowStep retryStep() 
 	{
 		return helloWorldRetryStep;
@@ -135,6 +108,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * step with timeout
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=7)
 	public IFlowStep timeoutStep() {
 		return helloWorldTimeoutStep;
 	}
@@ -143,6 +117,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * step with actor and poll
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=8)
 	public IFlowStep asyncPollStep() {
 		return helloWorldAsyncPollStep;
 	}
@@ -151,6 +126,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * run batch actors
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=9)
 	public IFlowStep actorBatchStep() {
 		return helloWorldActorBatchStep;
 	}
@@ -159,14 +135,28 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * inject failure
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=10)
 	public IFlowStep testFailureStep() {
 		return helloWorldTestFailureStep;
+	}
+	
+	/**
+	 * normal complete step
+	 * @return
+	 */
+	@FlowStepProperties(stepWeight=1, stepIdx=11)
+	public IFlowStep stop() {
+
+		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Success);
+		return new StepBuilder().parkInState(trans).getFlowStep();
+
 	}
 	
 	/**
 	 * error complete step
 	 * @return
 	 */
+	@FlowStepProperties(stepWeight=0, isErrorStep=true, stepIdx=100)
 	public IFlowStep error() {
 
 		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Failed);
@@ -177,17 +167,6 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 				return sessionContext.isPauseOnError() ? StepTransition.parkInState(FlowState.Paused, FlowResult.Failed, "pause on error") : defResult;
 			}
 		}).getFlowStep();
-
-	}
-	
-	/**
-	 * normal complete step
-	 * @return
-	 */
-	public IFlowStep stop() {
-
-		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Success);
-		return new StepBuilder().parkInState(trans).getFlowStep();
 
 	}
 	

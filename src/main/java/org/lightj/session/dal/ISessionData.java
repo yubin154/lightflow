@@ -3,7 +3,6 @@ package org.lightj.session.dal;
 import java.util.Date;
 
 import org.lightj.dal.IData;
-import org.lightj.dal.Locatable;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.FlowType;
@@ -17,7 +16,6 @@ public interface ISessionData extends IData {
 
 	/**
 	 * requester locatable string eg. user123::com.xyz.UserBOF 
-	 * @see {@link Locatable}
 	 * @return
 	 */
 	public String getRequesterKey();
@@ -27,12 +25,6 @@ public interface ISessionData extends IData {
 	 * @param requesterKey
 	 */
 	public void setRequesterKey(String requesterKey);
-	
-	/**
-	 * key of requester eg. user123
-	 * @return
-	 */
-	public String getKeyofRequester();
 	
 	/**
 	 * runner
@@ -132,22 +124,14 @@ public interface ISessionData extends IData {
 	
 	/**
 	 * target locatable string eg. user123::com.xyz.UserBOF 
-	 * @see org.lightj.dal.Locatable
 	 * @return
 	 */
 	public String getTargetKey();
 	
 	/**
-	 * set target {@link Locatable} string
 	 * @param targetKey
 	 */
 	public void setTargetKey(String targetKey);
-	
-	/**
-	 * key of target eg. user123
-	 * @return
-	 */
-	public String getKeyOfTarget();
 	
 	/**
 	 * flow type {@link FlowType}

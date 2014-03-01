@@ -2,7 +2,6 @@ package org.lightj.session.dal;
 
 import java.util.Date;
 
-import org.lightj.dal.LocatorUtil;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.util.StringUtil;
@@ -40,14 +39,6 @@ public class SessionDataImpl implements ISessionData {
 	}
 	public void setRequesterKey(String requesterKey){
 		this.requesterKey = requesterKey;
-	}
-	public String getKeyofRequester() {
-		if (!StringUtil.isNullOrEmpty(requesterKey)) {
-			String[] tokens = requesterKey.split(":");
-			if (tokens.length >= 2) return tokens[1];
-			else return tokens[0];
-		}
-		return null;
 	}
 	public String getRunBy() {
 		return runBy;
@@ -141,9 +132,6 @@ public class SessionDataImpl implements ISessionData {
 		else {
 			return getActionStatus();
 		}
-	}
-	public String getKeyOfTarget() {
-		return LocatorUtil.getLocatableKey(targetKey);
 	}
 	public FlowState getFlowState() {
 		return FlowState.valueOf(actionStatus);

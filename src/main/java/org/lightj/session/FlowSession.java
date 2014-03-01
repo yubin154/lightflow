@@ -1,25 +1,23 @@
 package org.lightj.session;
 
-import java.io.InvalidObjectException;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.UUID;
 
-import org.lightj.Constants;
-import org.lightj.dal.DataAccessException;
-import org.lightj.dal.Locatable;
-import org.lightj.dal.Locator;
-import org.lightj.dal.LocatorUtil;
-import org.lightj.dal.SimpleLocatable;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.eventlistener.FlowRecoverEventListener;
 import org.lightj.session.eventlistener.FlowSaver;
 import org.lightj.session.eventlistener.FlowStatsTracker;
 import org.lightj.session.eventlistener.FlowTimer;
+import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.exception.FlowSaveException;
 import org.lightj.session.exception.FlowValidationException;
 import org.lightj.session.exception.StateChangeException;
@@ -33,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
-public abstract class FlowSession<T extends FlowContext> implements Locatable, IFlowControl, IRuntimeFlowProperties
+public abstract class FlowSession<T extends FlowContext> implements IFlowControl, IRuntimeFlowProperties
 {
 
 	/** logger */
@@ -57,6 +55,41 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	/** run time flow event listener */
 	protected List<IFlowEventListener> flowEventListeners = new ArrayList<IFlowEventListener>();
 	
+	/** ordered step properties */
+	protected final LinkedHashMap<String, FlowStepProperties> stepProperties;
+	protected final List<StepPropTuple> orderedStepProperties;
+	
+	public LinkedHashMap<String, FlowStepProperties> getStepProperties() {
+		return stepProperties;
+	}
+	public List<StepPropTuple> getOrderedStepProperties() {
+		return orderedStepProperties;
+	}
+	public String getStepByOffset(String current, int offset) {
+		for (int idx = 0; idx < orderedStepProperties.size(); idx++) {
+			if (orderedStepProperties.get(idx).name.equalsIgnoreCase(current)) {
+				int nIdx = idx + offset;
+				if (nIdx < 0 || nIdx >= orderedStepProperties.size()) {
+					return null;
+				}
+				return orderedStepProperties.get(nIdx).name;
+			}
+		}
+		throw new FlowExecutionException(String.format("no step of %s is found", current));
+	}
+	public String getErrorStep() {
+		for (Entry<String, FlowStepProperties> entry : stepProperties.entrySet()) {
+			if (entry.getValue().isErrorStep()) {
+				return entry.getKey();
+			}
+		}
+		return null;
+	}
+	public String getFirstStep() {
+		return orderedStepProperties.get(0).name;
+	}
+	
+	
 	/**
 	 * Constructor
 	 * 
@@ -67,9 +100,38 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		sessionDo = SessionDataFactory.getInstance().getDataManager().newInstance();
 		sessionDo.setCreationDate(new Date());
 		sessionDo.setFlowState(FlowState.Pending);
-		sessionDo.setCurrentAction(getFirstStepEnum().name());
-		setRequester(new SimpleLocatable());
-		setTarget(new SimpleLocatable());
+		
+		// populate flowsteps
+		this.stepProperties = new LinkedHashMap<String, FlowStepProperties>();
+		this.orderedStepProperties = new ArrayList<StepPropTuple>();
+		for (Method stepMethod : this.getClass().getMethods()) {
+			FlowStepProperties sp = stepMethod.getAnnotation(FlowStepProperties.class);
+			if (sp != null) {
+				orderedStepProperties.add(new StepPropTuple(stepMethod.getName(), sp));
+			}
+		}
+		Collections.sort(orderedStepProperties, new Comparator<StepPropTuple>() {
+
+			@Override
+			public int compare(StepPropTuple o1, StepPropTuple o2) {
+				return o1.prop.isFirstStep() ? -1 : o1.prop.isErrorStep() ? 1 : o1.prop.stepIdx() - o2.prop.stepIdx();
+			}
+			
+		});
+		for (StepPropTuple tuple : orderedStepProperties) {
+			this.stepProperties.put(tuple.name, tuple.prop);
+		}
+
+		sessionDo.setCurrentAction(this.getFirstStep());
+		setRequester(StringUtil.genUuid());
+		setTarget(StringUtil.genUuid());
+		
+		// add the system default listener, no choice of removing
+		flowEventListeners.add(new FlowSaver());
+		flowEventListeners.add(new FlowTimer());
+		flowEventListeners.add(new FlowStatsTracker());
+		flowEventListeners.add(new FlowRecoverEventListener());
+
 		postConstruct();
 	}
 	
@@ -89,9 +151,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		}
 	}
 	
-	/** first step */
-	abstract public Enum getFirstStepEnum();
-	
 	////////////////// proxy to managerDO ////////////////////
 	
 	public ISessionData getSessionData() {
@@ -102,7 +161,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		sessionContext.setSessionId(sessionDo.getFlowId());
 		sessionContext.setFlowKey(getKey());
 	}
-
+	
 	/**
 	 * display result status if session is completed, otherwise action status label
 	 * 
@@ -120,57 +179,28 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		return getId() > 0;
 	}
 
-	public void setRequester(Locatable requester) {
-		sessionDo.setRequesterKey(LocatorUtil.getLocatableString(requester));
+	public void setRequester(String requester) {
+		sessionDo.setRequesterKey(requester);
 	}
 	/** Load requester object from request locatable string */
-	public synchronized Locatable getRequester() {
-		try {
-			return (Locatable) LocatorUtil.findByLocatableString(sessionDo.getRequesterKey());
-		} catch (InvalidObjectException e) {
-			logger.error(null, e);
-		} catch (DataAccessException e) {
-			logger.error(null, e);
-		}
-		return null;
-	}
-	/** get the key for requester locatable, without loading the real object */
-	public String getRequesterKey() {
+	public String getRequester() {
 		return sessionDo.getRequesterKey();
-	}
-	/** get complete locatable string in the format of key:locator */
-	public String getKeyOfRequester() {
-		return sessionDo.getKeyofRequester();
 	}
 	
 	public Date getCreationDate() {
 		return sessionDo.getCreationDate();
 	}
-	
 	public Date getEndDate() {
 		return sessionDo.getEndDate();
 	}
-	protected void setEndDate(Date end) {
-		this.sessionDo.setEndDate(end);
-	}
 	
-	public void setTarget(Locatable target) {
-		sessionDo.setTargetKey(LocatorUtil.getLocatableString(target));
+	public void setTarget(String target) {
+		sessionDo.setTargetKey(target);
 	}
-	public String getKeyOfTarget() {
-		return sessionDo.getKeyOfTarget();
-	}
-	public String getTargetKey() {
+	public String getTarget() {
 		return sessionDo.getTargetKey();
 	}
-	protected Locatable getTarget() {
-		try {
-			return LocatorUtil.findByLocatableString(sessionDo.getTargetKey());
-		} catch (Exception e) {
-			return null;
-		}
-	}
-	
+
 	void setFlowType(FlowType ft) {
 		this._type = ft;
 		sessionDo.setType(ft.value());
@@ -214,10 +244,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	public Date getLastModified() {
 		return sessionDo.getLastModified();
 	}
-	protected void setLastModified(Date date) {
-		sessionDo.setLastModified(date);
-	}
-	
 	public String getRunBy() {
 		return sessionDo.getRunBy();
 	}
@@ -225,11 +251,11 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		sessionDo.setRunBy(runBy);
 	}
 	
-	protected void setStatus(String status) {
-		sessionDo.setStatus(status);
-	}
 	public String getStatus() {
 		return sessionDo.getStatus();
+	}
+	protected void setStatus(String status) {
+		sessionDo.setStatus(status);
 	}
 	
 	public long getParentId() {
@@ -318,21 +344,11 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 * SessionManagerFactory uses this to instantiate session manager, don't
 	 * override!
 	 * 
-	 * @see org.lightj.dal.Locatable#getKey()
 	 */
 	public final String getKey() {
 		return sessionDo.getFlowKey();
 	}
 
-	/**
-	 * locator is {@link SessionManagerFactory}
-	 * 
-	 * @see org.lightj.dal.Locatable#getLocator()
-	 */
-	public final Class<? extends Locator> getLocator() {
-		return FlowSessionFactory.class;
-	}
-	
 	// //////////////////// IFlowControl Interface //////////////////////
 	/**
 	 * run flow, start a flow from the current step, the following session can be started safely:
@@ -390,17 +406,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 */
 	FlowDriver createFlowDriver() {
 		driver = new FlowDriver(this);
-		// add runtime flow listeners
-		for (IFlowEventListener listener : flowEventListeners) {
-			driver.addFlowEventListener(listener);
-		}
-		
-		// add the system default listener, no choice of removing
-		driver.addFlowEventListener(new FlowSaver());
-		driver.addFlowEventListener(new FlowTimer());
-		driver.addFlowEventListener(new FlowStatsTracker());
-		driver.addFlowEventListener(new FlowRecoverEventListener());
-		
 		return driver;
 	}
 
@@ -464,7 +469,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 				}
 			}
 			if (actionStatus.isComplete()) {
-				this.setEndDate(new Date());
+				sessionDo.setEndDate(new Date());
 				// wipe out next actin field
 				this.setNextAction(null);
 			}
@@ -510,7 +515,7 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		try {
 			this.setState(actionStatus);
 			if (actionStatus.isComplete()) {
-				this.setEndDate(new Date());
+				sessionDo.setEndDate(new Date());
 				// wipe out next action field
 				this.setNextAction(null);
 			}
@@ -546,27 +551,6 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	}
 
 	/**
-	 * validate all steps
-	 */
-	public final void validateSteps() throws FlowValidationException {
-		Class sessionKlass = this.getClass();
-		// go through its steps and make sure all map to a concrete method
-		try {
-			for (Enum step : FlowDriver.getEnumValues(getFirstStepEnum().getDeclaringClass())) {
-				sessionKlass.getMethod(step.name(), Constants.NO_PARAMETER_TYPES);
-			}
-		} catch (SecurityException e) {
-			throw new FlowValidationException(e);
-		} catch (NoSuchMethodException e) {
-			throw new FlowValidationException(e);
-		} catch (IllegalAccessException e) {
-			throw new FlowValidationException(e);
-		} catch (InvocationTargetException e) {
-			throw new FlowValidationException(e);
-		}
-	}
-
-	/**
 	 * clean up after flow 
 	 */
 	protected void cleanup() {
@@ -593,18 +577,25 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		FlowProperties fp = this.getClass().getAnnotation(FlowProperties.class);
 		return fp == null ? AnnotationDefaults.of(FlowProperties.class) : fp;
 	}
+	
+	/** get flow event listeners */
+	public java.util.List<IFlowEventListener> getFlowEventListeners() {
+		return flowEventListeners;
+	}
 
 	/** add runtime event listener */
 	public void addEventListener(IFlowEventListener listener) {
 		flowEventListeners.add(listener);
-		if (driver !=  null) {
-			driver.addFlowEventListener(listener);
-		}
 	}
 	
 	/** remove a listener of a class type */
-	public void removeEventListenerOfType(Class listenerKlass) {
-		driver.removeFlowEventListenerOfType(listenerKlass);
+	public synchronized void removeEventListenerOfType(Class listenerKlass) {
+		for (Iterator<IFlowEventListener> iter = flowEventListeners.iterator(); iter.hasNext(); ) {
+			IFlowEventListener l = iter.next();
+			if (l.getClass() == listenerKlass) {
+				iter.remove();
+			}
+		}
 	}
 	
 	/**
@@ -683,8 +674,8 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 		flowInfo.setFlowStatus(getStatus());
 		flowInfo.setFlowType(getFlowType().value());
 		flowInfo.setProgress(String.format("%s", getPercentComplete()));
-		flowInfo.setRequester(getKeyOfRequester());
-		flowInfo.setTarget(getKeyOfTarget());
+		flowInfo.setRequester(getRequester());
+		flowInfo.setTarget(getTarget());
 		flowInfo.setFlowContext(sessionContext.getSearchableContext());
 		return flowInfo;
 	}
@@ -695,5 +686,19 @@ public abstract class FlowSession<T extends FlowContext> implements Locatable, I
 	 */
 	public void save() throws FlowSaveException {
 		FlowSessionFactory.getInstance().save(this);
+	}
+	
+	/**
+	 * step prop
+	 * @author binyu
+	 *
+	 */
+	public static class StepPropTuple {
+		public final String name;
+		public final FlowStepProperties prop;
+		StepPropTuple(String name, FlowStepProperties prop) {
+			this.name = name;
+			this.prop = prop;
+		}
 	}
 }

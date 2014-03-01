@@ -1,4 +1,4 @@
-package org.lightj.testutil;
+package org.lightj.util;
 
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;

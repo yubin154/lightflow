@@ -1,8 +1,7 @@
 package org.lightj.session;
 
-import org.lightj.ILabelledValue;
 
-public enum FlowEvent implements ILabelledValue {
+public enum FlowEvent {
 	
 	// flow events //
 	/** session start */

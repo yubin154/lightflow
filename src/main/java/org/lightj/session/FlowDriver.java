@@ -1,11 +1,7 @@
 package org.lightj.session;
 
 import java.io.InvalidObjectException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map.Entry;
 
 import org.lightj.Constants;
 import org.lightj.dal.DataAccessException;
@@ -31,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * @author biyu
  *
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes"})
 public class FlowDriver implements Runnable {
 
 	/** logger */
@@ -40,27 +36,12 @@ public class FlowDriver implements Runnable {
 	/**
 	 * the session it is going to drive
 	 */
-	private FlowSession session;
-
-	/**
-	 * session class
-	 */
-	private Class<? extends FlowSession> type;
+	final private FlowSession session;
 
 	/**
 	 * current step
 	 */
 	private IFlowStep currentFlowStep;
-
-	/**
-	 * flow event listener
-	 */
-	private HashMap<Class, IFlowEventListener> eventListeners;
-	
-	/**
-	 * step property to stepname map
-	 */
-	private HashMap<String, FlowStepProperties> stepProperties;
 
 	/**
 	 * constructor
@@ -69,15 +50,15 @@ public class FlowDriver implements Runnable {
 	 */
 	public FlowDriver(FlowSession session) {
 		this.session = session;
-		this.type = session.getClass();
-		this.eventListeners = new HashMap<Class, IFlowEventListener>();
-		this.stepProperties = new HashMap<String, FlowStepProperties>();
-		// populate step properties
-		Class<Enum> stepsEnum = session.getFirstStepEnum().getDeclaringClass();
-		for (Field stepField : stepsEnum.getFields()) {
-			FlowStepProperties sp = stepField.getAnnotation(FlowStepProperties.class);
-			this.stepProperties.put(stepField.getName(), (sp!=null?sp:AnnotationDefaults.of(FlowStepProperties.class)));
-		}
+	}
+	
+	/**
+	 * flow event listeners
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private java.util.List<IFlowEventListener> getFlowEventListeners() {
+		return session.getFlowEventListeners();
 	}
 	
 	/**
@@ -97,9 +78,9 @@ public class FlowDriver implements Runnable {
 	private IFlowStep buildStep(String step) throws FlowExecutionException {
         // getting information about the step
 		try {
-			Method method = type.getMethod(step, Constants.NO_PARAMETER_TYPES);
+			Method method = session.getClass().getMethod(step, Constants.NO_PARAMETER_TYPES);
 			// find out annotations about the method
-			FlowStepProperties currentExecutionProperties = session.getFirstStepEnum().getDeclaringClass().getField(step).getAnnotation(FlowStepProperties.class);
+			FlowStepProperties currentExecutionProperties = session.getClass().getMethod(step, Constants.NO_PARAMETER_TYPES).getAnnotation(FlowStepProperties.class);
 			if (currentExecutionProperties == null) {
 				currentExecutionProperties = AnnotationDefaults.of(FlowStepProperties.class);
 			}			
@@ -112,18 +93,18 @@ public class FlowDriver implements Runnable {
 	        currentFlowStep = (IFlowStep) flowStep;
 	        
 	        // set default from properties
-	        Enum nextStep = getRelateEnumValue(getEnumByName(step), 1);
+	        String nextStep = session.getStepByOffset(step, 1);
 	        StepExecution exec = new SimpleStepExecution<FlowContext>(nextStep);
 	        StepCallbackHandler chandler = new StepCallbackHandler(nextStep);
 	        StepErrorHandler ehandler = null;
 	        String onSuccess = currentExecutionProperties.onSuccess();
 	        String onElse = currentExecutionProperties.onElse();
 	        String onException = currentExecutionProperties.onException();
-	        String defErrorStep = getErrorStep();
+	        String defErrorStep = session.getErrorStep();
 	        
 	        if (!StringUtil.isNullOrEmpty(defErrorStep) && validateStepByName(defErrorStep)) {
 	        	ehandler = StepErrorHandler.onException(defErrorStep);
-	        	chandler.mapResult(nextStep.name(), defErrorStep);
+	        	chandler.mapResult(nextStep, defErrorStep);
 	        }
 	        if (!StringUtil.isNullOrEmpty(onSuccess) && !StringUtil.isNullOrEmpty(onElse)
 	        		&& validateStepByName(onSuccess) && validateStepByName(onElse)) {
@@ -327,9 +308,9 @@ public class FlowDriver implements Runnable {
             session.setCurrentAction(currentStepStr);
             // next action
             try {
-    			session.setNextAction(getRelateEnumValue(getEnumByName(currentStepStr), 1).name());
+    			session.setNextAction(session.getStepByOffset(currentStepStr, 1));
     		} catch (Throwable t) {
-    			// we can't access flow's step enum, nothing serious, ignore
+    			// we can't access flow's step, nothing serious, ignore
     		}
     	}
 
@@ -381,27 +362,11 @@ public class FlowDriver implements Runnable {
 		return transition;
     }
 
-	/**
-	 * add flow event listener
-	 * @param listener
-	 */
-	synchronized void addFlowEventListener(IFlowEventListener listener) {
-		eventListeners.put(listener.getClass(), listener);
-	}
-
-	/**
-	 * remove a listener of a class type
-	 * @param listenerKlass
-	 */
-	synchronized void removeFlowEventListenerOfType(Class listenerKlass) {
-		eventListeners.remove(listenerKlass);
-	}
-
 	/** notify registered {@link IFlowEventListener} of flow change event */
 	public void handleFlowEvent(FlowEvent event, String msg) {
-		for (Entry<Class, IFlowEventListener> l : eventListeners.entrySet()) {
+		for (IFlowEventListener l : getFlowEventListeners()) {
 			try {
-				l.getValue().handleFlowEvent(event, session, msg);
+				l.handleFlowEvent(event, session, msg);
 			} catch (Throwable t) {
 				logger.warn("Flow event handling exception : " + t.getMessage());
 			}
@@ -410,9 +375,9 @@ public class FlowDriver implements Runnable {
 
 	/** notify registered {@link IFlowEventListener} of flow error */
 	public void handleError(Throwable t) {
-		for (Entry<Class, IFlowEventListener> l : eventListeners.entrySet()) {
+		for (IFlowEventListener l : getFlowEventListeners()) {
 			try {
-				l.getValue().handleError(t, session);
+				l.handleError(t, session);
 			} catch (Throwable t1) {
 				logger.warn("Flow event handling exception : " + t1.getMessage());
 			}
@@ -421,9 +386,9 @@ public class FlowDriver implements Runnable {
 
 	/** notify registered {@link IFlowEventListener} of flow step event */
 	public void handleStepEvent(FlowEvent event, IFlowStep step, StepTransition transition) {
-		for (Entry<Class, IFlowEventListener> l : eventListeners.entrySet()) {
+		for (IFlowEventListener l : getFlowEventListeners()) {
 			try {
-				l.getValue().handleStepEvent(event, session, step, transition);
+				l.handleStepEvent(event, session, step, transition);
 			} catch (Throwable t) {
 				logger.warn("Flow event handling exception : " + t.getMessage());
 			}
@@ -431,58 +396,13 @@ public class FlowDriver implements Runnable {
 	}
 	
 	/**
-	 * find error step
-	 * @return
-	 */
-	protected String getErrorStep() {
-		for (Entry<String, FlowStepProperties> entry : stepProperties.entrySet()) {
-			if (entry.getValue().isErrorStep()) {
-				return entry.getKey();
-			}
-		}
-		return null;
-	}
-	
-	/**
 	 * if a step is an error step
 	 * @return
 	 */
 	protected boolean isErrorStep(String stepName) {
-		return stepProperties.containsKey(stepName) && stepProperties.get(stepName).isErrorStep();
+		return StringUtil.equalIgnoreCase(session.getErrorStep(), stepName);
 	}
 	
-	/**
-	 * all steps in this flow
-	 * @return
-	 * @throws InvocationTargetException 
-	 * @throws IllegalAccessException 
-	 * @throws NoSuchMethodException 
-	 */
-	protected Enum[] getStepEnums() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-		return getEnumValues(session.getFirstStepEnum().getDeclaringClass());
-	}
-	
-	/**
-	 * find next step enum based on current step and offset
-	 * 
-	 * @param stepsEnum
-	 * @param current
-	 * @param offset
-	 * @return
-	 * @throws NoSuchMethodException
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException
-	 */
-	protected Enum getRelateEnumValue(Enum current,	int offset) 
-		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
-	{
-		Enum[] steps = getEnumValues(session.getFirstStepEnum().getDeclaringClass());
-		int idx = current.ordinal() + offset;
-		idx = Math.min(idx, steps.length - 1);
-		idx = Math.max(0, idx);
-		return steps[idx];
-	}
-
 	/**
 	 * validate a step
 	 * @param stepName
@@ -490,44 +410,10 @@ public class FlowDriver implements Runnable {
 	 */
 	protected boolean validateStepByName(String stepName) {
 		try {
-			return getEnumByName(stepName) != null;
+			return session.getStepProperties().containsKey(stepName);
 		} catch (Throwable e) {
 			return false;
 		}
-	}
-
-	/**
-	 * find a enum value by its name via reflection
-	 * 
-	 * @param enumName
-	 * @return
-	 * @throws NoSuchMethodException
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException
-	 */
-	protected Enum getEnumByName(String enumName) 
-		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
-	{
-		Class<Enum> stepsEnum = session.getFirstStepEnum().getDeclaringClass();
-		Method method = stepsEnum.getMethod("valueOf", new Class[] { String.class });
-		return (Enum) method.invoke(Constants.NO_OBJECT, new Object[] { enumName });
-	}
-	
-
-	/**
-	 * get all steps out of a steps enum
-	 * 
-	 * @param enumType
-	 * @return
-	 * @throws NoSuchMethodException
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException
-	 */
-	protected static Enum[] getEnumValues(Class enumType)
-		throws NoSuchMethodException, IllegalAccessException, InvocationTargetException 
-	{
-		Method method = enumType.getMethod("values", Constants.NO_PARAMETER_TYPES);
-		return (Enum[]) method.invoke(null, Constants.NO_PARAMETER_VALUES);
 	}
 
 	//////////////////// Runnable interface ///////////////////

@@ -19,10 +19,11 @@ public class FlowStatsTracker implements IFlowEventListener {
 	public void handleError(Throwable t, FlowSession session) {
 	}
 
+	@SuppressWarnings("unchecked")
 	public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 		switch (event) {
 		case start:
-			stat = new FlowStatistics(session.getFirstStepEnum().getClass(), session.getCurrentAction());
+			stat = new FlowStatistics(session.getOrderedStepProperties(), session.getCurrentAction());
 			session.getSessionContext().setPctComplete(0);
 			break;
 		case stop:

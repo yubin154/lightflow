@@ -5,12 +5,10 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import org.lightj.dal.LocatorUtil;
 import org.lightj.dal.mongo.BaseEntity;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.dal.ISessionData;
-import org.lightj.util.StringUtil;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -169,16 +167,6 @@ public class MongoSessionDataImpl extends BaseEntity implements ISessionData {
 	}
 
 	@Override
-	public String getKeyofRequester() {
-		if (!StringUtil.isNullOrEmpty(requesterKey)) {
-			String[] tokens = requesterKey.split(":");
-			if (tokens.length >= 2) return tokens[1];
-			else return tokens[0];
-		}
-		return null;
-	}
-
-	@Override
 	public FlowState getFlowState() {
 		return FlowState.valueOf(actionStatus);
 	}
@@ -202,11 +190,6 @@ public class MongoSessionDataImpl extends BaseEntity implements ISessionData {
 	@Override
 	public void setFlowResult(FlowResult resultStatus) {
 		setResultStatus(resultStatus.name());
-	}
-
-	@Override
-	public String getKeyOfTarget() {
-		return LocatorUtil.getLocatableKey(targetKey);
 	}
 
 	public LinkedHashMap<String, MongoSessionMetaDataImpl> getMetas() {

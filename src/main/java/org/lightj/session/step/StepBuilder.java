@@ -61,16 +61,6 @@ public class StepBuilder {
 	}
 
 	/**
-	 * run to step
-	 * @param step
-	 * @return
-	 */
-	public StepBuilder runTo(Enum step) {
-		this.execute(new SimpleStepExecution(StepTransition.runToStep(step)));
-		return this;
-	}
-	
-	/**
 	 * 
 	 * @param trans
 	 * @return
@@ -117,27 +107,6 @@ public class StepBuilder {
 	}
 	
 	/**
-	 * result handler, go to step when success, all other will go to error step
-	 * @param stepOnSuccess
-	 * @return
-	 */
-	public StepBuilder onSuccess(Enum stepOnSuccess) {
-		StepCallbackHandler handler = new StepCallbackHandler(stepOnSuccess);
-		flowStep.setOrUpdateResultHandler(handler);
-		return this;
-	}
-
-	/**
-	 * result handler, go to step when for success/fail result
-	 * @param stepOnSuccess
-	 * @param stepOnElse
-	 * @return
-	 */
-	public StepBuilder onResult(Enum stepOnSuccess, Enum stepOnElse) {
-		return onResult(stepOnSuccess.name(), stepOnElse.name());
-	}
-	
-	/**
 	 * exception handler
 	 * @param errorHandler
 	 * @return
@@ -158,15 +127,6 @@ public class StepBuilder {
 		StepErrorHandler handler = new StepErrorHandler(StepTransition.runToStep(step).withResult(FlowResult.Failed));
 		flowStep.setErrorHandler(handler);
 		return this;
-	}
-	
-	/**
-	 * exception handler, go to step
-	 * @param step
-	 * @return
-	 */
-	public StepBuilder onException(Enum step) {
-		return onException(step.name());
 	}
 	
 	/**

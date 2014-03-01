@@ -19,10 +19,12 @@ public class TestFlowStats extends BaseTestCase {
 
 	@Test
 	public void testStats() throws Exception {
-		FlowStatistics stats = new FlowStatistics(HelloWorldFlow.steps.class, "start");
-		for (HelloWorldFlow.steps s : HelloWorldFlow.steps.values()) {
-			stats.updatePercentComplete(s.name());
-			System.out.println(s.name() + ':' + stats.getPercentComplete());
+		HelloWorldFlow session = FlowSessionFactory.getInstance().createSession(HelloWorldFlow.class);
+		FlowStatistics stats = new FlowStatistics(session.getOrderedStepProperties(), "start");
+		String[] steps = {"start", "stop"};
+		for (String s : steps) {
+			stats.updatePercentComplete(s);
+			System.out.println(s + ':' + stats.getPercentComplete());
 		}
 		assertEquals(100, stats.getPercentComplete());
 		stats.setPercentComplete(0);
@@ -37,7 +39,7 @@ public class TestFlowStats extends BaseTestCase {
 		assertEquals(0, session.getPercentComplete());
 		
 		IFlowStep step = new StepImpl();
-		step.setStepName(HelloWorldFlow.steps.asyncTaskStep.name());
+		step.setStepName("asyncTaskStep");
 		statsTracker.handleStepEvent(FlowEvent.stepExit, session, step, null);
 		assertTrue(session.getPercentComplete()>0 && session.getPercentComplete()<100);
 		

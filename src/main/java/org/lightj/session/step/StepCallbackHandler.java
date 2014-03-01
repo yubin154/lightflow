@@ -61,14 +61,6 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	}
 
 	/**
-	 * constructor with no defaul transition
-	 * @param transition
-	 */
-	public StepCallbackHandler(Enum runTo) {
-		super(StepTransition.runToStep(runTo));
-	}
-
-	/**
 	 * construct a result handler with default transition
 	 * @param transition
 	 */
@@ -308,19 +300,6 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		return this;
 	}
 
-	/**
-	 * register a status with result(s)
-	 * @param status
-	 * @param result
-	 */
-	public StepCallbackHandler mapResultTo(Enum stepName, TaskResultEnum... statuses) {
-		for (TaskResultEnum status : statuses) {
-			mapOnResults.put(status, new TransitionWrapper(StepTransition.runToStep(stepName)));
-		}
-		return this;
-	}
-	
-	
 	@SuppressWarnings("unchecked")
 	public void merge(StepCallbackHandler another) {
 		this.mapOnResults.putAll(another.mapOnResults);
@@ -339,31 +318,6 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		this.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
 		this.mapResultTo(StepTransition.runToStep(stepOnElse), TaskResultEnum.Failed, TaskResultEnum.Timeout, TaskResultEnum.Canceled);
 		return this;
-	}
-	
-	/**
-	 * register step with results
-	 * @param stepOnSuccess
-	 * @param stepOnElse
-	 * @return
-	 */
-	public StepCallbackHandler mapResult(Enum stepOnSuccess, Enum stepOnElse) {
-		this.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
-		this.mapResultTo(StepTransition.runToStep(stepOnElse), TaskResultEnum.Failed, TaskResultEnum.Timeout, TaskResultEnum.Canceled);
-		return this;
-	}
-	
-	
-	/**
-	 * convenient method to create handler
-	 * @param stepOnSuccess
-	 * @param stepOnElse
-	 * @return
-	 */
-	public static StepCallbackHandler onResult(Enum stepOnSuccess, Enum stepOnElse) {
-		StepCallbackHandler handler = new StepCallbackHandler(StepTransition.runToStep(stepOnElse).withResult(FlowResult.Failed));
-		handler.mapResultTo(StepTransition.runToStep(stepOnSuccess), TaskResultEnum.Success);
-		return handler;
 	}
 	
 	/**

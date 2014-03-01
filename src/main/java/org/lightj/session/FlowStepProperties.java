@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
+@Target(ElementType.METHOD)
 public @interface FlowStepProperties {
 	
 	/**
@@ -17,10 +17,23 @@ public @interface FlowStepProperties {
 	boolean isErrorStep()	default false;
 	
 	/**
+	 * first step to run,
+	 * flow drive will execute the step without setting when flow start from scratch
+	 * @return
+	 */
+	boolean isFirstStep()	default false;
+	
+	/**
 	 * step description
 	 * @return
 	 */
 	String desc()	default "";
+	
+	/**
+	 * order of the steps, start step idx=0, erro step idx=Integer.max
+	 * @return
+	 */
+	int stepIdx();
 	
 	/**
 	 * relative weight of the step, used to calculate flow progress

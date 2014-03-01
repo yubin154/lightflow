@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.UUID;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,6 +37,10 @@ public class StringUtil {
 		return "\'" + src + "\'";
 	}
 
+	public static String genUuid() {
+		return UUID.randomUUID().toString();
+	}
+	
 	/**
 	 * Splits a string containing separators into an arraylist.  By default does not generate empty or null 
 	 * values.  

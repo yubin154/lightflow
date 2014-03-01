@@ -1,8 +1,7 @@
 package org.lightj.session;
 
-import org.lightj.ILabelledValue;
 
-public enum FlowState implements ILabelledValue {
+public enum FlowState {
 	
 	Unknown("Unknown"),			// system state unknown
 	Pending("Initializing"), 	// initializing

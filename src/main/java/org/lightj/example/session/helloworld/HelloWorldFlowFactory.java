@@ -3,7 +3,6 @@ package org.lightj.example.session.helloworld;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lightj.example.session.helloworld.HelloWorldFlow.steps;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.exception.FlowExecutionException;
@@ -132,7 +131,7 @@ public class HelloWorldFlowFactory {
 		IFlowStep step = new StepBuilder().execute(execution).getFlowStep();
 		
 		// retry until match a transition or max retry limit is reached
-		StepTransition matchTran = StepTransition.runToStep(steps.timeoutStep);
+		StepTransition matchTran = StepTransition.runToStep("timeoutStep");
 		return RetryEnclosure.retryIf(DelayedEnclosure.delay(1000, step), 1, matchTran);		
 	}
 	
@@ -155,7 +154,7 @@ public class HelloWorldFlowFactory {
 				}
 			}
 			
-		}.mapResultTo(steps.asyncPollStep, TaskResultEnum.Timeout, TaskResultEnum.Success);
+		}.mapResultTo("asyncPollStep", TaskResultEnum.Timeout, TaskResultEnum.Success);
 
 		return new StepBuilder().executeAsyncTasks(task).onResult(resultHandler).getFlowStep();
 

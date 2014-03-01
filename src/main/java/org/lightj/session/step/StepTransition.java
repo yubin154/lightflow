@@ -20,7 +20,6 @@ import org.lightj.util.StringUtil;
  * @author biyu
  *
  */
-@SuppressWarnings("rawtypes")
 public final class StepTransition implements Comparable<StepTransition> {
 	
 	public static final StepTransition CALLBACK	=	new StepTransition().inState(FlowState.Callback);
@@ -62,10 +61,6 @@ public final class StepTransition implements Comparable<StepTransition> {
 	}
 
 	/** run to a step */
-	public static StepTransition runToStep(Enum stepName) {
-		return new StepTransition().toStep(stepName).inState(FlowState.Running);
-	}
-	
 	/**
 	 * park in state
 	 * @param state
@@ -89,14 +84,6 @@ public final class StepTransition implements Comparable<StepTransition> {
 	}
 	
 	/**
-	 * constructor
-	 * @param nextStep
-	 */
-	public StepTransition(Enum nextStep) {
-		this(FlowState.Running, nextStep.name(), null, null);
-	}
-
-	/**
 	 * construct a FlowStepTransition given a flow state and next step it goes to
 	 * @param actionStatus
 	 * @param nextStep
@@ -105,15 +92,6 @@ public final class StepTransition implements Comparable<StepTransition> {
 		this(actionStatus, nextStep, null, null);
 	}
 	
-	/**
-	 * construct a FlowStepTransition given a flow state and next step it goes to
-	 * @param actionStatus
-	 * @param nextStep
-	 */
-	public StepTransition(FlowState actionStatus, Enum nextStep) {
-		this(actionStatus, nextStep.name(), null, null);
-	}
-
 	/**
 	 * construct a {@link StepExecution} given a flow state, next step, result state and message
 	 * @param actionStatus
@@ -135,12 +113,6 @@ public final class StepTransition implements Comparable<StepTransition> {
 
 	public StepTransition toStep(String stepName) {
 		this.nextStep = stepName;
-		this.actionStatus = FlowState.Running;
-		return this;
-	}
-
-	public StepTransition toStep(Enum stepName) {
-		this.nextStep = stepName.name();
 		this.actionStatus = FlowState.Running;
 		return this;
 	}

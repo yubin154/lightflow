@@ -24,10 +24,6 @@ public class StepErrorHandler<T extends FlowContext> extends StepExecution<T> {
 		super(StepTransition.runToStep(stepName));
 	}
 
-	public StepErrorHandler(Enum stepName) {
-		super(StepTransition.runToStep(stepName));
-	}
-
 	public StepErrorHandler(StepTransition transition) {
 		super(transition);
 	}
@@ -120,13 +116,4 @@ public class StepErrorHandler<T extends FlowContext> extends StepExecution<T> {
 		return handler;
 	}
 	
-	/**
-	 * convenient method to create handler
-	 * @return
-	 */
-	public static StepErrorHandler onException(Enum step) {
-		StepErrorHandler handler = new StepErrorHandler(StepTransition.runToStep(step));
-		return handler;
-	}
-
 }

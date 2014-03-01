@@ -20,29 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @FlowProperties(typeId="Skeleton", desc="Bare minimal of a flow", clustered=false, interruptible=false, timeoutInSec=0)
-@SuppressWarnings("rawtypes")
 public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
-
-	/**
-	 * flow steps
-	 * @author biyu
-	 *
-	 */
-	public static enum SkeletonSteps {
-		@FlowStepProperties(stepWeight=2, logging=false, onSuccess="stop", onElse="handleError", onException="handleError")
-		start,
-		@FlowStepProperties(stepWeight=5)
-		step1,
-		@FlowStepProperties(stepWeight=1)
-		stop,
-		@FlowStepProperties(stepWeight=0, isErrorStep=true)
-		handleError
-	}
-
-	@Override
-	public Enum getFirstStepEnum() {
-		return SkeletonSteps.start;
-	}
 
 	//////////////// step implementation /////////////////
 	@Autowired(required=true)
@@ -55,15 +33,19 @@ public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 	private IFlowStep skeletonErrorStep;
 	
 	// method with the same name as in flow step enum, framework will use reflection to run each step
+	@FlowStepProperties(stepWeight=2, logging=false, onSuccess="stop", onElse="handleError", onException="handleError", isFirstStep=true, stepIdx=1)
 	public IFlowStep start() {
 		return skeletonStartStep;
 	}
+	@FlowStepProperties(stepWeight=1, stepIdx=3)
 	public IFlowStep stop() {
 		return skeletonStopStep;
 	}
+	@FlowStepProperties(stepWeight=0, isErrorStep=true, stepIdx=100)
 	public IFlowStep handleError() {
 		return skeletonErrorStep;
 	}
+	@FlowStepProperties(stepWeight=5, stepIdx=2)
 	public IFlowStep step1() {
 		return skeletonStep1;
 	}

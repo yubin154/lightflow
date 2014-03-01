@@ -3,7 +3,6 @@ package org.lightj.session.step;
 import org.lightj.session.FlowContext;
 import org.lightj.session.exception.FlowExecutionException;
 
-@SuppressWarnings("rawtypes")
 public class SimpleStepExecution<T extends FlowContext> extends StepExecution<T> {
 
 
@@ -30,14 +29,6 @@ public class SimpleStepExecution<T extends FlowContext> extends StepExecution<T>
 		super(StepTransition.runToStep(nextStep));
 	}
 
-	/**
-	 * constructor with next step
-	 * @param nextStep
-	 */
-	public SimpleStepExecution(Enum nextStep) {
-		super(StepTransition.runToStep(nextStep));
-	}
-	
 	@Override
 	public StepTransition execute() throws FlowExecutionException {
 		return defResult;
