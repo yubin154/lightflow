@@ -5,7 +5,7 @@ import java.util.concurrent.Executors;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
 import org.lightj.example.dal.SampleDatabaseEnum;
-import org.lightj.example.session.HelloWorldFlow;
+import org.lightj.example.session.helloworld.HelloWorldFlow;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;

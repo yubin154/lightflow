@@ -1,9 +1,9 @@
-package org.lightj.example.session;
+package org.lightj.example.session.helloworld;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lightj.example.session.HelloWorldFlow.steps;
+import org.lightj.example.session.helloworld.HelloWorldFlow.steps;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.exception.FlowExecutionException;
@@ -22,8 +22,11 @@ import org.lightj.task.ExecuteOption;
 import org.lightj.task.FlowTask;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.Task;
+import org.lightj.task.TaskExecutionException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.task.asynchttp.GroupHttpTask;
+import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.UrlRequest;
 import org.lightj.task.asynchttp.UrlTemplate;
 import org.springframework.context.annotation.Bean;
@@ -32,7 +35,6 @@ import org.springframework.context.annotation.Scope;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfigBean;
-import com.ning.http.client.Response;
 
 /**
  * a spring factory creates steps in a workflow
@@ -172,101 +174,30 @@ public class HelloWorldFlowFactory {
 
 		// poll every second, up to 5 seconds
 		final MonitorOption monitorOption = new MonitorOption(1000, 5000);
+		final UrlTemplate template = new UrlTemplate("https://#host");
 		
-		final SimpleHttpAsyncPollTask<HelloWorldFlowContext> task = new SimpleHttpAsyncPollTask<HelloWorldFlowContext>(client, new ExecuteOption(), monitorOption) {
+		final GroupHttpTask<HelloWorldFlowContext, SimpleHttpAsyncPollTask> task = 
+				new GroupHttpTask<HelloWorldFlowContext, SimpleHttpAsyncPollTask>() {
 
 			@Override
-			public UrlRequest createRequest(UrlTemplate reqTemplate) {
-				return reqTemplate.createRequest("#host", "www.ebay.com");
+			public List<SimpleHttpAsyncPollTask> getTasks(HelloWorldFlowContext context) {
+				ArrayList<SimpleHttpAsyncPollTask> tasks = new ArrayList<SimpleHttpAsyncPollTask>();
+				for (String host : context.getGoodHosts()) {
+					SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, new ExecuteOption(), monitorOption);
+					task.setHttpParams(new UrlRequest(template).addTemplateValue("#host", host), new UrlRequest(template), "#host");
+					tasks.add(task);
+				}
+				return tasks;
 			}
 
 			@Override
-			public UrlRequest createPollRequest(UrlTemplate pollTemplate,
-					Response response) {
-				return pollTemplate.createRequest();
+			public TaskResult execute() throws TaskExecutionException {
+				// noop, this task will never really be executed
+				throw new TaskExecutionException("This task should never be executed");
 			}
 			
 		};
-		task.setHttpParams(new UrlTemplate("http://#host"), new UrlTemplate("http://#host"), "#host");
 		
-		
-//		// build http task
-//		final AsyncHttpTask<HelloWorldFlowContext> task = new AsyncHttpTask<HelloWorldFlowContext>(client, new ExecuteOption(), monitorOption) {
-//
-//			@Override
-//			public BoundRequestBuilder createRequest() {
-//				return client.preparePost("https://" + context.getGoodHost() + "/admin/executeCmd")
-//						.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
-//						.addHeader("content-type", "application/json")
-//						.addHeader("AUTHZ_TOKEN", "donoevil")
-//						.setBody("{\"cmd\": \"netstat\"}");
-//			}
-//
-//			@Override
-//			public TaskResult onComplete(Response response) {
-//				TaskResult res = createTaskResult(TaskResultEnum.Success, "");
-//				try {
-//					res.setRealResult(response.getResponseBody());
-//					AgentStatus aStatus = JsonUtil.decode((String) res.getRealResult(), AgentStatus.class);
-//					final String pollUrl = "https://" + context.getGoodHost() + aStatus.getStatus();
-//					this.setExtTaskUuid(pollUrl);
-//					AsyncHttpTask pollTask = createPollTask(pollUrl);
-//					res.setRealResult(pollTask);
-//				} catch (IOException e) {
-//					return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
-//				}
-//				return res;
-//			}
-//
-//			@Override
-//			public TaskResult onThrowable(Throwable t) {
-//				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
-//			}
-//			
-//			/** create poll task */
-//			private AsyncHttpTask createPollTask(final String pollUrl) {
-//				
-//				return new AsyncHttpTask<HelloWorldFlowContext>(client) {
-//
-//					@Override
-//					public BoundRequestBuilder createRequest() {
-//						return client.prepareGet(pollUrl);
-//					}
-//
-//					@Override
-//					public TaskResult onComplete(Response response) {
-//						TaskResult res = null;
-//						try {
-//							AgentStatus aStatus = JsonUtil.decode((String) response.getResponseBody(), AgentStatus.class);
-//							if (aStatus.getProgress() == 100) {
-//								if (aStatus.getError() == 0) {
-//									res = createTaskResult(TaskResultEnum.Success, aStatus.getStatus());
-//								}
-//								else {
-//									res = createTaskResult(TaskResultEnum.Failed, aStatus.getErrorMsg());
-//								}
-//								res.setRealResult(aStatus);
-//							}
-//							else {
-//								res = createTaskResult(TaskResultEnum.Running, null);
-//								res.setRealResult(this);
-//							}
-//							
-//						} catch (IOException e) {
-//							return createErrorResult(TaskResultEnum.Failed, e.getMessage(), e);
-//						}
-//						return res;
-//					}
-//
-//					@Override
-//					public TaskResult onThrowable(Throwable t) {
-//						return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
-//					}
-//				};
-//
-//			}
-//		};
-			
 		return new StepBuilder().executeAsyncPollTasks(task).getFlowStep();
 	}
 

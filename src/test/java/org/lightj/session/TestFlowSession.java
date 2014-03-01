@@ -10,9 +10,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
 import org.lightj.example.dal.SampleDatabaseEnum;
-import org.lightj.example.session.HelloWorldFlow;
-import org.lightj.example.session.HelloWorldFlowEventListener;
-import org.lightj.example.session.HelloWorldFlow.steps;
+import org.lightj.example.session.helloworld.HelloWorldFlow;
+import org.lightj.example.session.helloworld.HelloWorldFlowEventListener;
+import org.lightj.example.session.helloworld.HelloWorldFlow.steps;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
@@ -32,6 +32,7 @@ public class TestFlowSession extends BaseTestCase {
 	@Test
 	public void testHelloWorld() throws Exception {
 		HelloWorldFlow session = FlowSessionFactory.getInstance().createSession(HelloWorldFlow.class);
+		session.getSessionContext().setGoodHosts("www.yahoo.com", "www.yahoo.com");
 		session.save();
 		session.addEventListener(new HelloWorldFlowEventListener(lock, cond));
 		session.runFlow();

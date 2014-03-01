@@ -5,8 +5,11 @@ import org.lightj.session.FlowContext;
 @SuppressWarnings("rawtypes")
 public class BatchTask extends Task<FlowContext> {
 	
+	/** batch of tasks */
 	private final Task[] tasks;
+	/** batch option, strategy */
 	private final BatchOption batchOption;
+	
 	public Task[] getTasks() {
 		return tasks;
 	}

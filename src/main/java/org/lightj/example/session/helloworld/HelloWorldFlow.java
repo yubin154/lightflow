@@ -1,4 +1,4 @@
-package org.lightj.example.session;
+package org.lightj.example.session.helloworld;
 
 import org.lightj.session.FlowProperties;
 import org.lightj.session.FlowResult;

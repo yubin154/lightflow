@@ -5,7 +5,7 @@ import java.util.HashMap;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 
 /**
- * a http request
+ * a http request template, typically immutable
  * @author binyu
  *
  */
@@ -31,23 +31,12 @@ public class UrlTemplate {
 	public HttpMethod getMethod() {
 		return method;
 	}
-	public void setMethod(HttpMethod method) {
-		this.method = method;
-	}
 	public String getBody() {
 		return this.body;
 	}
-	public void setBody(String body) {
-		this.body = body;
-	}
-	
 	public String getUrl() {
 		return this.url;
 	}
-	public void setUrl(String url) {
-		this.url = url;
-	}
-	
 	public HashMap<String, String> getHeaders() {
 		return headers;
 	}
@@ -56,15 +45,6 @@ public class UrlTemplate {
 		return this;
 	}
 
-	public UrlRequest createRequest() {
-		UrlRequest another = new UrlRequest();
-		another.body = this.body;
-		another.headers = new HashMap<String, String>(this.headers);
-		another.method = this.method;
-		another.url = this.url;
-		return another;
-	}
-	
 	public UrlRequest createRequest(String...nvp) {
 		if (nvp.length%2 != 0) {
 			throw new IllegalArgumentException("Replacement nvp has to be in pairs");

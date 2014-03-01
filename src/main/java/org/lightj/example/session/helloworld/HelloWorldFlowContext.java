@@ -1,4 +1,4 @@
-package org.lightj.example.session;
+package org.lightj.example.session.helloworld;
 
 import org.lightj.session.CtxProp;
 import org.lightj.session.FlowContext;
@@ -11,7 +11,7 @@ import org.lightj.session.FlowContext;
 public class HelloWorldFlowContext extends FlowContext {
 	
 	// private context
-	private String goodHost = "phx7b02c-719818.stratus.phx.ebay.com:12020";
+	private String[] goodHosts;
 	private String badHost = "http://asdfewerasdfk";
 	private boolean injectFailure = false;
 	private boolean controlledFailure = true;
@@ -66,11 +66,11 @@ public class HelloWorldFlowContext extends FlowContext {
 	public synchronized void incTimeoutCount() {
 		timeoutCount++;
 	}
-	public String getGoodHost() {
-		return goodHost;
+	public String[] getGoodHosts() {
+		return goodHosts;
 	}
-	public void setGoodHost(String goodHost) {
-		this.goodHost = goodHost;
+	public void setGoodHosts(String... goodHosts) {
+		this.goodHosts = goodHosts;
 	}
 	public String getBadHost() {
 		return badHost;

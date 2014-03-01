@@ -5,30 +5,28 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
+import org.lightj.util.StringUtil;
 
 /**
  * url request
  * @author binyu
  *
  */
-public class UrlRequest extends UrlTemplate {
+public class UrlRequest {
 
 	private HashMap<String, String> templateValues = new HashMap<String, String>();
-
+	final private UrlTemplate urlTemplate;
+	
 	/** constructor */
-	public UrlRequest() { super(); }
-	public UrlRequest(String url) {
-		super(url);
-	}
-	public UrlRequest(String url, HttpMethod method, String body) {
-		super(url, method, body);
+	public UrlRequest(UrlTemplate urlTemplate) { 
+		this.urlTemplate = urlTemplate; 
 	}
 	
-	public UrlTemplate addTemplateValue(String k, String v) {
+	public UrlRequest addTemplateValue(String k, String v) {
 		this.templateValues.put(k, v);
 		return this;
 	}
-	public UrlTemplate addAllTemplateValues(Map<String, String> values) {
+	public UrlRequest addAllTemplateValues(Map<String, String> values) {
 		this.templateValues.putAll(values);
 		return this;
 	}
@@ -39,9 +37,15 @@ public class UrlRequest extends UrlTemplate {
 		return templateValues;
 	}
 	
+	public HttpMethod getMethod() {
+		return urlTemplate.getMethod();
+	}
+	public boolean hasBody() {
+		return !StringUtil.isNullOrEmpty(urlTemplate.getBody());
+	}
 	/** get real body after replacing template */
 	public String generateBody() {
-		String bodyV = body;
+		String bodyV = urlTemplate.getBody();
 		for (Entry<String, String> entry : templateValues.entrySet()) {
 			bodyV = bodyV.replaceAll(entry.getKey(), entry.getValue());
 		}
@@ -50,7 +54,7 @@ public class UrlRequest extends UrlTemplate {
 
 	/** get real url after template replacement */
 	public String generateUrl() {
-		String urlV = url;
+		String urlV = urlTemplate.getUrl();
 		for (Entry<String, String> entry : templateValues.entrySet()) {
 			urlV = urlV.replaceAll(entry.getKey(), entry.getValue());
 		}
@@ -60,7 +64,7 @@ public class UrlRequest extends UrlTemplate {
 	/** get real headers after template replacement */
 	public HashMap<String, String> generateHeaders() {
 		HashMap<String, String> headersReal = new HashMap<String, String>();
-		for (Entry<String, String> header : headers.entrySet()) {
+		for (Entry<String, String> header : urlTemplate.getHeaders().entrySet()) {
 			String key = header.getKey();
 			String value = header.getValue();
 			for (Entry<String, String> entry : templateValues.entrySet()) {

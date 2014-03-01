@@ -1,6 +1,8 @@
-package org.lightj.example.session;
+package org.lightj.task.asynchttp;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.lightj.session.FlowContext;
@@ -9,52 +11,54 @@ import org.lightj.task.MonitorOption;
 import org.lightj.task.RuntimeTaskExecutionException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.AsyncHttpTask;
-import org.lightj.task.asynchttp.UrlRequest;
-import org.lightj.task.asynchttp.UrlTemplate;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
-public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
-	
-	/** request template */
-	private UrlTemplate reqTemplate;
+public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	
 	/** keep transient materialized req and poll req */
-	private UrlRequest req;
+	protected UrlRequest req;
+	
+	/** if populated, template variable will be populated with values from context at runtime */
+	protected Map<String, String> templateVariableFromContext;
 	
 	/** constructor */
 	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
 	{
 		super(client, execOptions, monitorOption);
-		this.client = client;
 	}
 	
-	public UrlTemplate getReqTemplate() {
-		return reqTemplate;
+	public UrlRequest getReq() {
+		return req;
 	}
-	public void setReqTemplate(UrlTemplate reqTemplate) {
-		this.reqTemplate = reqTemplate;
-	}
-
-	public void setHttpParams(UrlTemplate reqTemplate) {
-		this.reqTemplate = reqTemplate;
+	public void setReq(UrlRequest req) {
+		this.req = req;
 	}
 	
-	public abstract UrlRequest createRequest(UrlTemplate reqTemplate);
+	public void addTemplateVariableFromContext(String variableName, String contextVariableName) {
+		if (templateVariableFromContext == null) {
+			templateVariableFromContext = new HashMap<String, String>();
+		}
+		templateVariableFromContext.put(variableName, contextVariableName);
+	}
 	
-
 	/**
 	 * build a ning http request builder
 	 * @param req
 	 * @return
 	 */
-	private BoundRequestBuilder buildHttpRequest(UrlRequest req) {
+	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
-		UrlRequest realReq = createRequest(reqTemplate);
-		String url = realReq.generateUrl();
+		if (templateVariableFromContext != null) {
+			for (Entry<String, String> entry : templateVariableFromContext.entrySet()) {
+				String variable = entry.getKey();
+				Object value = context.getValueByName(entry.getValue());
+				req.addTemplateValue(variable, value!=null ? value.toString() : "");
+			}
+		}
+		String url = req.generateUrl();
 		switch (req.getMethod()) {
 		case GET:
 			builder = client.preparePost(url);
@@ -72,13 +76,13 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 			break;	
 		}
 		if (builder == null) {
-			throw new RuntimeTaskExecutionException("Failed to build agent request, unknown method");
+			throw new RuntimeTaskExecutionException("Failed to build http request, unknown method");
 		}
 		else {
 			for (Entry<String, String> header : req.generateHeaders().entrySet()) {
 				builder.addHeader(header.getKey(), header.getValue());
 			}
-			if (req.getBody() != null) {
+			if (req.hasBody()) {
 				builder.setBody(req.generateBody());
 			}
 		}
@@ -88,7 +92,6 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 	@Override
 	public BoundRequestBuilder createRequest() {
 		
-		req = createRequest(reqTemplate);
 		return buildHttpRequest(req);
 		
 	}
@@ -115,6 +118,6 @@ public abstract class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTas
 	public TaskResult onThrowable(Throwable t) {
 		return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
 	}
-	
+
 }
 

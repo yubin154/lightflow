@@ -41,7 +41,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 			new HashMap<TaskResultEnum, StepExecution>();
 	
 	/** number of tasks for tracking */
-	protected int numOfTasks = 1;
+	protected AtomicInteger numOfTasks = new AtomicInteger(0);
 	protected AtomicInteger numOfTaskResults = new AtomicInteger(0);
 	
 	/**
@@ -82,7 +82,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	public final int handleTaskResult(Task task, TaskResult result) 
 	{
 		// if this is the last result expected
-		int resultRemaining = (task instanceof BatchTask) ? 0 : (numOfTasks - numOfTaskResults.incrementAndGet()); 
+		int resultRemaining = (task instanceof BatchTask) ? 0 : (numOfTasks.get() - numOfTaskResults.incrementAndGet()); 
 		
 		try {
 			// handle result
@@ -393,7 +393,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 
 	@Override
 	public void setExpectedResultCount(int numOfTasks) {
-		this.numOfTasks = numOfTasks;
+		this.numOfTasks.addAndGet(numOfTasks);
 	}
 	
 }

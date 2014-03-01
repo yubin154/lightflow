@@ -1,4 +1,4 @@
-package org.lightj.example.session;
+package org.lightj.example.session.helloworld;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;

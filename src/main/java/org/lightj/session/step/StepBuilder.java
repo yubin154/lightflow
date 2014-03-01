@@ -1,5 +1,7 @@
 package org.lightj.session.step;
 
+import java.util.ArrayList;
+
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowModule;
 import org.lightj.session.FlowResult;
@@ -10,6 +12,7 @@ import org.lightj.task.BatchOption;
 import org.lightj.task.BatchTask;
 import org.lightj.task.BatchTaskWorker;
 import org.lightj.task.ExecutableTask;
+import org.lightj.task.IGroupTask;
 import org.lightj.task.IWorker;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResultEnum;
@@ -183,11 +186,28 @@ public class StepBuilder {
 				public StepTransition execute() throws FlowExecutionException {
 					final FlowContext mycontext = this.sessionContext;
 					final StepCallbackHandler chandler = this.flowStep.getResultHandler();
-					final BatchTask batchTask = new BatchTask(batchOption, tasks);
-					for (Task task : batchTask.getTasks()) {
+					ArrayList<Task> nTasks = new ArrayList<Task>();
+					for (Task task : tasks) {
 						// inject the context
 						task.setContext(mycontext);
+						if (task instanceof IGroupTask) {
+							IGroupTask batchableTask = (IGroupTask) task;
+							Task[] bTasks = (Task[]) batchableTask.getTasks(mycontext).toArray(new Task[0]);
+							for (Task bTask : bTasks) {
+								bTask.setContext(mycontext);
+							}
+							fire(new BatchTask(batchOption, bTasks), chandler);
+						}
+						else {
+							nTasks.add(task);
+						}
 					}
+					final BatchTask batchTask = new BatchTask(batchOption, nTasks.toArray(new Task[0]));
+					fire(batchTask, chandler);
+					return super.execute();
+				}
+				
+				private void fire(final BatchTask batchTask, final StepCallbackHandler chandler) {
 					ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
 							new Props(new UntypedActorFactory() {
 					
@@ -199,7 +219,6 @@ public class StepBuilder {
 						}
 					}));
 					batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
-					return super.execute();
 				}
 		});
 		

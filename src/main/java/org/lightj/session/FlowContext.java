@@ -201,22 +201,21 @@ public class FlowContext {
 		return context.keySet();
 	}
 	
+
 	/**
-	 * get string property value
+	 * get value by name with reflection
 	 * @param name
 	 * @return
 	 */
-	public String getStringMeta(String name) {
-		if (context != null && context.get(name) != null){
-			String raw = context.get(name).getStrValue();
-			try {
-				return JsonUtil.decode(raw, String.class);
-			} catch (Exception e) {
-				logger.warn("Failed to decode meta data : " + name + "=" + raw);
-			}	
+	public Object getValueByName(String name) {
+		try {
+			Method getter = new PropertyDescriptor(name, this.getClass()).getReadMethod();
+			return getter.invoke(this, Constants.NO_PARAMETER_VALUES);
+		} catch (Throwable t) {
+			throw new RuntimeException("cannot retrieve context value by name " + name + ": " + t.getMessage());
 		}
-		return null;
 	}
+	
 	
 	/**
 	 * set pojo field into persisted DO
