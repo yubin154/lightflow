@@ -1,5 +1,6 @@
 package org.lightj.example.session.helloworld;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,6 +8,7 @@ import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.DelayedEnclosure;
+import org.lightj.session.step.IAroundExecution;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.RetryEnclosure;
 import org.lightj.session.step.SimpleStepExecution;
@@ -21,10 +23,8 @@ import org.lightj.task.ExecuteOption;
 import org.lightj.task.FlowTask;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.Task;
-import org.lightj.task.TaskExecutionException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.GroupHttpTask;
 import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.UrlRequest;
 import org.lightj.task.asynchttp.UrlTemplate;
@@ -34,6 +34,7 @@ import org.springframework.context.annotation.Scope;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfigBean;
+import com.ning.http.client.Response;
 
 /**
  * a spring factory creates steps in a workflow
@@ -63,7 +64,7 @@ public class HelloWorldFlowFactory {
 			}			
 		};
 		
-		return new StepBuilder().executeAsyncTasks(task).getFlowStep();
+		return new StepBuilder().executeTasks(task).getFlowStep();
 		
 	}
 	
@@ -100,7 +101,7 @@ public class HelloWorldFlowFactory {
 		};
 
 		// build the step
-		return new StepBuilder().executeAsyncTasks(tasks.toArray(new FlowTask[0])).onResult(resultHandler).getFlowStep();
+		return new StepBuilder().executeTasks(tasks.toArray(new FlowTask[0])).onResult(resultHandler).getFlowStep();
 	}
 
 	/**
@@ -156,7 +157,7 @@ public class HelloWorldFlowFactory {
 			
 		}.mapResultTo("asyncPollStep", TaskResultEnum.Timeout, TaskResultEnum.Success);
 
-		return new StepBuilder().executeAsyncTasks(task).onResult(resultHandler).getFlowStep();
+		return new StepBuilder().executeTasks(task).onResult(resultHandler).getFlowStep();
 
 	}
 	
@@ -166,38 +167,56 @@ public class HelloWorldFlowFactory {
 	 */
 	public @Bean @Scope("prototype") IFlowStep helloWorldAsyncPollStep()
 	{
-		// create and configure async http client
-		AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
-		config.setConnectionTimeOutInMs(3000);
-		final AsyncHttpClient client = new AsyncHttpClient(config);
-
-		// poll every second, up to 5 seconds
-		final MonitorOption monitorOption = new MonitorOption(1000, 5000);
-		final UrlTemplate template = new UrlTemplate("https://#host");
-		
-		final GroupHttpTask<HelloWorldFlowContext, SimpleHttpAsyncPollTask> task = 
-				new GroupHttpTask<HelloWorldFlowContext, SimpleHttpAsyncPollTask>() {
+		return new StepBuilder().executeTasksFromContext("asyncPollTasks", null, new IAroundExecution<HelloWorldFlowContext>() {
 
 			@Override
-			public List<SimpleHttpAsyncPollTask> getTasks(HelloWorldFlowContext context) {
+			public void preExecute(HelloWorldFlowContext ctx)
+					throws FlowExecutionException {
+				// create and configure async http client
+				AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
+				config.setConnectionTimeOutInMs(3000);
+				final AsyncHttpClient client = new AsyncHttpClient(config);
+
+				// poll every second, up to 5 seconds
+				final MonitorOption monitorOption = new MonitorOption(1000, 5000);
+				final UrlTemplate template = new UrlTemplate("https://#host");
+				
 				ArrayList<SimpleHttpAsyncPollTask> tasks = new ArrayList<SimpleHttpAsyncPollTask>();
-				for (String host : context.getGoodHosts()) {
-					SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, new ExecuteOption(), monitorOption);
+				for (String host : ctx.getGoodHosts()) {
+					SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, new ExecuteOption(), monitorOption) {
+
+						@Override
+						public TaskResult checkPollProgress(Response response) {
+							TaskResult res = null;
+							int sCode = response.getStatusCode();
+							String statusCode = Integer.toString(sCode);
+							if (sCode >= 200 && sCode <300) {
+								res = createTaskResult(TaskResultEnum.Success, statusCode);
+							}
+							else {
+								res = createTaskResult(TaskResultEnum.Failed, statusCode);
+							}
+							try {
+								res.setRealResult(response.getResponseBody());
+							} catch (IOException e) {
+								// ignore
+							}
+							return res;
+						}
+						
+					};
 					task.setHttpParams(new UrlRequest(template).addTemplateValue("#host", host), new UrlRequest(template), "#host");
 					tasks.add(task);
 				}
-				return tasks;
+				ctx.setAsyncPollTasks(tasks);
 			}
 
 			@Override
-			public TaskResult execute() throws TaskExecutionException {
-				// noop, this task will never really be executed
-				throw new TaskExecutionException("This task should never be executed");
+			public void postExecute(HelloWorldFlowContext ctx)
+					throws FlowExecutionException {
 			}
-			
-		};
-		
-		return new StepBuilder().executeAsyncPollTasks(task).getFlowStep();
+
+		}).getFlowStep();
 	}
 
 
@@ -219,7 +238,10 @@ public class HelloWorldFlowFactory {
 		}
 		
 		// build execution with batching option of max concurrency of 5 tasks
-		return new StepBuilder().batchExecuteAsyncTasks(new BatchOption(10, Strategy.MAX_CONCURRENT_RATE_SLIDING), tasks.toArray(new ExecutableTask[0])).getFlowStep();
+		return new StepBuilder().executeTasks(
+				new BatchOption(10, Strategy.MAX_CONCURRENT_RATE_SLIDING),
+				null,
+				tasks.toArray(new ExecutableTask[0])).getFlowStep();
 	}
 
 
@@ -246,7 +268,7 @@ public class HelloWorldFlowFactory {
 			
 		};
 		
-		return new StepBuilder().executeAsyncTasks(task).getFlowStep();
+		return new StepBuilder().executeTasks(task).getFlowStep();
 		
 	}
 

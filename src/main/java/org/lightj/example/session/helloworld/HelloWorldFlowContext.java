@@ -1,13 +1,17 @@
 package org.lightj.example.session.helloworld;
 
+import java.util.ArrayList;
+
 import org.lightj.session.CtxProp;
 import org.lightj.session.FlowContext;
+import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 
 /**
  * Session context
  * @author biyu
  *
  */
+@SuppressWarnings("rawtypes")
 public class HelloWorldFlowContext extends FlowContext {
 	
 	// private context
@@ -16,6 +20,14 @@ public class HelloWorldFlowContext extends FlowContext {
 	private boolean injectFailure = false;
 	private boolean controlledFailure = true;
 	private boolean pauseOnError = false;
+	private ArrayList<SimpleHttpAsyncPollTask> asyncPollTasks;
+	
+	public ArrayList<SimpleHttpAsyncPollTask> getAsyncPollTasks() {
+		return asyncPollTasks;
+	}
+	public void setAsyncPollTasks(ArrayList<SimpleHttpAsyncPollTask> asyncPollTasks) {
+		this.asyncPollTasks = asyncPollTasks;
+	}
 	
 	// persisted context
 	@CtxProp
@@ -30,6 +42,8 @@ public class HelloWorldFlowContext extends FlowContext {
 	private int timeoutCount;
 	@CtxProp
 	private int errorStepCount;
+	
+	
 	public int getTaskCount() {
 		return taskCount;
 	}

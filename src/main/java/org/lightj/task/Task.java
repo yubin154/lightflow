@@ -23,13 +23,13 @@ public abstract class Task<T extends FlowContext> {
 	static Logger logger = LoggerFactory.getLogger(Task.class);
 
 	/** task id */
-	private final String taskId = "Task|" + UUID.randomUUID().toString();
+	private final String taskId;
 	
 	/** execution option */
-	private ExecuteOption execOptions;
+	protected ExecuteOption execOptions;
 	
 	/** monitor option */
-	private MonitorOption monitorOption;
+	protected MonitorOption monitorOption;
 
 	/** external task uuid */
 	protected String extTaskUuid;
@@ -52,10 +52,11 @@ public abstract class Task<T extends FlowContext> {
 	 * @param name
 	 */
 	public Task(ExecuteOption executeOptions) {
-		this.execOptions = executeOptions;
+		this(executeOptions, null);
 	}
 	
 	public Task(ExecuteOption executeOptions, MonitorOption monitorOption) {
+		this.taskId = String.format("%s|%s", this.getClass().getSimpleName(), UUID.randomUUID().toString());
 		this.execOptions = executeOptions;
 		this.monitorOption = monitorOption;
 	}
@@ -79,6 +80,10 @@ public abstract class Task<T extends FlowContext> {
 	public void setExtTaskUuid(String extTaskUuid) {
 		this.extTaskUuid = extTaskUuid;
 	}
+	public boolean needPolling() {
+		return monitorOption != null;
+	}
+	
 
 	/** create an immutable TaskResult */
 	public final TaskResult createTaskResult(TaskResultEnum status, String msg) {

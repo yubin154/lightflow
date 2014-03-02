@@ -1,6 +1,7 @@
 package org.lightj.session.step;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowDriver;
@@ -58,6 +59,9 @@ public class StepImpl implements IFlowStep {
 	 * locatable key
 	 */
 	protected String key;
+	
+	/** how many times flow entered this step */
+	private AtomicInteger stepEntry = new AtomicInteger(0);
 	
 	/**
 	 * construct a flow step with a name and its associated session
@@ -242,7 +246,7 @@ public class StepImpl implements IFlowStep {
 
 	@Override
 	public String getStepId() {
-		return String.format("Step|%s|%s", stepName, uid);
+		return String.format("Step|%s|%s|%s", stepName, uid, stepEntry.get());
 	}
 
 	@Override
@@ -258,6 +262,11 @@ public class StepImpl implements IFlowStep {
 	@Override
 	public StepErrorHandler getErrorHandler() {
 		return errorHandler;
+	}
+
+	@Override
+	public int getAndIncrementStepEntry() {
+		return stepEntry.getAndIncrement();
 	}
 
 }

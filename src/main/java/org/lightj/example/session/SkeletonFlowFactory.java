@@ -41,7 +41,7 @@ public class SkeletonFlowFactory {
 	@SuppressWarnings("rawtypes")
 	@Bean 
 	public static IFlowStep skeletonStep1() {
-		return new StepBuilder().executeAsyncTasks(new ExecutableTask() {
+		return new StepBuilder().executeTasks(new ExecutableTask() {
 
 			@Override
 			public TaskResult execute()

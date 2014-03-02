@@ -5,7 +5,6 @@ import java.io.IOException;
 import org.lightj.session.FlowContext;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
-import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskExecutionException;
 import org.lightj.task.TaskResult;
 
@@ -36,12 +35,6 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 	/** target url */
 	private String targetUrl;
 
-	public AsyncHttpTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
-	{
-		super(execOptions, monitorOption);
-		this.client = client;
-	}
-
 	public AsyncHttpTask(AsyncHttpClient client, ExecuteOption execOptions) 
 	{
 		super(execOptions);
@@ -62,7 +55,7 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 	}
 	
 	public String toString() {
-		return String.format("Request http %s", targetUrl);
+		return String.format("Request %s", targetUrl);
 	}
 
 	public String getTargetUrl() {
@@ -73,7 +66,7 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 	}
 
 	@Override
-	public TaskResult execute() throws TaskExecutionException {
+	public final TaskResult execute() throws TaskExecutionException {
 		BoundRequestBuilder request = createRequest();
 		targetUrl = request.build().getUrl();
 		try {

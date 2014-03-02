@@ -7,8 +7,7 @@ import java.util.Map.Entry;
 
 import org.lightj.session.FlowContext;
 import org.lightj.task.ExecuteOption;
-import org.lightj.task.MonitorOption;
-import org.lightj.task.RuntimeTaskExecutionException;
+import org.lightj.task.TaskExecutionRuntimeException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 
@@ -25,9 +24,9 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	protected Map<String, String> templateVariableFromContext;
 	
 	/** constructor */
-	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
+	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions) 
 	{
-		super(client, execOptions, monitorOption);
+		super(client, execOptions);
 	}
 	
 	public UrlRequest getReq() {
@@ -76,7 +75,7 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 			break;	
 		}
 		if (builder == null) {
-			throw new RuntimeTaskExecutionException("Failed to build http request, unknown method");
+			throw new TaskExecutionRuntimeException("Failed to build http request, unknown method");
 		}
 		else {
 			for (Entry<String, String> header : req.generateHeaders().entrySet()) {

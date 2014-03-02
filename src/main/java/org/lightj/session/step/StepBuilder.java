@@ -1,6 +1,8 @@
 package org.lightj.session.step;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowModule;
@@ -12,9 +14,9 @@ import org.lightj.task.BatchOption;
 import org.lightj.task.BatchTask;
 import org.lightj.task.BatchTaskWorker;
 import org.lightj.task.ExecutableTask;
-import org.lightj.task.IGroupTask;
+import org.lightj.task.ExecuteOption;
 import org.lightj.task.IWorker;
-import org.lightj.task.Task;
+import org.lightj.task.NoopTask;
 import org.lightj.task.TaskResultEnum;
 
 import akka.actor.Actor;
@@ -102,6 +104,7 @@ public class StepBuilder {
 	 */
 	public StepBuilder onSuccess(String stepOnSuccess) {
 		StepCallbackHandler handler = new StepCallbackHandler(stepOnSuccess);
+		handler.mapResultTo(stepOnSuccess, TaskResultEnum.Success);
 		flowStep.setOrUpdateResultHandler(handler);
 		return this;
 	}
@@ -130,44 +133,131 @@ public class StepBuilder {
 	}
 	
 	/**
+	 * pick up tasks from context and execute
+	 * @param contextName
+	 * @param batchOption
+	 * @return
+	 */
+	public StepBuilder executeTasksFromContext(
+			final String contextName, 
+			final BatchOption batchOption, 
+			final IAroundExecution extraExec) 
+	{
+		this.execute(
+				
+				new SimpleStepExecution(StepTransition.CALLBACK) {
+				
+					@Override
+					public StepTransition execute() throws FlowExecutionException {
+						
+						if (extraExec != null) {
+							extraExec.preExecute(this.sessionContext);
+						}
+						
+						Object val = this.sessionContext.getValueByName(contextName);
+						ArrayList<ExecutableTask> ctasks = new ArrayList<ExecutableTask>();
+						if (val instanceof ExecutableTask) {
+							ctasks.add((ExecutableTask) val);
+						}
+						else if (val instanceof ExecutableTask[]) {
+							ctasks.addAll(Arrays.asList((ExecutableTask[]) val));
+						}
+						else if (val instanceof Collection<?>) {
+							ctasks.addAll((Collection<ExecutableTask>)val);
+						}
+						if (ctasks.isEmpty()) {
+							ctasks.add(new NoopTask(new ExecuteOption(1000, 0, 0, 0)));
+						}
+						final FlowContext mycontext = this.sessionContext;
+						final StepCallbackHandler chandler = this.flowStep.getResultHandler();
+						for (ExecutableTask task : ctasks) {
+							// inject the context
+							task.setContext(mycontext);
+						}
+						final BatchTask batchTask = new BatchTask(batchOption, ctasks.toArray(new ExecutableTask[0]));
+						fire(batchTask, chandler);
+						
+						if (extraExec != null) {
+							extraExec.postExecute(this.sessionContext);
+						}
+						
+						return super.execute();
+					}
+					
+					private void fire(final BatchTask batchTask, final StepCallbackHandler chandler) {
+						
+						final UntypedActorFactory actorFactory = batchTask.getTasks()[0].needPolling() ? createAsyncPollActorFactory() : createAsyncActorFactory();
+						
+						ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
+								new Props(new UntypedActorFactory() {
+						
+							private static final long serialVersionUID = 1L;
+
+							@Override
+							public Actor create() throws Exception {
+								return new BatchTaskWorker(batchTask, actorFactory, chandler);
+							}
+						}));
+						batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
+					}
+		});
+		
+		return this;
+	}
+	
+	/**
+	 * execute one or more tasks in actor, with result handler
+	 * @param tasks
+	 * @return
+	 */
+	public StepBuilder executeTasks(final ExecutableTask...tasks) {
+		return this.executeTasks(null, null, tasks);
+	}
+	
+	/**
 	 * execute one or more tasks in actor, with result handler
 	 * @param resultHandler
 	 * @param workers
 	 * @return
 	 */
-	public StepBuilder executeActors(
-			final UntypedActorFactory actorFactory,
+	public StepBuilder executeTasks(
 			final BatchOption batchOption,
-			final Task...tasks) 
+			final IAroundExecution extraExec,
+			final ExecutableTask...tasks) 
 	{
 		this.execute(
+				
 			new SimpleStepExecution(StepTransition.CALLBACK) {
+				
 				@Override
 				public StepTransition execute() throws FlowExecutionException {
+
+					if (extraExec != null) {
+						extraExec.preExecute(this.sessionContext);
+					}
+					ExecutableTask[] ntsaks = (tasks.length == 0 ? 
+							new ExecutableTask[] {new NoopTask(new ExecuteOption(1000,0,0,0))} :
+								tasks);
 					final FlowContext mycontext = this.sessionContext;
 					final StepCallbackHandler chandler = this.flowStep.getResultHandler();
-					ArrayList<Task> nTasks = new ArrayList<Task>();
-					for (Task task : tasks) {
+					for (ExecutableTask task : ntsaks) {
 						// inject the context
 						task.setContext(mycontext);
-						if (task instanceof IGroupTask) {
-							IGroupTask batchableTask = (IGroupTask) task;
-							Task[] bTasks = (Task[]) batchableTask.getTasks(mycontext).toArray(new Task[0]);
-							for (Task bTask : bTasks) {
-								bTask.setContext(mycontext);
-							}
-							fire(new BatchTask(batchOption, bTasks), chandler);
-						}
-						else {
-							nTasks.add(task);
-						}
 					}
-					final BatchTask batchTask = new BatchTask(batchOption, nTasks.toArray(new Task[0]));
+					final BatchTask batchTask = new BatchTask(batchOption, ntsaks);
 					fire(batchTask, chandler);
+					
+					if (extraExec != null) {
+						extraExec.postExecute(this.sessionContext);
+					}
+					
 					return super.execute();
 				}
 				
 				private void fire(final BatchTask batchTask, final StepCallbackHandler chandler) {
+					
+					final UntypedActorFactory actorFactory = batchTask.getTasks()[0].needPolling() ? createAsyncPollActorFactory() : createAsyncActorFactory();
+					
 					ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
 							new Props(new UntypedActorFactory() {
 					
@@ -185,64 +275,6 @@ public class StepBuilder {
 		return this;
 	}
 	
-	/**
-	 * execute one or more executable tasks, with result handler
-	 * @param resultHandler
-	 * @param tasks
-	 * @return
-	 */
-	public StepBuilder executeAsyncTasks(final ExecutableTask...tasks) 
-	{
-		
-		final UntypedActorFactory workerFactory = createAsyncActorFactory();
-		return executeActors(workerFactory, null, tasks);
-		
-	}
-	
-	/**
-	 * execute one or more executable tasks, with result handler
-	 * @param resultHandler
-	 * @param tasks
-	 * @return
-	 */
-	public StepBuilder executeAsyncPollTasks(final ExecutableTask...tasks) 
-	{
-		
-		final UntypedActorFactory workerFactory = createAsyncPollActorFactory();
-		return executeActors(workerFactory, null, tasks);
-		
-	}	
-
-	/**
-	 * execute one or more executable tasks, with result handler
-	 * @param resultHandler
-	 * @param tasks
-	 * @return
-	 */
-	public StepBuilder batchExecuteAsyncTasks(final BatchOption batchOption, final ExecutableTask...tasks) 
-	{
-		
-		final UntypedActorFactory workerFactory = createAsyncActorFactory();
-		return executeActors(workerFactory, batchOption, tasks);
-		
-	}
-	
-	/**
-	 * execute one or more executable tasks, with result handler
-	 * @param resultHandler
-	 * @param tasks
-	 * @return
-	 */
-	public StepBuilder batchExecuteAsyncPollTasks(
-			final BatchOption batchOption,
-			final ExecutableTask...tasks) 
-	{
-		
-		final UntypedActorFactory workerFactory = createAsyncPollActorFactory();
-		return executeActors(workerFactory, batchOption, tasks);
-		
-	}	
-
 	/**
 	 * utility to create actor factory for async poll task
 	 * @param pollMonitor

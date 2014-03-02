@@ -15,13 +15,26 @@ import org.lightj.util.StringUtil;
 public class UrlRequest {
 
 	private HashMap<String, String> templateValues = new HashMap<String, String>();
-	final private UrlTemplate urlTemplate;
+	private UrlTemplate urlTemplate;
+	
+	public UrlRequest() {
+	}
 	
 	/** constructor */
 	public UrlRequest(UrlTemplate urlTemplate) { 
 		this.urlTemplate = urlTemplate; 
 	}
 	
+	public UrlTemplate getUrlTemplate() {
+		return urlTemplate;
+	}
+	public void setUrlTemplate(UrlTemplate urlTemplate) {
+		this.urlTemplate = urlTemplate;
+	}
+
+	public void setTemplateValues(HashMap<String, String> templateValues) {
+		this.templateValues = templateValues;
+	}
 	public UrlRequest addTemplateValue(String k, String v) {
 		this.templateValues.put(k, v);
 		return this;

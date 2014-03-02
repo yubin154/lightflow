@@ -96,6 +96,12 @@ public interface IFlowStep {
 	 * @return
 	 */
 	public String getStepId();
+	
+	/**
+	 * get and increment # of times enters this step
+	 * @return
+	 */
+	public int getAndIncrementStepEntry();
 
 	/**
 	 * set default if null

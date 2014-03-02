@@ -47,7 +47,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * demonstrate how to execute a synchronous step
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=0, isFirstStep=true, stepIdx=1)
+	@FlowStepProperties(stepWeight=0, isFirstStep=true, stepIdx=10)
 	public IFlowStep start() {
 		
 		String nextStep = getParentId()>0 ? "stop" : (sessionContext.isInjectFailure() ? "testFailureStep" : "syncTaskStep");
@@ -58,7 +58,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * synchronous execution
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, onSuccess="asyncTaskStep", onException="asyncTaskStep", stepIdx=2)
+	@FlowStepProperties(stepWeight=1, onSuccess="asyncTaskStep", onException="asyncTaskStep", stepIdx=20)
 	public IFlowStep syncTaskStep() {
 		return new StepImpl();
 	}
@@ -68,7 +68,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * demonstrate how to execute a runtask asynchronous step
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=2, stepIdx=3)
+	@FlowStepProperties(stepWeight=2, stepIdx=30)
 	public IFlowStep asyncTaskStep() 
 	{
 		return helloWorldAsyncTaskStep;
@@ -79,7 +79,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * demonstrate how to execute a session join asynchronous task
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=3, stepIdx=4)
+	@FlowStepProperties(stepWeight=3, stepIdx=40)
 	public IFlowStep sessionJoinStep() throws Exception {
 		return helloWorldSessionJoinStep;
 	}
@@ -88,7 +88,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * delay step
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=5)
+	@FlowStepProperties(stepWeight=1, stepIdx=50)
 	public IFlowStep delayStep() 
 	{
 		return helloWorldDelayStep;
@@ -98,7 +98,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * retry step
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=6)
+	@FlowStepProperties(stepWeight=1, stepIdx=60)
 	public IFlowStep retryStep() 
 	{
 		return helloWorldRetryStep;
@@ -108,7 +108,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * step with timeout
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=7)
+	@FlowStepProperties(stepWeight=1, stepIdx=70)
 	public IFlowStep timeoutStep() {
 		return helloWorldTimeoutStep;
 	}
@@ -117,7 +117,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * step with actor and poll
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=8)
+	@FlowStepProperties(stepWeight=1, stepIdx=90)
 	public IFlowStep asyncPollStep() {
 		return helloWorldAsyncPollStep;
 	}
@@ -126,7 +126,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * run batch actors
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=9)
+	@FlowStepProperties(stepWeight=1, stepIdx=100)
 	public IFlowStep actorBatchStep() {
 		return helloWorldActorBatchStep;
 	}
@@ -135,7 +135,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * inject failure
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=10)
+	@FlowStepProperties(stepWeight=1, stepIdx=110)
 	public IFlowStep testFailureStep() {
 		return helloWorldTestFailureStep;
 	}
@@ -144,7 +144,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * normal complete step
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=1, stepIdx=11)
+	@FlowStepProperties(stepWeight=1, stepIdx=120)
 	public IFlowStep stop() {
 
 		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Success);
@@ -156,7 +156,7 @@ public class HelloWorldFlow extends FlowSession<HelloWorldFlowContext> {
 	 * error complete step
 	 * @return
 	 */
-	@FlowStepProperties(stepWeight=0, isErrorStep=true, stepIdx=100)
+	@FlowStepProperties(stepWeight=0, isErrorStep=true, stepIdx=1000)
 	public IFlowStep error() {
 
 		StepTransition trans = new StepTransition().inState(FlowState.Completed).withResult(FlowResult.Failed);

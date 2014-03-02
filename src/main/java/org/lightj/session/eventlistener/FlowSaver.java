@@ -124,6 +124,7 @@ public class FlowSaver implements IFlowEventListener {
     	// log to flow step log table
 		switch (event) {
 		case stepEntry:
+			flowStep.getAndIncrementStepEntry();
 			session.getSessionContext().addStep(flowStep);
 			break;
 		case log:

@@ -45,6 +45,19 @@ public class UrlTemplate {
 		return this;
 	}
 
+	public void setUrl(String url) {
+		this.url = url;
+	}
+	public void setMethod(HttpMethod method) {
+		this.method = method;
+	}
+	public void setBody(String body) {
+		this.body = body;
+	}
+	public void setHeaders(HashMap<String, String> headers) {
+		this.headers = headers;
+	}
+
 	public UrlRequest createRequest(String...nvp) {
 		if (nvp.length%2 != 0) {
 			throw new IllegalArgumentException("Replacement nvp has to be in pairs");

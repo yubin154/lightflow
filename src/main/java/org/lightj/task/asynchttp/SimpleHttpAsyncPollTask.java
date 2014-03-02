@@ -13,7 +13,7 @@ import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
 @SuppressWarnings("rawtypes")
-public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
+public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
 	
 	/** variables to be copied from req to poll template */
 	private String[] transferableVariables = null;
@@ -24,7 +24,8 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 	/** constructor */
 	public SimpleHttpAsyncPollTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
 	{
-		super(client, execOptions, monitorOption);
+		super(client, execOptions);
+		this.monitorOption = monitorOption;
 	}
 	
 	public void setHttpParams(UrlRequest req, UrlRequest pollReq, String...transferableVariables) {
@@ -32,6 +33,8 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 		this.pollReq = pollReq;
 		this.transferableVariables = transferableVariables;
 	}
+	
+	public abstract TaskResult checkPollProgress(Response response);
 	
 	@Override
 	public TaskResult onComplete(Response response) {
@@ -70,11 +73,7 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 
 			@Override
 			public TaskResult onComplete(Response response) {
-				try {
-					return createTaskResult(TaskResultEnum.Success, response.getResponseBody());
-				} catch (IOException e) {
-					return createTaskResult(TaskResultEnum.Failed, e.getMessage());
-				}
+				return SimpleHttpAsyncPollTask.this.checkPollProgress(response);
 			}
 
 			@Override

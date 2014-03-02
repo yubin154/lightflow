@@ -7,16 +7,16 @@ public class ExecuteOption {
 	private static long DEFAULT_TIMEOUT = 24 * 60 * 60 * 1000L;
 
 	/** timeout delta from now, 0 - infinite */
-	private final long timeoutInMs;
+	private long timeoutInMs;
 	
 	/** initial delay in millisecond, 0 - right away */
-	private final long initialDelayMs;
+	private long initialDelayMs;
 	
 	/** execution retry on failure */
-	private final int maxRetry;
+	private int maxRetry;
 	
 	/** retry delay */
-	private final long retryDelayMs;
+	private long retryDelayMs;
 	
 	public ExecuteOption() {
 		this(0,0,0,0);
@@ -52,5 +52,17 @@ public class ExecuteOption {
 	}
 	public boolean hasTimeout() {
 		return timeoutInMs > 0;
+	}
+	public void setTimeoutInMs(long timeoutInMs) {
+		this.timeoutInMs = timeoutInMs;
+	}
+	public void setInitialDelayMs(long initialDelayMs) {
+		this.initialDelayMs = initialDelayMs;
+	}
+	public void setMaxRetry(int maxRetry) {
+		this.maxRetry = maxRetry;
+	}
+	public void setRetryDelayMs(long retryDelayMs) {
+		this.retryDelayMs = retryDelayMs;
 	}
 }
