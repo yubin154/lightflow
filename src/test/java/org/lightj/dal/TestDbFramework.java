@@ -7,9 +7,6 @@
 package org.lightj.dal;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -227,6 +224,7 @@ public class TestDbFramework extends BaseTestCase {
 		ConnectionHelper.cleanupDBResources(null, null, anotherConn);
 	}
 	
+	@SuppressWarnings("rawtypes")
 	@Test
 	public void testSearch4Collection() throws Exception {
 		SampleDAO dao = SampleDAO.getInstance();

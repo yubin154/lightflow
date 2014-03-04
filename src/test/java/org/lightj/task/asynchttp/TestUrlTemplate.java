@@ -20,7 +20,7 @@ public class TestUrlTemplate extends TestCase {
 		String urlJson = JsonUtil.encode(template);
 		System.out.println(urlJson);
 		UrlTemplate another = JsonUtil.decode(urlJson, UrlTemplate.class);
-		System.out.println(another);
+		assertTrue(another != null);
 	}
 	
 	@Test
@@ -32,6 +32,7 @@ public class TestUrlTemplate extends TestCase {
 		String urlJson = JsonUtil.encode(req);
 		System.out.println(urlJson);
 		UrlRequest another = JsonUtil.decode(urlJson, UrlRequest.class);
+		assertTrue(another != null);
 	}
 	
 	@Test
@@ -49,7 +50,7 @@ public class TestUrlTemplate extends TestCase {
 		System.out.println(twJson);
 		try {
 			HttpTaskWrapper another = JsonUtil.decode(twJson, HttpTaskWrapper.class);
-			System.out.println(another);
+			assertTrue(another != null);
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}

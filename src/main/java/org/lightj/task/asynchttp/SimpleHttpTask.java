@@ -1,6 +1,5 @@
 package org.lightj.task.asynchttp;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -10,12 +9,15 @@ import org.lightj.task.ExecuteOption;
 import org.lightj.task.TaskExecutionRuntimeException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.util.StringUtil;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
 public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
+	
+	static int MSG_CONTENT_LEN = 2000; 
 	
 	/** keep transient materialized req and poll req */
 	protected UrlRequest req;
@@ -98,17 +100,20 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	@Override
 	public TaskResult onComplete(Response response) {
 		TaskResult res = null;
-		String statusCode = Integer.toString(response.getStatusCode());
-		if (statusCode.matches("2[0-9][0-9]")) {
-			res = createTaskResult(TaskResultEnum.Success, statusCode);
-		}
-		else {
-			res = createTaskResult(TaskResultEnum.Failed, statusCode);
-		}
 		try {
-			res.setRealResult(response.getResponseBody());
-		} catch (IOException e) {
-			res.setRealResult(e.getMessage());
+			int sCode = response.getStatusCode();
+			String statusCode = Integer.toString(sCode);
+			if (sCode >= 200 && sCode < 300) {
+				res = createTaskResult(TaskResultEnum.Success, statusCode);
+			}
+			else {
+				res = createTaskResult(TaskResultEnum.Failed, statusCode);
+			}
+
+			res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
+		
+		} catch (Throwable t) {
+			res = this.createTaskResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
 		}
 		return res;
 	}

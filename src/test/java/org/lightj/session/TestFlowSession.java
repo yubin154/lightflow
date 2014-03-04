@@ -52,7 +52,7 @@ public class TestFlowSession extends BaseTestCase {
 		}
 		
 		HttpTaskWrapper tw1 = new HttpTaskWrapper();
-		tw1.setTaskType("asyncpull");
+		tw1.setTaskType("asyncpoll");
 		tw1.setHttpClientType("httpClient");
 		tw1.setExecutionOption(new ExecuteOption());
 		tw1.setUrlTemplate(new UrlTemplate("https://#host"));
@@ -61,7 +61,7 @@ public class TestFlowSession extends BaseTestCase {
 		tw1.setTemplateValues(tv);
 
 		tw1.setMonitorOption(new MonitorOption(1000, 5000));
-		tw1.setPullTemplate(new UrlTemplate("https://#host"));
+		tw1.setPollTemplate(new UrlTemplate("https://#host"));
 		ArrayList<String> transferV = new ArrayList<String>();
 		transferV.add("#host");
 		tw1.setTransferableVariables(transferV);

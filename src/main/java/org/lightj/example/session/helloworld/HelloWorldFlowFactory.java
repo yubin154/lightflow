@@ -1,6 +1,5 @@
 package org.lightj.example.session.helloworld;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -186,22 +185,14 @@ public class HelloWorldFlowFactory {
 					SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, new ExecuteOption(), monitorOption) {
 
 						@Override
-						public TaskResult checkPollProgress(Response response) {
-							TaskResult res = null;
-							int sCode = response.getStatusCode();
-							String statusCode = Integer.toString(sCode);
-							if (sCode >= 200 && sCode <300) {
-								res = createTaskResult(TaskResultEnum.Success, statusCode);
-							}
-							else {
-								res = createTaskResult(TaskResultEnum.Failed, statusCode);
-							}
-							try {
-								res.setRealResult(response.getResponseBody());
-							} catch (IOException e) {
-								// ignore
-							}
-							return res;
+						public TaskResultEnum checkPollProgress(Response response) {
+							return TaskResultEnum.Success;
+						}
+
+						@Override
+						public TaskResultEnum preparePollTask(Response response,
+								UrlRequest pollReq) {
+							return TaskResultEnum.Success;
 						}
 						
 					};

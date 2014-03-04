@@ -1,12 +1,11 @@
 package org.lightj.task.asynchttp;
 
-import java.io.IOException;
-
 import org.lightj.session.FlowContext;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.util.StringUtil;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -34,28 +33,32 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Sim
 		this.transferableVariables = transferableVariables;
 	}
 	
-	public abstract TaskResult checkPollProgress(Response response);
+	public abstract TaskResultEnum preparePollTask(Response reponse, UrlRequest pollReq); 
+	
+	public abstract TaskResultEnum checkPollProgress(Response response);
 	
 	@Override
 	public TaskResult onComplete(Response response) {
 		TaskResult res = null;
-		String statusCode = Integer.toString(response.getStatusCode());
-		if (statusCode.matches("2[0-9][0-9]")) {
-			res = createTaskResult(TaskResultEnum.Success, statusCode);
-			for (String transferableVariable : this.transferableVariables) {
-				pollReq.addTemplateValue(transferableVariable, req.getTemplateValue(transferableVariable));
+		try {
+			int sCode = response.getStatusCode();
+			if (sCode >= 200 && sCode < 300) {
+				TaskResultEnum rst = preparePollTask(response, pollReq);
+				res = this.createTaskResult(rst, Integer.toString(sCode));
+				if (TaskResultEnum.Success == rst) {
+					for (String transferableVariable : this.transferableVariables) {
+						pollReq.addTemplateValue(transferableVariable, req.getTemplateValue(transferableVariable));
+					}
+					AsyncHttpTask pollTask = createPollTask(pollReq);
+					res.setRealResult(pollTask);
+				}
 			}
-			this.setExtTaskUuid(pollReq.generateUrl());
-			AsyncHttpTask pollTask = createPollTask(pollReq);
-			res.setRealResult(pollTask);
-		}
-		else {
-			res = createTaskResult(TaskResultEnum.Failed, statusCode);
-			try {
-				res.setRealResult(response.getResponseBody());
-			} catch (IOException e) {
-				res.setRealResult(e.getMessage());
+			else {
+				res = createTaskResult(TaskResultEnum.Failed, Integer.toString(sCode));
+				res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
 			}
+		} catch (Throwable t) {
+			res = this.createTaskResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
 		}
 		return res;
 	}
@@ -73,7 +76,24 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Sim
 
 			@Override
 			public TaskResult onComplete(Response response) {
-				return SimpleHttpAsyncPollTask.this.checkPollProgress(response);
+				TaskResult res = null;
+				try {
+					int sCode = response.getStatusCode();
+					if (sCode >= 200 && sCode < 300) {
+						TaskResultEnum rst = SimpleHttpAsyncPollTask.this.checkPollProgress(response);
+						res = this.createTaskResult(rst, Integer.toString(sCode));
+						if (rst.isComplete()) {
+							response.getResponseBodyExcerpt(MSG_CONTENT_LEN); 
+						}
+					}
+					else {
+						res = createTaskResult(TaskResultEnum.Failed, Integer.toString(sCode));
+						res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
+					}
+				} catch (Throwable t) {
+					res = this.createTaskResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
+				}
+				return res;
 			}
 
 			@Override

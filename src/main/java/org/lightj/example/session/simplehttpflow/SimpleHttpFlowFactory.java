@@ -38,7 +38,6 @@ public class SimpleHttpFlowFactory {
 					ExecutableTask task = HttpTaskUtil.buildTask(sessionContext.getCurrentRequest());
 					sessionContext.getCurrentTasks().clear();
 					sessionContext.addCurrentTask(task);
-					System.out.println("there");
 					return StepTransition.runToStep("runHttpTasks");
 				}
 				else {
@@ -58,7 +57,6 @@ public class SimpleHttpFlowFactory {
 			@Override
 			public void preExecute(SimpleHttpFlowContext ctx)
 					throws FlowExecutionException {
-				System.out.println("here");
 			}
 
 			@Override

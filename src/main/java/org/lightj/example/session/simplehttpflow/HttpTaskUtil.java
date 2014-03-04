@@ -1,6 +1,5 @@
 package org.lightj.example.session.simplehttpflow;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -8,7 +7,6 @@ import org.lightj.session.FlowModule;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
-import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.SimpleHttpTask;
@@ -46,30 +44,23 @@ public class HttpTaskUtil {
 			atask.setReq(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues));
 			task = atask;
 			break;
-		case asyncpull:
+		case asyncpoll:
+			
 			SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption) {
 
 				@Override
-				public TaskResult checkPollProgress(Response response) {
-					TaskResult res = null;
-					int sCode = response.getStatusCode();
-					String statusCode = Integer.toString(sCode);
-					if (sCode >= 200 && sCode <300) {
-						res = createTaskResult(TaskResultEnum.Success, statusCode);
-					}
-					else {
-						res = createTaskResult(TaskResultEnum.Failed, statusCode);
-					}
-					try {
-						res.setRealResult(response.getResponseBody());
-					} catch (IOException e) {
-						// ignore
-					}
-					return res;
+				public TaskResultEnum checkPollProgress(Response response) {
+					return TaskResultEnum.Success;
+				}
+
+				@Override
+				public TaskResultEnum preparePollTask(Response reponse,
+						UrlRequest pollReq) {
+					return TaskResultEnum.Success;
 				}
 				
 			};
-			btask.setHttpParams(new UrlRequest(tw.urlTemplate), new UrlRequest(tw.pullTemplate), 
+			btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate), 
 					tw.getTransferableVariables()!=null ? tw.getTransferableVariables().toArray(new String[0]) : null);
 			task = btask;
 			break;
@@ -92,7 +83,7 @@ public class HttpTaskUtil {
 
 		/** for asyncpull */
 		private MonitorOption monitorOption;
-		private UrlTemplate pullTemplate;
+		private UrlTemplate pollTemplate;
 		private List<String> transferableVariables;
 		
 		/** for group_ */
@@ -132,11 +123,11 @@ public class HttpTaskUtil {
 		public void setMonitorOption(MonitorOption monitorOption) {
 			this.monitorOption = monitorOption;
 		}
-		public UrlTemplate getPullTemplate() {
-			return pullTemplate;
+		public UrlTemplate getPollTemplate() {
+			return pollTemplate;
 		}
-		public void setPullTemplate(UrlTemplate pullTemplate) {
-			this.pullTemplate = pullTemplate;
+		public void setPollTemplate(UrlTemplate pullTemplate) {
+			this.pollTemplate = pullTemplate;
 		}
 		public List<String> getTransferableVariables() {
 			return transferableVariables;
@@ -147,6 +138,6 @@ public class HttpTaskUtil {
 	}
 	
 	private static enum TaskType {
-		async, asyncpull, group_async, group_asyncpull;
+		async, asyncpoll;
 	}
 }
