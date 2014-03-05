@@ -138,8 +138,9 @@ public class StepBuilder {
 	 * @param batchOption
 	 * @return
 	 */
-	public StepBuilder executeTasksFromContext(
+	public StepBuilder executeTasksFromScrapbook(
 			final String contextName, 
+			final boolean isScrapbook,
 			final BatchOption batchOption, 
 			final IAroundExecution extraExec) 
 	{
@@ -154,7 +155,8 @@ public class StepBuilder {
 							extraExec.preExecute(this.sessionContext);
 						}
 						
-						Object val = this.sessionContext.getValueByName(contextName);
+						Object val = isScrapbook ? this.sessionContext.getFromScrapbook(contextName) : 
+							this.sessionContext.getValueByName(contextName);
 						ArrayList<ExecutableTask> ctasks = new ArrayList<ExecutableTask>();
 						if (val instanceof ExecutableTask) {
 							ctasks.add((ExecutableTask) val);

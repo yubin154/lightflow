@@ -201,7 +201,7 @@ public class HelloWorldFlowFactory {
 	 */
 	public @Bean @Scope("prototype") IFlowStep helloWorldAsyncPollStep()
 	{
-		return new StepBuilder().executeTasksFromContext("asyncPollTasks", null, new IAroundExecution<HelloWorldFlowContext>() {
+		return new StepBuilder().executeTasksFromScrapbook("asyncPollTasks", true, null, new IAroundExecution<HelloWorldFlowContext>() {
 
 			@Override
 			public void preExecute(HelloWorldFlowContext ctx)
@@ -234,7 +234,7 @@ public class HelloWorldFlowFactory {
 					task.setHttpParams(new UrlRequest(template).addTemplateValue("#host", host), new UrlRequest(template), "#host");
 					tasks.add(task);
 				}
-				ctx.setAsyncPollTasks(tasks);
+				ctx.addToScrapbook("asyncPollTasks", tasks);
 			}
 
 			@Override

@@ -15,6 +15,7 @@ import org.lightj.task.ExecutableTask;
 import org.lightj.task.ITaskEventHandler;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
+import org.lightj.util.StringUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
@@ -58,7 +59,7 @@ public class SimpleHttpFlowFactory {
 	@Bean 
 	@Scope("prototype")
 	public static IFlowStep runHttpTasksStep() {
-		return new StepBuilder().executeTasksFromContext("currentTasks", null, new IAroundExecution<SimpleHttpFlowContext>(){
+		return new StepBuilder().executeTasksFromScrapbook("currentTasks", false, null, new IAroundExecution<SimpleHttpFlowContext>(){
 
 			@Override
 			public void preExecute(SimpleHttpFlowContext ctx)
@@ -84,7 +85,7 @@ public class SimpleHttpFlowFactory {
 			@Override
 			public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
 					TaskResult result) {
-				System.out.println((String) result.getRealResult());
+				System.out.println(StringUtil.trimToLength((String) result.getRealResult(), 100));
 			}
 
 			@Override

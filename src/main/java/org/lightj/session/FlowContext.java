@@ -58,6 +58,11 @@ public class FlowContext {
 	private Map<String, CtxPropWrapper> field2Prop = new HashMap<String, CtxPropWrapper>();
 	
 	/**
+	 * scrapbook for temporary results
+	 */
+	private Map<String, Object> scrapBook = new HashMap<String, Object>();
+	
+	/**
 	 * flag for lazy loading
 	 */
 	private volatile boolean loaded = false;
@@ -517,6 +522,16 @@ public class FlowContext {
 		}
 	}
 	
+	public void addToScrapbook(String key, Object val) {
+		scrapBook.put(key, val);
+	}
+	public Object getFromScrapbook(String key) {
+		return scrapBook.containsKey(key) ? scrapBook.get(key) : null;
+	}
+	public boolean hasScrapbookKey(String key) {
+		return scrapBook.containsKey(key);
+	}
+	
 	/////////////// flow pct complete ////////////////
 	public int getPctComplete() {
 		return pctComplete;
@@ -549,4 +564,6 @@ public class FlowContext {
 	public void setFlowKey(String flowKey) {
 		this.flowKey = flowKey;
 	}
+	
+	
 }
