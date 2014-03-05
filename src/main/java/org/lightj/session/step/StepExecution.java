@@ -1,6 +1,7 @@
 package org.lightj.session.step;
 
 import org.lightj.session.FlowContext;
+import org.lightj.session.FlowEvent;
 import org.lightj.session.exception.FlowExecutionException;
 
 
@@ -95,4 +96,17 @@ public abstract class StepExecution<T extends FlowContext> {
 			defResult = transition;
 		}
 	}
+
+	/**
+	 * publish to drive a flow step event
+	 * @param event
+	 * @param flowStep
+	 * @param stepTransition
+	 */
+	public void publishStepEvent(
+			FlowEvent event,
+			StepTransition stepTransition) {
+		this.flowStep.getFlowDriver().handleStepEvent(event, this.flowStep, stepTransition);
+	}
+
 }

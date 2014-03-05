@@ -8,6 +8,7 @@ import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.task.asynchttp.IPollProcessor;
 import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.SimpleHttpTask;
 import org.lightj.task.asynchttp.UrlRequest;
@@ -32,6 +33,24 @@ public class HttpTaskUtil {
 		return new AsyncHttpClient(config);
 	}
 	
+	public @Bean @Scope("prototype") IPollProcessor dummyPollProcessor() {
+		
+		return new IPollProcessor() {
+
+			@Override
+			public TaskResultEnum checkPollProgress(Response response) {
+				return TaskResultEnum.Success;
+			}
+
+			@Override
+			public TaskResultEnum preparePollTask(Response reponse,
+					UrlRequest pollReq) {
+				return TaskResultEnum.Success;
+			}
+			
+		};
+	}
+	
 	public static ExecutableTask buildTask(HttpTaskWrapper tw) {
 		
 		TaskType tt = TaskType.valueOf(tw.taskType);
@@ -46,22 +65,10 @@ public class HttpTaskUtil {
 			break;
 		case asyncpoll:
 			
-			SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption) {
-
-				@Override
-				public TaskResultEnum checkPollProgress(Response response) {
-					return TaskResultEnum.Success;
-				}
-
-				@Override
-				public TaskResultEnum preparePollTask(Response reponse,
-						UrlRequest pollReq) {
-					return TaskResultEnum.Success;
-				}
-				
-			};
-			btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate), 
-					tw.getTransferableVariables()!=null ? tw.getTransferableVariables().toArray(new String[0]) : null);
+			IPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IPollProcessor.class);
+			SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
+			btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate),
+					tw.getSharableVariables()!=null ? tw.getSharableVariables().toArray(new String[0]) : null);
 			task = btask;
 			break;
 		default:
@@ -84,7 +91,8 @@ public class HttpTaskUtil {
 		/** for asyncpull */
 		private MonitorOption monitorOption;
 		private UrlTemplate pollTemplate;
-		private List<String> transferableVariables;
+		private List<String> sharableVariables;
+		private String pollProcessorName;
 		
 		/** for group_ */
 		public String getTaskType() {
@@ -129,11 +137,17 @@ public class HttpTaskUtil {
 		public void setPollTemplate(UrlTemplate pullTemplate) {
 			this.pollTemplate = pullTemplate;
 		}
-		public List<String> getTransferableVariables() {
-			return transferableVariables;
+		public List<String> getSharableVariables() {
+			return sharableVariables;
 		}
-		public void setTransferableVariables(List<String> transferableVariables) {
-			this.transferableVariables = transferableVariables;
+		public void setSharableVariables(List<String> sharableVariables) {
+			this.sharableVariables = sharableVariables;
+		}
+		public String getPollProcessorName() {
+			return pollProcessorName;
+		}
+		public void setPollProcessorName(String pollProcessorName) {
+			this.pollProcessorName = pollProcessorName;
 		}
 	}
 	

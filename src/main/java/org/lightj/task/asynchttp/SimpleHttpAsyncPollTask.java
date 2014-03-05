@@ -12,43 +12,60 @@ import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
 @SuppressWarnings("rawtypes")
-public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
+public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
 	
 	/** variables to be copied from req to poll template */
-	private String[] transferableVariables = null;
+	private String[] sharedVariables = null;
 	
 	/** pull request */
 	private UrlRequest pollReq;
 	
+	/** handle specific polling logic */
+	private IPollProcessor pollProcessor;
+	
 	/** constructor */
-	public SimpleHttpAsyncPollTask(AsyncHttpClient client, ExecuteOption execOptions, MonitorOption monitorOption) 
+	public SimpleHttpAsyncPollTask(
+			AsyncHttpClient client, 
+			ExecuteOption execOptions, 
+			MonitorOption monitorOption, 
+			IPollProcessor pollProcessor) 
 	{
 		super(client, execOptions);
 		this.monitorOption = monitorOption;
+		this.pollProcessor = pollProcessor;
 	}
 	
-	public void setHttpParams(UrlRequest req, UrlRequest pollReq, String...transferableVariables) {
+	public void setHttpParams(UrlRequest req, UrlRequest pollReq, String...sharedVariables) {
 		this.req = req;
 		this.pollReq = pollReq;
-		this.transferableVariables = transferableVariables;
+		this.sharedVariables = sharedVariables;
 	}
 	
-	public abstract TaskResultEnum preparePollTask(Response reponse, UrlRequest pollReq); 
+	public IPollProcessor getPollProcessor() {
+		return pollProcessor;
+	}
+
+	public void setPollProcessor(IPollProcessor pollProcessor) {
+		this.pollProcessor = pollProcessor;
+	}
 	
-	public abstract TaskResultEnum checkPollProgress(Response response);
-	
+	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
+		BoundRequestBuilder builder = super.buildHttpRequest(req);
+		for (String sharableVariable : this.sharedVariables) {
+			pollReq.addTemplateValue(sharableVariable, req.getTemplateValue(sharableVariable));
+		}
+		return builder;
+	}
+
 	@Override
 	public TaskResult onComplete(Response response) {
 		TaskResult res = null;
 		try {
 			int sCode = response.getStatusCode();
 			if (sCode >= 200 && sCode < 300) {
-				TaskResultEnum rst = preparePollTask(response, pollReq);
+				TaskResultEnum rst = pollProcessor.preparePollTask(response, pollReq);
 				res = this.createTaskResult(rst, Integer.toString(sCode));
 				if (TaskResultEnum.Success == rst) {
-					for (String transferableVariable : this.transferableVariables) {
-						pollReq.addTemplateValue(transferableVariable, req.getTemplateValue(transferableVariable));
-					}
 					AsyncHttpTask pollTask = createPollTask(pollReq);
 					res.setRealResult(pollTask);
 				}
@@ -80,7 +97,7 @@ public abstract class SimpleHttpAsyncPollTask<T extends FlowContext> extends Sim
 				try {
 					int sCode = response.getStatusCode();
 					if (sCode >= 200 && sCode < 300) {
-						TaskResultEnum rst = SimpleHttpAsyncPollTask.this.checkPollProgress(response);
+						TaskResultEnum rst = SimpleHttpAsyncPollTask.this.pollProcessor.checkPollProgress(response);
 						res = this.createTaskResult(rst, Integer.toString(sCode));
 						if (rst.isComplete()) {
 							response.getResponseBodyExcerpt(MSG_CONTENT_LEN); 

@@ -1,5 +1,7 @@
 package org.lightj.example.session.simplehttpflow;
 
+import java.util.Map;
+
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.exception.FlowExecutionException;
@@ -7,8 +9,12 @@ import org.lightj.session.step.IAroundExecution;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepBuilder;
+import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepTransition;
 import org.lightj.task.ExecutableTask;
+import org.lightj.task.ITaskEventHandler;
+import org.lightj.task.Task;
+import org.lightj.task.TaskResult;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
@@ -65,7 +71,29 @@ public class SimpleHttpFlowFactory {
 				ctx.incTaskIndex();
 			}
 			
-		}).onSuccess("buildHttpTasks").getFlowStep();
+		}).onResult(new StepCallbackHandler<SimpleHttpFlowContext>("buildHttpTasks").setDelegateHandler(new ITaskEventHandler<SimpleHttpFlowContext>() {
+
+			@Override
+			public void executeOnCreated(SimpleHttpFlowContext ctx, Task task) {
+			}
+
+			@Override
+			public void executeOnSubmitted(SimpleHttpFlowContext ctx, Task task) {
+			}
+
+			@Override
+			public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
+					TaskResult result) {
+				System.out.println((String) result.getRealResult());
+			}
+
+			@Override
+			public StepTransition executeOnCompleted(SimpleHttpFlowContext ctx,
+					Map<String, TaskResult> results) {
+				return null;
+			}
+			
+		})).getFlowStep();
 	}
 
 }
