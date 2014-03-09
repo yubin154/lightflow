@@ -1,11 +1,13 @@
 package org.lightj.example.session.simplehttpflow;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import org.lightj.session.FlowModule;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
+import org.lightj.task.GroupTask;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.asynchttp.IPollProcessor;
@@ -51,26 +53,79 @@ public class HttpTaskUtil {
 		};
 	}
 	
-	public static ExecutableTask buildTask(HttpTaskWrapper tw) {
+	public static ExecutableTask buildTask(final HttpTaskWrapper tw) {
 		
 		TaskType tt = TaskType.valueOf(tw.taskType);
 		ExecutableTask task = null;
 		
-		AsyncHttpClient client = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.httpClientType, AsyncHttpClient.class);
+		final AsyncHttpClient client = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.httpClientType, AsyncHttpClient.class);
 		switch(tt) {
 		case async:
 			SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
 			atask.setReq(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues));
 			task = atask;
 			break;
-		case asyncpoll:
 			
+		case asyncpoll:
 			IPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IPollProcessor.class);
 			SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
 			btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate),
 					tw.getSharableVariables()!=null ? tw.getSharableVariables().toArray(new String[0]) : null);
 			task = btask;
 			break;
+			
+		case asyncgroup:
+			GroupTask agtask = new GroupTask() {
+
+				@Override
+				public SimpleHttpTask createTaskInstance() {
+					SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
+					atask.setReq(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues));
+					return atask;
+				}
+
+				@Override
+				public List<SimpleHttpTask> getTasks() {
+					ArrayList<SimpleHttpTask> results = new ArrayList<SimpleHttpTask>();
+					for (String fanoutValue: tw.fanoutValues) {
+						SimpleHttpTask atask = createTaskInstance();
+						atask.getReq().addTemplateValue(tw.fanoutFactor, fanoutValue);
+						results.add(atask);
+					}
+					return results;
+				}
+			};
+			task = agtask;
+			break;
+			
+		case asyncpollgroup:
+			
+			GroupTask bgtask = new GroupTask() {
+
+				@Override
+				public SimpleHttpAsyncPollTask createTaskInstance() {
+					IPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IPollProcessor.class);
+					SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
+					btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate),
+							tw.getSharableVariables()!=null ? tw.getSharableVariables().toArray(new String[0]) : null);
+					return btask;
+				}
+
+				@Override
+				public List<SimpleHttpAsyncPollTask> getTasks() {
+					ArrayList<SimpleHttpAsyncPollTask> results = new ArrayList<SimpleHttpAsyncPollTask>();
+					for (String host: tw.fanoutValues) {
+						SimpleHttpAsyncPollTask atask = createTaskInstance();
+						atask.getReq().addTemplateValue(tw.fanoutFactor, host);
+						results.add(atask);
+					}
+					return results;
+				}
+			};
+			task = bgtask;
+			break;
+			
+			
 		default:
 			break;				
 		}
@@ -94,7 +149,10 @@ public class HttpTaskUtil {
 		private List<String> sharableVariables;
 		private String pollProcessorName;
 		
-		/** for group_ */
+		/** for group task */
+		private String fanoutFactor;
+		private String[] fanoutValues;
+		
 		public String getTaskType() {
 			return taskType;
 		}
@@ -149,9 +207,21 @@ public class HttpTaskUtil {
 		public void setPollProcessorName(String pollProcessorName) {
 			this.pollProcessorName = pollProcessorName;
 		}
+		public String getFanoutFactor() {
+			return fanoutFactor;
+		}
+		public void setFanoutFactor(String fanoutFactor) {
+			this.fanoutFactor = fanoutFactor;
+		}
+		public String[] getFanoutValues() {
+			return fanoutValues;
+		}
+		public void setFanoutValues(String[] fanoutValues) {
+			this.fanoutValues = fanoutValues;
+		}
 	}
 	
 	private static enum TaskType {
-		async, asyncpoll;
+		async, asyncpoll, asyncgroup, asyncpollgroup;
 	}
 }

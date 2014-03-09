@@ -11,7 +11,7 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
 	
 	/** variables to be copied from req to poll template */
@@ -100,7 +100,7 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 						TaskResultEnum rst = SimpleHttpAsyncPollTask.this.pollProcessor.checkPollProgress(response);
 						res = this.createTaskResult(rst, Integer.toString(sCode));
 						if (rst.isComplete()) {
-							response.getResponseBodyExcerpt(MSG_CONTENT_LEN); 
+							res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
 						}
 					}
 					else {
@@ -121,5 +121,18 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 
 	}
 	
+	/**
+	 * make a copy
+	 * @return
+	 */
+	public SimpleHttpAsyncPollTask makeCopy() {
+		SimpleHttpAsyncPollTask another = new SimpleHttpAsyncPollTask(client, execOptions, monitorOption, pollProcessor);
+		another.req = this.req;
+		another.valueFromContext = this.valueFromContext;
+		another.sharedVariables = this.sharedVariables;
+		another.pollReq = this.pollReq;
+		another.pollProcessor = this.pollProcessor;
+		return another;
+	}
 }
 

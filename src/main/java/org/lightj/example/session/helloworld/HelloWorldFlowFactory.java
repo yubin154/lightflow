@@ -201,7 +201,7 @@ public class HelloWorldFlowFactory {
 	 */
 	public @Bean @Scope("prototype") IFlowStep helloWorldAsyncPollStep()
 	{
-		return new StepBuilder().executeTasksFromScrapbook("asyncPollTasks", true, null, new IAroundExecution<HelloWorldFlowContext>() {
+		return new StepBuilder().executeTasksInContext("asyncPollTasks", null, new IAroundExecution<HelloWorldFlowContext>() {
 
 			@Override
 			public void preExecute(HelloWorldFlowContext ctx)

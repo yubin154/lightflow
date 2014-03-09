@@ -34,15 +34,9 @@ public abstract class Task<T extends FlowContext> {
 	/** external task uuid */
 	protected String extTaskUuid;
 	
+	/** session context */
 	protected T context;
 	
-	public T getContext() {
-		return context;
-	}
-	public void setContext(T context) {
-		this.context = context;
-	}
-
 	public Task() {
 		this(new ExecuteOption());
 	}
@@ -84,6 +78,13 @@ public abstract class Task<T extends FlowContext> {
 		return monitorOption != null;
 	}
 	
+	public T getContext() {
+		return context;
+	}
+	public void setContext(T context) {
+		this.context = context;
+	}
+
 
 	/** create an immutable TaskResult */
 	public final TaskResult createTaskResult(TaskResultEnum status, String msg) {

@@ -59,7 +59,7 @@ public class SimpleHttpFlowFactory {
 	@Bean 
 	@Scope("prototype")
 	public static IFlowStep runHttpTasksStep() {
-		return new StepBuilder().executeTasksFromScrapbook("currentTasks", false, null, new IAroundExecution<SimpleHttpFlowContext>(){
+		return new StepBuilder().executeTasksInContext("currentTasks", null, new IAroundExecution<SimpleHttpFlowContext>(){
 
 			@Override
 			public void preExecute(SimpleHttpFlowContext ctx)

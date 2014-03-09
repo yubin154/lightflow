@@ -39,6 +39,8 @@ public class TestFlowSession extends BaseTestCase {
 	public void testSimpleHttpFlow() throws Exception {
 		// create an instance of skeleton flow, fill in the flesh for each steps
 		SimpleHttpFlow flow = FlowSessionFactory.getInstance().createSession(SimpleHttpFlow.class);
+		
+		// 2 async http req
 		String[] sites = new String[] {"www.yahoo.com","www.facebook.com"};
 		for (int i = 0 ; i < 2; i++) {
 			HttpTaskWrapper tw = new HttpTaskWrapper();
@@ -52,6 +54,7 @@ public class TestFlowSession extends BaseTestCase {
 			flow.getSessionContext().addHttpTask(tw);
 		}
 		
+		// 1 asyncpoll http req
 		HttpTaskWrapper tw1 = new HttpTaskWrapper();
 		tw1.setTaskType("asyncpoll");
 		tw1.setHttpClientType("httpClient");
@@ -69,7 +72,33 @@ public class TestFlowSession extends BaseTestCase {
 		tw1.setPollProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addHttpTask(tw1);
+
+		// 1 async group http req
+		HttpTaskWrapper tw2 = new HttpTaskWrapper();
+		tw2.setTaskType("asyncgroup");
+		tw2.setHttpClientType("httpClient");
+		tw2.setExecutionOption(new ExecuteOption());
+		tw2.setUrlTemplate(new UrlTemplate("https://#host"));
+		tw2.setFanoutFactor("#host");
+		tw2.setFanoutValues(sites);
+		flow.getSessionContext().addHttpTask(tw2);
 		
+		// 1 asyncpoll http req
+		HttpTaskWrapper tw3 = new HttpTaskWrapper();
+		tw3.setTaskType("asyncpollgroup");
+		tw3.setHttpClientType("httpClient");
+		tw3.setExecutionOption(new ExecuteOption());
+		tw3.setUrlTemplate(new UrlTemplate("https://#host"));
+		tw3.setFanoutFactor("#host");
+		tw3.setFanoutValues(sites);
+
+		tw3.setMonitorOption(new MonitorOption(1000, 5000));
+		tw3.setPollTemplate(new UrlTemplate("https://#host"));
+		tw3.setSharableVariables(transferV);
+		tw3.setPollProcessorName("dummyPollProcessor");
+
+		flow.getSessionContext().addHttpTask(tw3);
+
 		flow.save();
 		// kick off flow
 		flow.runFlow();

@@ -15,6 +15,7 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	
 	static int MSG_CONTENT_LEN = 2000; 
@@ -23,7 +24,10 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	protected UrlRequest req;
 	
 	/** if populated, template variable will be populated with values from context at runtime */
-	protected Map<String, String> templateVariableFromContext;
+	protected Map<String, String> valueFromContext;
+	
+	/** if fan out to multiple task pivot on values from context (list or array) */
+	protected String fanoutFactor;
 	
 	/** constructor */
 	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions) 
@@ -38,13 +42,21 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 		this.req = req;
 	}
 	
-	public void addTemplateVariableFromContext(String variableName, String contextVariableName) {
-		if (templateVariableFromContext == null) {
-			templateVariableFromContext = new HashMap<String, String>();
+	public void addValueFromContext(String variableName, String contextVariableName) {
+		if (valueFromContext == null) {
+			valueFromContext = new HashMap<String, String>();
 		}
-		templateVariableFromContext.put(variableName, contextVariableName);
-	}
+		valueFromContext.put(variableName, contextVariableName);
+	}	
 	
+	public String getFanoutValueFromContext() {
+		return fanoutFactor;
+	}
+
+	public void setFanoutValueFromContext(String fanoutValueFromContext) {
+		this.fanoutFactor = fanoutValueFromContext;
+	}
+
 	/**
 	 * build a ning http request builder
 	 * @param req
@@ -52,8 +64,8 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	 */
 	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
-		if (templateVariableFromContext != null) {
-			for (Entry<String, String> entry : templateVariableFromContext.entrySet()) {
+		if (valueFromContext != null) {
+			for (Entry<String, String> entry : valueFromContext.entrySet()) {
 				String variable = entry.getKey();
 				Object value = context.getValueByName(entry.getValue());
 				req.addTemplateValue(variable, value!=null ? value.toString() : "");
@@ -121,6 +133,35 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	@Override
 	public TaskResult onThrowable(Throwable t) {
 		return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+	}
+
+	/**
+	 * make a copy
+	 * @return
+	 */
+	public SimpleHttpTask makeCopy() {
+		SimpleHttpTask another = new SimpleHttpTask(client, execOptions);
+		another.req = this.req;
+		another.valueFromContext = this.valueFromContext;
+		return another;
+	}
+	
+	/**
+	 * fan out one tasks into multiple based on multiple values of a template variable
+	 * @param sample
+	 * @param templateVariable
+	 * @param values
+	 * @return
+	 */
+
+	public static final SimpleHttpTask[] fanOutOnTemplateVariable(SimpleHttpTask sample, String templateVariable, String...values) {
+		SimpleHttpTask[] results = new SimpleHttpTask[values.length];
+		for(int i = 0; i < values.length; i++) {
+			SimpleHttpTask another = sample.makeCopy();
+			another.getReq().addTemplateValue(templateVariable, values[i]);
+			results[i] = another;
+		}
+		return results;
 	}
 
 }

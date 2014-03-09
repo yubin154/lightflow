@@ -3,25 +3,17 @@ package org.lightj.session.step;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
-import org.lightj.session.FlowContext;
-import org.lightj.session.FlowModule;
 import org.lightj.session.FlowResult;
-import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.task.AsyncPollTaskWorker;
 import org.lightj.task.AsyncTaskWorker;
 import org.lightj.task.BatchOption;
-import org.lightj.task.BatchTask;
-import org.lightj.task.BatchTaskWorker;
 import org.lightj.task.ExecutableTask;
-import org.lightj.task.ExecuteOption;
-import org.lightj.task.IWorker;
-import org.lightj.task.NoopTask;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.task.TaskStepExecution;
 
 import akka.actor.Actor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
 import akka.actor.UntypedActorFactory;
 
 @SuppressWarnings({"rawtypes","unchecked"})
@@ -138,72 +130,34 @@ public class StepBuilder {
 	 * @param batchOption
 	 * @return
 	 */
-	public StepBuilder executeTasksFromScrapbook(
-			final String contextName, 
-			final boolean isScrapbook,
+	public StepBuilder executeTasksInContext(
+			final String contextName,
 			final BatchOption batchOption, 
 			final IAroundExecution extraExec) 
 	{
 		this.execute(
 				
-				new SimpleStepExecution(StepTransition.CALLBACK) {
-				
-					@Override
-					public StepTransition execute() throws FlowExecutionException {
-						
-						if (extraExec != null) {
-							extraExec.preExecute(this.sessionContext);
-						}
-						
-						Object val = isScrapbook ? this.sessionContext.getFromScrapbook(contextName) : 
-							this.sessionContext.getValueByName(contextName);
-						ArrayList<ExecutableTask> ctasks = new ArrayList<ExecutableTask>();
-						if (val instanceof ExecutableTask) {
-							ctasks.add((ExecutableTask) val);
-						}
-						else if (val instanceof ExecutableTask[]) {
-							ctasks.addAll(Arrays.asList((ExecutableTask[]) val));
-						}
-						else if (val instanceof Collection<?>) {
-							ctasks.addAll((Collection<ExecutableTask>)val);
-						}
-						if (ctasks.isEmpty()) {
-							ctasks.add(new NoopTask(new ExecuteOption(1000, 0, 0, 0)));
-						}
-						final FlowContext mycontext = this.sessionContext;
-						final StepCallbackHandler chandler = this.flowStep.getResultHandler();
-						for (ExecutableTask task : ctasks) {
-							// inject the context
-							task.setContext(mycontext);
-						}
-						final BatchTask batchTask = new BatchTask(batchOption, ctasks.toArray(new ExecutableTask[0]));
-						fire(batchTask, chandler);
-						
-						if (extraExec != null) {
-							extraExec.postExecute(this.sessionContext);
-						}
-						
-						return super.execute();
-					}
-					
-					private void fire(final BatchTask batchTask, final StepCallbackHandler chandler) {
-						
-						final UntypedActorFactory actorFactory = batchTask.getTasks()[0].needPolling() ? createAsyncPollActorFactory() : createAsyncActorFactory();
-						
-						ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
-								new Props(new UntypedActorFactory() {
-						
-							private static final long serialVersionUID = 1L;
+		new TaskStepExecution(batchOption, extraExec) {
 
-							@Override
-							public Actor create() throws Exception {
-								return new BatchTaskWorker(batchTask, actorFactory, chandler);
-							}
-						}));
-						batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
+			@Override
+			public List getInitialTasks() {
+				Object val = sessionContext.getValueByName(contextName);
+				ArrayList<ExecutableTask> ctasks = new ArrayList<ExecutableTask>();
+				if (val instanceof ExecutableTask) {
+					ctasks.add((ExecutableTask) val);
+				} else if (val instanceof ExecutableTask[]) {
+					ctasks.addAll(Arrays.asList((ExecutableTask[]) val));
+				} else if (val instanceof Collection<?>) {
+					for (Object obj : (Collection) val) {
+						if (obj instanceof ExecutableTask) {
+							ctasks.add((ExecutableTask) obj);
+						}
 					}
+				}
+				return ctasks;
+			}
 		});
-		
+
 		return this;
 	}
 	
@@ -229,49 +183,13 @@ public class StepBuilder {
 	{
 		this.execute(
 				
-			new SimpleStepExecution(StepTransition.CALLBACK) {
-				
+			new TaskStepExecution(batchOption, extraExec) {
+
 				@Override
-				public StepTransition execute() throws FlowExecutionException {
-
-					if (extraExec != null) {
-						extraExec.preExecute(this.sessionContext);
-					}
-					ExecutableTask[] ntsaks = (tasks.length == 0 ? 
-							new ExecutableTask[] {new NoopTask(new ExecuteOption(1000,0,0,0))} :
-								tasks);
-					final FlowContext mycontext = this.sessionContext;
-					final StepCallbackHandler chandler = this.flowStep.getResultHandler();
-					for (ExecutableTask task : ntsaks) {
-						// inject the context
-						task.setContext(mycontext);
-					}
-					final BatchTask batchTask = new BatchTask(batchOption, ntsaks);
-					fire(batchTask, chandler);
-					
-					if (extraExec != null) {
-						extraExec.postExecute(this.sessionContext);
-					}
-					
-					return super.execute();
+				public List getInitialTasks() {
+					return Arrays.asList(tasks);
 				}
 				
-				private void fire(final BatchTask batchTask, final StepCallbackHandler chandler) {
-					
-					final UntypedActorFactory actorFactory = batchTask.getTasks()[0].needPolling() ? createAsyncPollActorFactory() : createAsyncActorFactory();
-					
-					ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
-							new Props(new UntypedActorFactory() {
-					
-						private static final long serialVersionUID = 1L;
-
-						@Override
-						public Actor create() throws Exception {
-							return new BatchTaskWorker(batchTask, actorFactory, chandler);
-						}
-					}));
-					batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
-				}
 		});
 		
 		return this;

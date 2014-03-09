@@ -40,7 +40,9 @@ public class UrlRequest {
 		return this;
 	}
 	public UrlRequest addAllTemplateValues(Map<String, String> values) {
-		this.templateValues.putAll(values);
+		if (values != null) {
+			this.templateValues.putAll(values);
+		}
 		return this;
 	}
 	public String getTemplateValue(String k) {

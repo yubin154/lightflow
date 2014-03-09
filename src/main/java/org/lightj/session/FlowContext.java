@@ -58,7 +58,7 @@ public class FlowContext {
 	private Map<String, CtxPropWrapper> field2Prop = new HashMap<String, CtxPropWrapper>();
 	
 	/**
-	 * scrapbook for temporary results
+	 * scrapbook for temporary context, scrapbook is not persistent
 	 */
 	private Map<String, Object> scrapBook = new HashMap<String, Object>();
 	
@@ -212,15 +212,19 @@ public class FlowContext {
 	 * @param name
 	 * @return
 	 */
-	public Object getValueByName(String name) {
-		try {
-			Method getter = new PropertyDescriptor(name, this.getClass()).getReadMethod();
-			return getter.invoke(this, Constants.NO_PARAMETER_VALUES);
-		} catch (Throwable t) {
-			throw new RuntimeException("cannot retrieve context value by name " + name + ": " + t.getMessage());
+	public <C> C getValueByName(String name) {
+		if (hasScrapbookKey(name)) {
+			return (C) getFromScrapbook(name);
+		}
+		else {
+			try {
+				Method getter = new PropertyDescriptor(name, this.getClass()).getReadMethod();
+				return (C) getter.invoke(this, Constants.NO_PARAMETER_VALUES);
+			} catch (Throwable t) {
+				throw new RuntimeException("cannot retrieve context value by name " + name + ": " + t.getMessage());
+			}
 		}
 	}
-	
 	
 	/**
 	 * set pojo field into persisted DO
