@@ -53,6 +53,11 @@ public class HttpTaskUtil {
 		};
 	}
 	
+	/**
+	 * build a real http task from http task wrapper
+	 * @param tw
+	 * @return
+	 */
 	public static ExecutableTask buildTask(final HttpTaskWrapper tw) {
 		
 		TaskType tt = TaskType.valueOf(tw.taskType);
@@ -133,9 +138,15 @@ public class HttpTaskUtil {
 	}
 
 	
+	/**
+	 * wrapper class of user's request
+	 * @author binyu
+	 *
+	 */
 	public static class HttpTaskWrapper {
 		/** type, async, asyncpull, async_group, asyncpull_group*/
 		private String taskType;
+		/** client name used to look up for spring bean */
 		private String httpClientType;
 		
 		/** for async */
@@ -143,13 +154,13 @@ public class HttpTaskUtil {
 		private UrlTemplate urlTemplate;
 		private HashMap<String, String> templateValues;
 
-		/** for asyncpull */
+		/** additional for asyncpull */
 		private MonitorOption monitorOption;
 		private UrlTemplate pollTemplate;
 		private List<String> sharableVariables;
 		private String pollProcessorName;
 		
-		/** for group task */
+		/** additional for group task */
 		private String fanoutFactor;
 		private String[] fanoutValues;
 		
@@ -221,7 +232,8 @@ public class HttpTaskUtil {
 		}
 	}
 	
-	private static enum TaskType {
+	/** task type */
+	public static enum TaskType {
 		async, asyncpoll, asyncgroup, asyncpollgroup;
 	}
 }

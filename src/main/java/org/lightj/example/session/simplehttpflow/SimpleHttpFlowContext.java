@@ -2,7 +2,6 @@ package org.lightj.example.session.simplehttpflow;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 import org.lightj.example.session.simplehttpflow.HttpTaskUtil.HttpTaskWrapper;
@@ -20,18 +19,18 @@ public class SimpleHttpFlowContext extends FlowContext {
 	private int taskIndex=0;
 	
 	@CtxProp(dbType=CtxDbType.BLOB, saveType=CtxSaveType.AutoSave)
-	private List<HttpTaskWrapper> httpTasks = new ArrayList<HttpTaskWrapper>();
+	private List<HttpTaskWrapper> userRequests = new ArrayList<HttpTaskWrapper>();
 	
-	private Collection<ExecutableTask> currentTasks = new ArrayList<ExecutableTask>();
+	private ExecutableTask currentTask;
 	
-	public List<HttpTaskWrapper> getHttpTasks() {
-		return httpTasks;
+	public List<HttpTaskWrapper> getUserRequests() {
+		return userRequests;
 	}
-	public void setHttpTasks(List<HttpTaskWrapper> httpTasks) {
-		this.httpTasks = httpTasks;
+	public void setUserRequests(List<HttpTaskWrapper> userRequests) {
+		this.userRequests = userRequests;
 	}
-	public void addHttpTask(HttpTaskWrapper...httpTasks) {
-		this.httpTasks.addAll(Arrays.asList(httpTasks));
+	public void addUserRequests(HttpTaskWrapper...userRequests) {
+		this.userRequests.addAll(Arrays.asList(userRequests));
 	}
 	public int getTaskIndex() {
 		return taskIndex;
@@ -42,16 +41,20 @@ public class SimpleHttpFlowContext extends FlowContext {
 	public void incTaskIndex() {
 		this.taskIndex++;
 	}
+	public void incTaskIndexIfNotZero() {
+		if (this.taskIndex != 0) {
+			this.taskIndex++;
+		}
+	}
 	public HttpTaskWrapper getCurrentRequest() {
-		return taskIndex<httpTasks.size() ? httpTasks.get(taskIndex) : null;
+		return taskIndex<userRequests.size() ? userRequests.get(taskIndex) : null;
 	}
-	public Collection<ExecutableTask> getCurrentTasks() {
-		return currentTasks;
+	
+	public ExecutableTask getCurrentTask() {
+		return currentTask;
 	}
-	public void setCurrentTasks(Collection<ExecutableTask> currentTasks) {
-		this.currentTasks = currentTasks;
+	public void setCurrentTask(ExecutableTask currentTask) {
+		this.currentTask = currentTask;
 	}
-	public void addCurrentTask(ExecutableTask...tasks) {
-		this.currentTasks.addAll(Arrays.asList(tasks));
-	}
+	
 }

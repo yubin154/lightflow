@@ -51,7 +51,7 @@ public class TestFlowSession extends BaseTestCase {
 			HashMap<String, String> tv = new HashMap<String, String>();
 			tv.put("#host", sites[i]);
 			tw.setTemplateValues(tv);
-			flow.getSessionContext().addHttpTask(tw);
+			flow.getSessionContext().addUserRequests(tw);
 		}
 		
 		// 1 asyncpoll http req
@@ -71,7 +71,7 @@ public class TestFlowSession extends BaseTestCase {
 		tw1.setSharableVariables(transferV);
 		tw1.setPollProcessorName("dummyPollProcessor");
 
-		flow.getSessionContext().addHttpTask(tw1);
+		flow.getSessionContext().addUserRequests(tw1);
 
 		// 1 async group http req
 		HttpTaskWrapper tw2 = new HttpTaskWrapper();
@@ -81,7 +81,7 @@ public class TestFlowSession extends BaseTestCase {
 		tw2.setUrlTemplate(new UrlTemplate("https://#host"));
 		tw2.setFanoutFactor("#host");
 		tw2.setFanoutValues(sites);
-		flow.getSessionContext().addHttpTask(tw2);
+		flow.getSessionContext().addUserRequests(tw2);
 		
 		// 1 asyncpoll http req
 		HttpTaskWrapper tw3 = new HttpTaskWrapper();
@@ -97,7 +97,7 @@ public class TestFlowSession extends BaseTestCase {
 		tw3.setSharableVariables(transferV);
 		tw3.setPollProcessorName("dummyPollProcessor");
 
-		flow.getSessionContext().addHttpTask(tw3);
+		flow.getSessionContext().addUserRequests(tw3);
 
 		flow.save();
 		// kick off flow

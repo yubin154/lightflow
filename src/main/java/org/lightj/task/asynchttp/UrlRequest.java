@@ -14,9 +14,16 @@ import org.lightj.util.StringUtil;
  */
 public class UrlRequest {
 
+	/** nvp replacing variables in template with real values */
 	private HashMap<String, String> templateValues = new HashMap<String, String>();
+	
+	/** url template, typically immutable and contains variables */
 	private UrlTemplate urlTemplate;
 	
+	/** optionally lookup template value from external through this function */
+	private ITemplateValueLookupFunction templateValueLookup;
+	
+	/** constructor */
 	public UrlRequest() {
 	}
 	
@@ -51,6 +58,15 @@ public class UrlRequest {
 	public HashMap<String, String> getTemplateValues() {
 		return templateValues;
 	}
+
+	public ITemplateValueLookupFunction getTemplateValueLookup() {
+		return templateValueLookup;
+	}
+
+	public void setTemplateValueLookup(
+			ITemplateValueLookupFunction templateValueLookup) {
+		this.templateValueLookup = templateValueLookup;
+	}
 	
 	public HttpMethod getMethod() {
 		return urlTemplate.getMethod();
@@ -61,18 +77,16 @@ public class UrlRequest {
 	/** get real body after replacing template */
 	public String generateBody() {
 		String bodyV = urlTemplate.getBody();
-		for (Entry<String, String> entry : templateValues.entrySet()) {
-			bodyV = bodyV.replaceAll(entry.getKey(), entry.getValue());
-		}
+		bodyV = templateReplaceAll(bodyV, templateValues);
+		bodyV = templateReplaceAllByLookup(bodyV);
 		return bodyV;
 	}
 
 	/** get real url after template replacement */
 	public String generateUrl() {
 		String urlV = urlTemplate.getUrl();
-		for (Entry<String, String> entry : templateValues.entrySet()) {
-			urlV = urlV.replaceAll(entry.getKey(), entry.getValue());
-		}
+		urlV = templateReplaceAll(urlV, templateValues);
+		urlV = templateReplaceAllByLookup(urlV);
 		return urlV;
 	}
 
@@ -82,13 +96,44 @@ public class UrlRequest {
 		for (Entry<String, String> header : urlTemplate.getHeaders().entrySet()) {
 			String key = header.getKey();
 			String value = header.getValue();
-			for (Entry<String, String> entry : templateValues.entrySet()) {
-				key = key.replaceAll(entry.getKey(), entry.getValue());
-				value = value.replaceAll(entry.getKey(), entry.getValue());
-			}
+			key = templateReplaceAll(key, templateValues);
+			key = templateReplaceAllByLookup(key);
+			value = templateReplaceAll(value, templateValues);
+			value = templateReplaceAllByLookup(value);
 			headersReal.put(key, value);
 		}
 		return headersReal;
+	}
+	
+	private String templateReplaceAll(String template, Map<String, String> values) {
+		for (Entry<String, String> entry : values.entrySet()) {
+			template = template.replaceAll(entry.getKey(), entry.getValue());
+		}
+		return template;
+	}
+	
+	private String templateReplaceAllByLookup(String template) {
+		if (templateValueLookup != null) {
+			String pivotValue = getTemplateValue(templateValueLookup.getPivotVariableName());
+			Map<String, String> externalTemplateValues = templateValueLookup.lookupByPivotValue(pivotValue);
+			template = templateReplaceAll(template, externalTemplateValues);
+		}
+		return template;
+	}
+	
+	/**
+	 * externally lookup template value
+	 * 
+	 * @author binyu
+	 *
+	 */
+	public interface ITemplateValueLookupFunction {
+		
+		/** what value to use to lookup externally as a key */
+		public String getPivotVariableName();
+		
+		/** additional nv pairs to replace from external */
+		public Map<String, String> lookupByPivotValue(String pivotValue);
 	}
 
 	
