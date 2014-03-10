@@ -2,6 +2,11 @@ package org.lightj.session.step;
 
 import java.io.Serializable;
 
+/**
+ * step error log
+ * @author binyu
+ *
+ */
 public class StepErrorLog implements Serializable {
 
 	/**

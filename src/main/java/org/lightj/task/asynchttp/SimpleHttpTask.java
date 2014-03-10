@@ -15,6 +15,13 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
+/**
+ * http task, using async http client
+ * 
+ * @author binyu
+ *
+ * @param <T>
+ */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	
@@ -25,9 +32,6 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 	
 	/** if populated, template variable will be populated with values from context at runtime */
 	protected Map<String, String> valueFromContext;
-	
-	/** if fan out to multiple task pivot on values from context (list or array) */
-	protected String fanoutFactor;
 	
 	/** constructor */
 	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions) 
@@ -49,14 +53,6 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 		valueFromContext.put(variableName, contextVariableName);
 	}	
 	
-	public String getFanoutValueFromContext() {
-		return fanoutFactor;
-	}
-
-	public void setFanoutValueFromContext(String fanoutValueFromContext) {
-		this.fanoutFactor = fanoutValueFromContext;
-	}
-
 	/**
 	 * build a ning http request builder
 	 * @param req
@@ -67,8 +63,8 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 		if (valueFromContext != null) {
 			for (Entry<String, String> entry : valueFromContext.entrySet()) {
 				String variable = entry.getKey();
-				Object value = context.getValueByName(entry.getValue());
-				req.addTemplateValue(variable, value!=null ? value.toString() : "");
+				String value = context.<String>getValueByName(entry.getValue());
+				req.addTemplateValue(variable, value);
 			}
 		}
 		String url = req.generateUrl();
@@ -146,23 +142,5 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 		return another;
 	}
 	
-	/**
-	 * fan out one tasks into multiple based on multiple values of a template variable
-	 * @param sample
-	 * @param templateVariable
-	 * @param values
-	 * @return
-	 */
-
-	public static final SimpleHttpTask[] fanOutOnTemplateVariable(SimpleHttpTask sample, String templateVariable, String...values) {
-		SimpleHttpTask[] results = new SimpleHttpTask[values.length];
-		for(int i = 0; i < values.length; i++) {
-			SimpleHttpTask another = sample.makeCopy();
-			another.getReq().addTemplateValue(templateVariable, values[i]);
-			results[i] = another;
-		}
-		return results;
-	}
-
 }
 

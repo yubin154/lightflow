@@ -1,6 +1,11 @@
 package org.lightj.session.exception;
 
-
+/**
+ * flow update exception
+ * 
+ * @author binyu
+ *
+ */
 public class StateChangeException extends FlowExecutionException {
 
 	/**

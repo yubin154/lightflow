@@ -1,9 +1,10 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import java.util.Date;
 
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
+import org.lightj.session.dal.ISessionData;
 import org.lightj.util.StringUtil;
 
 

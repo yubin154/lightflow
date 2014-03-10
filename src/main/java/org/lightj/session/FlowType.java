@@ -1,7 +1,12 @@
 package org.lightj.session;
 
 
-
+/**
+ * flow type
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public interface FlowType {
 

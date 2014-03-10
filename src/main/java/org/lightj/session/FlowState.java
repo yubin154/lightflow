@@ -1,6 +1,11 @@
 package org.lightj.session;
 
-
+/**
+ * flow state enum
+ * 
+ * @author binyu
+ *
+ */
 public enum FlowState {
 	
 	Unknown("Unknown"),			// system state unknown

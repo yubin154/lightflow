@@ -1,6 +1,7 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import org.lightj.dal.AbstractDbDrainer;
+import org.lightj.session.dal.ISessionStepLog;
 
 /**
  * asynchronous queue based drainer to drain {@link ISessionStepLog} to data store

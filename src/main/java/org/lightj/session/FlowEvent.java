@@ -1,6 +1,10 @@
 package org.lightj.session;
 
-
+/**
+ * flow event
+ * @author binyu
+ *
+ */
 public enum FlowEvent {
 	
 	// flow events //

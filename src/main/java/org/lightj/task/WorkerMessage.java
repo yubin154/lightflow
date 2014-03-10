@@ -5,7 +5,7 @@ public class WorkerMessage {
 	
 	/** callback types */
 	public static enum CallbackType {
-		created, submitted, taskresult, completed
+		created, submitted, taskresult
 	}
 
 	private final CallbackType callbackType;

@@ -1,8 +1,7 @@
 package org.lightj.initialization;
 
-
-
 /**
+ * initialization interface
  * @author biyu
  */
 public interface Initializable {

@@ -22,7 +22,7 @@ import akka.actor.ActorSystem;
 import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 
 /**
- * session module
+ * flow module, used for light flow framework initialization
  * 
  * @author biyu
  *

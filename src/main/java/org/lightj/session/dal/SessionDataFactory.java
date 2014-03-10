@@ -70,13 +70,13 @@ public class SessionDataFactory {
 		}
 		else {
 			if (dataManager == null) {
-				this.dataManager = org.lightj.session.dal.SessionDataManagerImpl.getInstance();
+				this.dataManager = org.lightj.session.dal.rdbms.SessionDataManagerImpl.getInstance();
 			}
 			if (metaDataManager == null) {
-				this.metaDataManager = org.lightj.session.dal.SessionMetaDataManagerImpl.getInstance();
+				this.metaDataManager = org.lightj.session.dal.rdbms.SessionMetaDataManagerImpl.getInstance();
 			}
 			if (stepLogManager == null) {
-				this.stepLogManager = org.lightj.session.dal.SessionStepLogManagerImpl.getInstance();
+				this.stepLogManager = org.lightj.session.dal.rdbms.SessionStepLogManagerImpl.getInstance();
 			}
 		}
 		this.dataManager.setDbEnum(dbEnum);

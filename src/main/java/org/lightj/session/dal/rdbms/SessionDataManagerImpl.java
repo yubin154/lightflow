@@ -1,4 +1,4 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import org.lightj.dal.AbstractDAO;
 import org.lightj.dal.BaseSequenceEnum;
@@ -8,6 +8,8 @@ import org.lightj.dal.Query;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.FlowType;
+import org.lightj.session.dal.ISessionData;
+import org.lightj.session.dal.ISessionDataManager;
 import org.lightj.util.DBUtil;
 import org.lightj.util.StringUtil;
 

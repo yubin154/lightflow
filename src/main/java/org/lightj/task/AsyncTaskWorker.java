@@ -20,7 +20,10 @@ import akka.japi.Function;
 
 
 /**
- * Provides abstraction of an business operation. The operation can include asynchronous callback. 
+ * Provides abstraction of an business operation. The operation can include asynchronous callback.
+ * @author binyu
+ *
+ * @param <T>
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {

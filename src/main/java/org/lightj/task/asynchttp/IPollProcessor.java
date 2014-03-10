@@ -4,6 +4,12 @@ import org.lightj.task.TaskResultEnum;
 
 import com.ning.http.client.Response;
 
+/**
+ * custom polling implementation
+ * 
+ * @author binyu
+ *
+ */
 public interface IPollProcessor {
 
 	/**

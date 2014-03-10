@@ -1,6 +1,8 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import java.util.Date;
+
+import org.lightj.session.dal.ISessionStepLog;
 
 /**
  * session step log

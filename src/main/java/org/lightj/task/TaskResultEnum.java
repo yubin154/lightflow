@@ -3,7 +3,7 @@ package org.lightj.task;
 import org.lightj.util.StringUtil;
 
 /**
- * task result
+ * task result status enum
  * @author biyu
  *
  */

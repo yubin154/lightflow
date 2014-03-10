@@ -1,6 +1,10 @@
 package org.lightj.session.exception;
 
-
+/**
+ * flow registration exception, flow type does not exist
+ * @author binyu
+ *
+ */
 public class NoSuchFlowException extends IllegalArgumentException {
 
 	/**

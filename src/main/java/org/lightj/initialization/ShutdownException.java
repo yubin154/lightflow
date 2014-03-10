@@ -8,6 +8,8 @@ import java.util.Collection;
 import java.util.Iterator;
 
 /**
+ * error shutdown module
+ * 
  * @author biyu
  */
 public class ShutdownException extends RuntimeException {

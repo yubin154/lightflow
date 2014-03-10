@@ -1,4 +1,4 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import java.util.Date;
 import java.util.List;
@@ -8,6 +8,7 @@ import org.lightj.dal.BaseSequenceEnum;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.DataAccessRuntimeException;
 import org.lightj.dal.Query;
+import org.lightj.session.dal.ISessionStepLogManager;
 
 /**
  * {@link ISessionStepLogManager} implementation

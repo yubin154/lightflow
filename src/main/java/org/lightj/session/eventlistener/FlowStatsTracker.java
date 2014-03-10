@@ -7,7 +7,7 @@ import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 
 /**
- * track flow stats
+ * track flow progress
  * @author biyu
  *
  */

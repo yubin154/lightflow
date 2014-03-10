@@ -8,6 +8,12 @@ import org.lightj.session.IFlowEventListener;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 
+/**
+ * handle flow recovery event
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public class FlowRecoverEventListener implements IFlowEventListener {
 

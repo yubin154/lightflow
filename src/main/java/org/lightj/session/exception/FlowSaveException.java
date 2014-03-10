@@ -1,10 +1,10 @@
 package org.lightj.session.exception;
 
 /**
+ * exception while persist flow
+ * 
  * @author biyu
- *
- * To change the template for this generated type comment go to
- * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
+ * 
  */
 public class FlowSaveException extends Exception {
 

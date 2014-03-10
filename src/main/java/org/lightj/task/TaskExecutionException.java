@@ -1,5 +1,10 @@
 package org.lightj.task;
 
+/**
+ * Task exeuction exception
+ * @author binyu
+ *
+ */
 public class TaskExecutionException extends Exception {
 
 	/**

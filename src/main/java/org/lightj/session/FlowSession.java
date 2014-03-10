@@ -29,9 +29,15 @@ import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/**
+ * base flow session class
+ * 
+ * @author binyu
+ *
+ * @param <T>
+ */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public abstract class FlowSession<T extends FlowContext> implements IFlowControl, IRuntimeFlowProperties
+public abstract class FlowSession<T extends FlowContext> implements IFlowControl
 {
 
 	/** logger */
@@ -130,7 +136,7 @@ public abstract class FlowSession<T extends FlowContext> implements IFlowControl
 		flowEventListeners.add(new FlowSaver());
 		flowEventListeners.add(new FlowTimer());
 		flowEventListeners.add(new FlowStatsTracker());
-		flowEventListeners.add(new FlowRecoverEventListener());
+//		flowEventListeners.add(new FlowRecoverEventListener());
 
 		postConstruct();
 	}
@@ -618,6 +624,8 @@ public abstract class FlowSession<T extends FlowContext> implements IFlowControl
 		FlowEvent evt = null;
 		try {
 			driver = this.createFlowDriver();
+			this.addEventListener(new FlowRecoverEventListener());
+			
 			if (this.getFlowProperties().clustered()) {
 				evt = FlowEvent.recover;
 				this.setState(FlowState.Paused);

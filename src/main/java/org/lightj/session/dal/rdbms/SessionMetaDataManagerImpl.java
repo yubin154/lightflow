@@ -1,4 +1,4 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import java.sql.Blob;
 import java.util.List;
@@ -8,6 +8,7 @@ import org.lightj.dal.BaseSequenceEnum;
 import org.lightj.dal.DataAccessException;
 import org.lightj.dal.DataAccessRuntimeException;
 import org.lightj.dal.Query;
+import org.lightj.session.dal.ISessionMetaDataManager;
 
 /**
  * {@link ISessionMetaDataManager} implementation

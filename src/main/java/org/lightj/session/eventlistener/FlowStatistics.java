@@ -9,6 +9,12 @@ import org.lightj.session.FlowSession.StepPropTuple;
 import org.lightj.session.FlowStepProperties;
 import org.lightj.util.StringUtil;
 
+/**
+ * keep and calculate flow progress
+ * 
+ * @author binyu
+ *
+ */
 public class FlowStatistics {
 	
 	/** progress */

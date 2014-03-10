@@ -7,6 +7,12 @@ import org.lightj.session.IFlowEventListener;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 
+/**
+ * execute a flow session as a task
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public abstract class FlowTask extends ExecutableTask {
 

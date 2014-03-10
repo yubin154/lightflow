@@ -10,7 +10,12 @@ import org.lightj.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/**
+ * log flow info to external log when flow complete 
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings({"rawtypes"})
 public class FlowLogger implements IFlowEventListener {
 	
@@ -36,7 +41,6 @@ public class FlowLogger implements IFlowEventListener {
 	 * @param session
 	 */
 	public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
-		// persist log ALWAYS on flow event start/stop
 		switch (event) {
 		case stop:
 			try {

@@ -17,6 +17,13 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedActorFactory;
 
+/**
+ * executing task(s) in the flowstep, through actor system
+ * 
+ * @author binyu
+ *
+ * @param <T>
+ */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public abstract class TaskStepExecution<T extends FlowContext> extends SimpleStepExecution<T> {
 	

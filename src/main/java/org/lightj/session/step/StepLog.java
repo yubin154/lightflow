@@ -8,7 +8,11 @@ import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.util.StringUtil;
 
-
+/**
+ * step log
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public class StepLog implements Serializable {
 	

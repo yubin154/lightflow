@@ -1,6 +1,11 @@
 package org.lightj.session;
 
-
+/**
+ * flow type imple
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public class FlowTypeImpl implements FlowType {
 

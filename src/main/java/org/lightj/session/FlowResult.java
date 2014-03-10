@@ -4,6 +4,12 @@ import java.util.logging.Level;
 
 import org.lightj.task.TaskResultEnum;
 
+/**
+ * flow result enum
+ * 
+ * @author binyu
+ *
+ */
 public enum FlowResult {
 	Unknown,	// not started, no result, not applicable
 	InProgress, // still running

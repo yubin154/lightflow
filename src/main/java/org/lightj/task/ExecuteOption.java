@@ -1,6 +1,11 @@
 package org.lightj.task;
 
-
+/**
+ * options for task execution, initial delay, timeout, maxRetry, retryDelay
+ * 
+ * @author binyu
+ *
+ */
 public class ExecuteOption {
 	
 	/** default timeout in 24 hours */

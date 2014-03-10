@@ -1,6 +1,7 @@
 package org.lightj.initialization;
 
 /**
+ * empty module set
  * @author biyu
  */
 public class EmptyModuleSetException extends InvalidModuleSetException {

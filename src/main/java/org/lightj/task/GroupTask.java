@@ -4,6 +4,12 @@ import java.util.List;
 
 import org.lightj.session.FlowContext;
 
+/**
+ * at runtime fan out to a list of tasks for execution
+ * @author binyu
+ *
+ * @param <T>
+ */
 @SuppressWarnings("rawtypes")
 public abstract class GroupTask<T extends FlowContext> extends ExecutableTask<T> {
 

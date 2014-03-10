@@ -154,9 +154,6 @@ public class BatchTaskWorker extends UntypedActor implements IWorker {
 				getSelf().tell(PoisonPill.getInstance(), null);
 			}
 			break;
-		case completed:
-			// ignore
-			break;
 		default:
 			break;
 		}

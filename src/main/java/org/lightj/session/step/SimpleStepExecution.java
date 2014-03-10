@@ -3,6 +3,13 @@ package org.lightj.session.step;
 import org.lightj.session.FlowContext;
 import org.lightj.session.exception.FlowExecutionException;
 
+/**
+ * execute with set transition
+ * 
+ * @author binyu
+ *
+ * @param <T>
+ */
 public class SimpleStepExecution<T extends FlowContext> extends StepExecution<T> {
 
 

@@ -2,6 +2,8 @@ package org.lightj.initialization;
 
 
 /**
+ * cyclic dependency
+ * 
  * @author biyu
  */
 public class CycleInModulesException extends InvalidModuleSetException {

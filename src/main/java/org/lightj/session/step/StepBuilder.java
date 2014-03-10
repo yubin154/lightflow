@@ -16,6 +16,11 @@ import org.lightj.task.TaskStepExecution;
 import akka.actor.Actor;
 import akka.actor.UntypedActorFactory;
 
+/**
+ * build a flow step
+ * @author binyu
+ *
+ */
 @SuppressWarnings({"rawtypes","unchecked"})
 public class StepBuilder {
 
@@ -162,7 +167,7 @@ public class StepBuilder {
 	}
 	
 	/**
-	 * execute one or more tasks in actor, with result handler
+	 * execute one or more tasks in actor
 	 * @param tasks
 	 * @return
 	 */
@@ -171,7 +176,7 @@ public class StepBuilder {
 	}
 	
 	/**
-	 * execute one or more tasks in actor, with result handler
+	 * execute one or more tasks in actor, with batch options, and around execution block
 	 * @param resultHandler
 	 * @param workers
 	 * @return

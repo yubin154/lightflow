@@ -1,5 +1,10 @@
 package org.lightj.session.exception;
 
+/**
+ * flow context exception
+ * @author binyu
+ *
+ */
 public class FlowContextException extends Exception {
 
 	/**

@@ -1,5 +1,10 @@
 package org.lightj.session.exception;
 
+/**
+ * flow execution exception
+ * @author binyu
+ *
+ */
 public class FlowExecutionException extends RuntimeException {
 
 

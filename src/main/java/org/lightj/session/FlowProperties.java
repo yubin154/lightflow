@@ -8,6 +8,12 @@ import java.lang.annotation.Target;
 import org.lightj.session.eventlistener.FlowTimer;
 import org.lightj.session.exception.FlowExistException;
 
+/**
+ * flow properties
+ * 
+ * @author binyu
+ *
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface FlowProperties {

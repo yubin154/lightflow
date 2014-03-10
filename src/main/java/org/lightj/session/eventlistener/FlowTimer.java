@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * add timer functionality to a flow or a flow step
+ * add timer functionality to a flow
  * 
  * @author biyu
  *
@@ -27,15 +27,19 @@ public class FlowTimer implements IFlowEventListener {
 	
 	static Logger logger = LoggerFactory.getLogger(FlowTimer.class);
 	
+	/** flow timer */
 	private Timer flowTimeout;
 	
 	/**
-	 * error event
+	 * error event, cancel timer at flow error
 	 * @param t
 	 * @param session
 	 */
 	public void handleError(Throwable t, FlowSession session) {
 		// do nothing
+		if(flowTimeout != null){
+			flowTimeout.cancel();
+		}
 	}
 
 	/**
@@ -78,6 +82,7 @@ public class FlowTimer implements IFlowEventListener {
 	 */
 	public void handleStepEvent(FlowEvent event, final FlowSession session, final IFlowStep flowStep, StepTransition stepTransition) 
 	{
+		// noop
 	}
 	
 }

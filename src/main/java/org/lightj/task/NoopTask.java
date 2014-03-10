@@ -2,6 +2,12 @@ package org.lightj.task;
 
 import org.lightj.session.FlowContext;
 
+/**
+ * noop task, just return success (default) or predefined result
+ * @author binyu
+ *
+ * @param <T>
+ */
 public class NoopTask<T extends FlowContext> extends ExecutableTask<T> 
 {
 

@@ -1,5 +1,10 @@
 package org.lightj.session.exception;
 
+/**
+ * flow failed validation
+ * @author binyu
+ *
+ */
 public class FlowValidationException extends Error {
 
 	/**

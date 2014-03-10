@@ -1,6 +1,8 @@
-package org.lightj.session.dal;
+package org.lightj.session.dal.rdbms;
 
 import java.io.Serializable;
+
+import org.lightj.session.dal.ISessionMetaData;
 
 /**
  * session meta data

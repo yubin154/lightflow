@@ -1,6 +1,10 @@
 package org.lightj.session.exception;
 
-
+/**
+ * same flow exist exception
+ * @author binyu
+ *
+ */
 public class FlowExistException extends FlowSaveException 
 {
 	

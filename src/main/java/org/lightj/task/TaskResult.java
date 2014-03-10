@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 
 /**
+ * task results
  * @author biyu
  * 
  */ 
@@ -27,7 +28,7 @@ public class TaskResult implements Serializable {
 	/** stack trace */
 	protected final Throwable stackTrace;
 	
-	/** real object */
+	/** real result object */
 	private Object realResult;
 
 	/**

@@ -11,6 +11,13 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
 import com.ning.http.client.Response;
 
+/**
+ * http task with polling, using async http client
+ * 
+ * @author binyu
+ *
+ * @param <T>
+ */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
 	

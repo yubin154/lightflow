@@ -1,5 +1,11 @@
 package org.lightj.initialization;
 
+/**
+ * initialization exception
+ * 
+ * @author binyu
+ *
+ */
 public class InitializationException extends RuntimeException {
 
 	/**

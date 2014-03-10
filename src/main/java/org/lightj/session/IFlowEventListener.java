@@ -3,6 +3,12 @@ package org.lightj.session;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 
+/**
+ * flow event listener
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public interface IFlowEventListener {
 	

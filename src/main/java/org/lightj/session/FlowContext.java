@@ -37,8 +37,8 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * session manager context, store context for a workflow session, support property of String type
- * and Blob type in a name value pair format
+ * session manager context, store context for a workflow session
+ * support property of String type and Blob type in a name value pair format
  * 
  * @author biyu
  */
