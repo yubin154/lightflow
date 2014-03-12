@@ -1,5 +1,6 @@
 package org.lightj.task;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -12,6 +13,7 @@ import org.lightj.session.FlowContext;
 import org.lightj.session.FlowModule;
 import org.lightj.session.step.StepTransition;
 import org.lightj.task.asynchttp.UrlTemplate;
+import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 import org.lightj.util.ConcurrentUtil;
 import org.lightj.util.SpringContextUtil;
 import org.lightj.util.StringUtil;
@@ -28,15 +30,27 @@ public class TestTask extends BaseTestCase {
 
 	public void testStandaloneTaskExecutor() throws Exception {
 		// 2 async http req
-		String[] sites = new String[] {"www.yahoo.com","www.facebook.com"};
+		String[] sites = new String[] {"slc4b01c-9dee.stratus.slc.ebay.com","slc4b01c-accc.stratus.slc.ebay.com"};
 		// 1 async group http req
 		HttpTaskWrapper tw2 = new HttpTaskWrapper();
-		tw2.setTaskType("asyncgroup");
+		tw2.setTaskType("asyncpollgroup");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		tw2.setUrlTemplate(new UrlTemplate("https://#host"));
+		UrlTemplate template = new UrlTemplate("https://#host:12020/admin/executeCmd", HttpMethod.POST, "{\"cmd\": \"netstat\", \"params\": \"-a\"}");
+		template.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
+				.addHeader("content-type", "application/json")
+				.addHeader("AUTHZ_TOKEN", "donoevil");
+		tw2.setUrlTemplate(template);
 		tw2.setFanoutFactor("#host");
 		tw2.setFanoutValues(sites);
+		
+		tw2.setMonitorOption(new MonitorOption(1000, 10000));
+		tw2.setPollTemplate(new UrlTemplate("https://#host:12020/status/#uuid"));
+		ArrayList<String> transferV = new ArrayList<String>();
+		transferV.add("#host");
+		tw2.setSharableVariables(transferV);
+		tw2.setPollProcessorName("agentPollProcessor");
+		
 		StandaloneTaskListener listener = new StandaloneTaskListener();
 		listener.setDelegateHandler(new ITaskEventHandler<FlowContext>() {
 
@@ -49,8 +63,7 @@ public class TestTask extends BaseTestCase {
 			}
 
 			@Override
-			public void executeOnResult(FlowContext ctx, Task task,
-					TaskResult result) {
+			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
 				System.out.print(StringUtil.trimToLength((String) result.getRealResult(), 100));
 			}
 
@@ -62,7 +75,7 @@ public class TestTask extends BaseTestCase {
 			}
 		});
 		new StandaloneTaskExecutor(null, listener, HttpTaskUtil.buildTask(tw2)).execute();
-		ConcurrentUtil.wait(lock, cond, 15000);
+		ConcurrentUtil.wait(lock, cond);
 	}
 
 	@Override
