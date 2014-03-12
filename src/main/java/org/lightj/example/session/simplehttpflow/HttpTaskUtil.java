@@ -1,8 +1,11 @@
 package org.lightj.example.session.simplehttpflow;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.lightj.session.FlowModule;
 import org.lightj.task.ExecutableTask;
@@ -45,12 +48,64 @@ public class HttpTaskUtil {
 			}
 
 			@Override
-			public TaskResultEnum preparePollTask(Response reponse,
+			public TaskResultEnum preparePollTask(Response response,
 					UrlRequest pollReq) {
 				return TaskResultEnum.Success;
 			}
 			
 		};
+	}
+	
+	public @Bean @Scope("prototype") IPollProcessor agentPollProcessor() {
+
+		final String successRegex = ".*\\\"progress\\\"\\s*:\\s*100.*";
+		final String failureRegex = ".*\\\"error\\\"\\s*:\\s*(.*),.*";
+		// matching pattern "status": "/status/uuid"
+		final String uuidRegex = ".*\\\"/status/(.*?)\\\".*,";
+		final Pattern r = Pattern.compile(uuidRegex);
+		return new IPollProcessor() {
+
+			@Override
+			public TaskResultEnum checkPollProgress(Response response) {
+				
+				String body;
+				try {
+					body = response.getResponseBody();
+				} catch (IOException e) {
+					return TaskResultEnum.Failed;
+				}
+				if (body.matches(successRegex)) {
+					return TaskResultEnum.Success;
+				}
+				else if (body.matches(failureRegex)) {
+					return TaskResultEnum.Failed;
+				}
+				return null;
+			}
+
+			@Override
+			public TaskResultEnum preparePollTask(
+					Response response,
+					UrlRequest pollReq) 
+			{
+				String body;
+				try {
+					body = response.getResponseBody();
+				} catch (IOException e) {
+					return TaskResultEnum.Failed;
+				}
+				Matcher m = r.matcher(body);
+				if (m.find()) {
+					String uuid = m.group(1);
+					pollReq.addTemplateValue("#uuid", uuid);
+					return TaskResultEnum.Success;
+				} else {
+					return TaskResultEnum.Failed;
+				}
+			}
+			
+		};
+		
 	}
 	
 	/**
@@ -144,7 +199,7 @@ public class HttpTaskUtil {
 	 *
 	 */
 	public static class HttpTaskWrapper {
-		/** type, async, asyncpull, async_group, asyncpull_group*/
+		/** type, async, asyncpoll, async_group, asyncpoll_group*/
 		private String taskType;
 		/** client name used to look up for spring bean */
 		private String httpClientType;
@@ -154,7 +209,7 @@ public class HttpTaskUtil {
 		private UrlTemplate urlTemplate;
 		private HashMap<String, String> templateValues;
 
-		/** additional for asyncpull */
+		/** additional for asyncpoll */
 		private MonitorOption monitorOption;
 		private UrlTemplate pollTemplate;
 		private List<String> sharableVariables;
@@ -163,6 +218,8 @@ public class HttpTaskUtil {
 		/** additional for group task */
 		private String fanoutFactor;
 		private String[] fanoutValues;
+		
+		private String customHandler;
 		
 		public String getTaskType() {
 			return taskType;
@@ -229,6 +286,12 @@ public class HttpTaskUtil {
 		}
 		public void setFanoutValues(String[] fanoutValues) {
 			this.fanoutValues = fanoutValues;
+		}
+		public String getCustomHandler() {
+			return customHandler;
+		}
+		public void setCustomHandler(String customHandler) {
+			this.customHandler = customHandler;
 		}
 	}
 	

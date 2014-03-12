@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lightj.session.FlowContext;
-import org.lightj.session.FlowModule;
 import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.IAroundExecution;
 import org.lightj.session.step.SimpleStepExecution;
-import org.lightj.session.step.StepBuilder;
 import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepTransition;
 
@@ -33,6 +31,14 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 	/** additional IAroundExecution logic */
 	private IAroundExecution<T> extraExec;
 			
+	/** constructor */
+	public TaskStepExecution(
+			BatchOption batchOption) 
+	{
+		this(batchOption, null);
+	}
+	
+
 	/** constructor */
 	public TaskStepExecution(
 			BatchOption batchOption, 
@@ -81,9 +87,9 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 	private void fire(final BatchTask batchTask, final StepCallbackHandler chandler) {
 		
 		final UntypedActorFactory actorFactory = batchTask.getTasks()[0].needPolling() 
-				? StepBuilder.createAsyncPollActorFactory() : StepBuilder.createAsyncActorFactory();
+				? TaskModule.getAsyncPollWorkerFactory() : TaskModule.getAsyncWorkerFactory();
 		
-		ActorRef batchWorker = FlowModule.getActorSystem().actorOf(
+		ActorRef batchWorker = TaskModule.getActorSystem().actorOf(
 				new Props(new UntypedActorFactory() {
 		
 			private static final long serialVersionUID = 1L;

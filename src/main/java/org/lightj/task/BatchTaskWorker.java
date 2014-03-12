@@ -88,14 +88,16 @@ public class BatchTaskWorker extends UntypedActor implements IWorker {
 	private final void processRequest() {
 		UntypedActorFactory strategyFactory = null;
 		if (task.getBatchOption() != null) {
+			
 			switch (task.getBatchOption().getStrategy()) {
+			
 			case MAX_CONCURRENT_RATE_SLIDING:
 				strategyFactory = new UntypedActorFactory() {
 					private static final long serialVersionUID = 1L;
 
 					@Override
 					public Actor create() throws Exception {
-						return new MaxConcurrentStrategy(task.getBatchOption().getMaxConcurrencyCount());
+						return new MaxConcurrentStrategy(task.getBatchOption().getConcurrentRate());
 					}
 
 				};

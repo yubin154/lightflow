@@ -14,10 +14,9 @@ import org.lightj.initialization.BaseInitializable;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.session.dal.SessionDataFactory;
+import org.lightj.task.TaskModule;
 import org.lightj.util.SpringContextUtil;
 import org.springframework.context.ApplicationContext;
-
-import akka.actor.ActorSystem;
 
 import com.sun.enterprise.ee.cms.core.GroupManagementService.MemberType;
 
@@ -80,12 +79,6 @@ public class FlowModule {
 		return s_Module.dbEnum;
 	}
 	
-	/** get actor system */
-	public static ActorSystem getActorSystem() {
-		validateInit();
-		return s_Module.system;
-	}
-	
 	/** add flows from spring context */
 	public FlowModule setSpringContext(ApplicationContext flowCtx) {
 		s_Module.validateForChange();
@@ -127,8 +120,6 @@ public class FlowModule {
 		private ExecutorService es;
 		/** spring context */
 		private ApplicationContext flowCtx;
-		/** create actor system */
-		private ActorSystem system; 
 
 		
 		/**
@@ -168,9 +159,6 @@ public class FlowModule {
 						throw new InitializationException("session flow application context not set");
 					}
 					
-					// create actor system
-					system = ActorSystem.create();
-					
 					SessionDataFactory f = SessionDataFactory.getInstance();
 					f.setDbEnum(dbEnum);
 
@@ -205,6 +193,8 @@ public class FlowModule {
 					FlowSessionFactory.getInstance().recoverMySession();
 				}
 			});
+			
+			addDependentModule(new TaskModule().getModule());
 		}
 		
 	}

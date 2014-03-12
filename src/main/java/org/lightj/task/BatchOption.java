@@ -11,15 +11,15 @@ public class BatchOption {
 		MAX_CONCURRENT_RATE_SLIDING;
 	};
 	
-	private final int maxConcurrencyCount;
+	private final int concurrentRate;
 	private final Strategy strategy;
 	
-	public BatchOption(int maxConcurrencyCount, Strategy strategy) {
-		this.maxConcurrencyCount = maxConcurrencyCount;
+	public BatchOption(int concurrentRate, Strategy strategy) {
+		this.concurrentRate = concurrentRate;
 		this.strategy = strategy;
 	}
-	public int getMaxConcurrencyCount() {
-		return maxConcurrencyCount;
+	public int getConcurrentRate() {
+		return concurrentRate;
 	}
 	public Strategy getStrategy() {
 		return strategy;

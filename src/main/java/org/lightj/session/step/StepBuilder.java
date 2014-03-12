@@ -6,15 +6,10 @@ import java.util.Collection;
 import java.util.List;
 
 import org.lightj.session.FlowResult;
-import org.lightj.task.AsyncPollTaskWorker;
-import org.lightj.task.AsyncTaskWorker;
 import org.lightj.task.BatchOption;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.TaskStepExecution;
-
-import akka.actor.Actor;
-import akka.actor.UntypedActorFactory;
 
 /**
  * build a flow step
@@ -200,39 +195,6 @@ public class StepBuilder {
 		return this;
 	}
 	
-	/**
-	 * utility to create actor factory for async poll task
-	 * @param pollMonitor
-	 * @return
-	 */
-	public static UntypedActorFactory createAsyncPollActorFactory() {
-		return new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Actor create() throws Exception {
-				return new AsyncPollTaskWorker<ExecutableTask>();
-			}
-
-		};
-	}
-	
-	/**
-	 * utility to create actor fatory for async task
-	 * @return
-	 */
-	public static UntypedActorFactory createAsyncActorFactory() {
-		return new UntypedActorFactory() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Actor create() throws Exception {
-				return new AsyncTaskWorker<ExecutableTask>();
-			}
-
-		};
-	}
-
 	/**
 	 * convenient method
 	 * @return

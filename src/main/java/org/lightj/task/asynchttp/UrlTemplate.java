@@ -45,17 +45,20 @@ public class UrlTemplate {
 		return this;
 	}
 
-	public void setUrl(String url) {
+	public UrlTemplate setUrl(String url) {
 		this.url = url;
+		return this;
 	}
 	public void setMethod(HttpMethod method) {
 		this.method = method;
 	}
-	public void setBody(String body) {
+	public UrlTemplate setBody(String body) {
 		this.body = body;
+		return this;
 	}
-	public void setHeaders(HashMap<String, String> headers) {
+	public UrlTemplate setHeaders(HashMap<String, String> headers) {
 		this.headers = headers;
+		return this;
 	}
 
 	public UrlRequest createRequest(String...nvp) {

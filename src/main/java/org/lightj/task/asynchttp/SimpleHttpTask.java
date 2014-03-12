@@ -70,7 +70,7 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 		String url = req.generateUrl();
 		switch (req.getMethod()) {
 		case GET:
-			builder = client.preparePost(url);
+			builder = client.prepareGet(url);
 			break;
 		case POST:
 			builder = client.preparePost(url);

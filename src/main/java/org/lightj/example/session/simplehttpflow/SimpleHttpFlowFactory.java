@@ -1,5 +1,7 @@
 package org.lightj.example.session.simplehttpflow;
 
+import java.util.Map;
+
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.exception.FlowExecutionException;
@@ -39,7 +41,6 @@ public class SimpleHttpFlowFactory {
 			
 			@Override
 			public StepTransition execute() throws FlowExecutionException {
-				sessionContext.incTaskIndexIfNotZero();
 				if (sessionContext.getCurrentRequest() != null) {
 					ExecutableTask task = HttpTaskUtil.buildTask(sessionContext.getCurrentRequest());
 					sessionContext.setCurrentTask(task);
@@ -61,12 +62,20 @@ public class SimpleHttpFlowFactory {
 			@Override
 			public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
 					TaskResult result) {
+				
 				System.out.println(StringUtil.trimToLength((String) result.getRealResult(), 100));
 			}
+			@Override
+			public StepTransition executeOnCompleted(SimpleHttpFlowContext ctx,
+					Map<String, TaskResult> results) {
+				ctx.incTaskIndex();
+				return null;
+			}
+			
 		};
 		StepCallbackHandler callbackHandler = new StepCallbackHandler<SimpleHttpFlowContext>("buildHttpTasks").setDelegateHandler(myHandler);
 		return new StepBuilder()
-				.executeTasksInContext("currentTasks", null, null)
+				.executeTasksInContext("currentTask", null, null)
 				.onResult(callbackHandler)
 				.getFlowStep();
 	}

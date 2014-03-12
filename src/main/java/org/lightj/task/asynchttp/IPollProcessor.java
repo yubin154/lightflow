@@ -26,4 +26,5 @@ public interface IPollProcessor {
 	 * @return
 	 */
 	public TaskResultEnum checkPollProgress(Response response);
+	
 }
