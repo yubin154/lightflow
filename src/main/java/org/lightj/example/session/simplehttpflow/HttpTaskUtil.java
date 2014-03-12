@@ -12,8 +12,9 @@ import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.GroupTask;
 import org.lightj.task.MonitorOption;
-import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.IPollProcessor;
+import org.lightj.task.Task;
+import org.lightj.task.TaskResult;
+import org.lightj.task.asynchttp.IHttpPollProcessor;
 import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.SimpleHttpTask;
 import org.lightj.task.asynchttp.UrlRequest;
@@ -38,69 +39,71 @@ public class HttpTaskUtil {
 		return new AsyncHttpClient(config);
 	}
 	
-	public @Bean @Scope("prototype") IPollProcessor dummyPollProcessor() {
+	public @Bean @Scope("prototype") IHttpPollProcessor dummyPollProcessor() {
 		
-		return new IPollProcessor() {
+		return new IHttpPollProcessor() {
 
 			@Override
-			public TaskResultEnum checkPollProgress(Response response) {
-				return TaskResultEnum.Success;
+			public TaskResult checkPollProgress(Task task, Response response) {
+				return task.succeeded();
 			}
 
 			@Override
-			public TaskResultEnum preparePollTask(Response response,
+			public TaskResult preparePollTask(Task task, Response response,
 					UrlRequest pollReq) {
-				return TaskResultEnum.Success;
+				return task.succeeded();
 			}
 			
 		};
 	}
 	
-	public @Bean @Scope("prototype") IPollProcessor agentPollProcessor() {
+	public @Bean @Scope("prototype") IHttpPollProcessor agentPollProcessor() {
 
 		final String successRegex = ".*\\\"progress\\\"\\s*:\\s*100.*";
 		final String failureRegex = ".*\\\"error\\\"\\s*:\\s*(.*),.*";
 		// matching pattern "status": "/status/uuid"
 		final String uuidRegex = ".*\\\"/status/(.*?)\\\".*,";
 		final Pattern r = Pattern.compile(uuidRegex);
-		return new IPollProcessor() {
+		return new IHttpPollProcessor() {
 
 			@Override
-			public TaskResultEnum checkPollProgress(Response response) {
+			public TaskResult checkPollProgress(Task task, Response response) throws IOException {
 				
-				String body;
-				try {
-					body = response.getResponseBody();
-				} catch (IOException e) {
-					return TaskResultEnum.Failed;
+				int sCode = response.getStatusCode();
+				if (sCode >= 400) {
+					return task.failed(Integer.toString(sCode), null);
 				}
+				String body = response.getResponseBody();
 				if (body.matches(successRegex)) {
-					return TaskResultEnum.Success;
+					return task.succeeded();
 				}
 				else if (body.matches(failureRegex)) {
-					return TaskResultEnum.Failed;
+					return task.failed(body, null);
 				}
 				return null;
 			}
 
 			@Override
-			public TaskResultEnum preparePollTask(
+			public TaskResult preparePollTask(
+					Task task,
 					Response response,
-					UrlRequest pollReq) 
+					UrlRequest pollReq) throws IOException 
 			{
-				String body;
-				try {
-					body = response.getResponseBody();
-				} catch (IOException e) {
-					return TaskResultEnum.Failed;
+				int sCode = response.getStatusCode();
+				if (sCode >= 400) {
+					if (sCode == 401) {
+						// update key 
+					}
+					return task.failed(Integer.toString(sCode), null);
 				}
+				String body = response.getResponseBody();
 				Matcher m = r.matcher(body);
 				if (m.find()) {
 					String uuid = m.group(1);
 					pollReq.addTemplateValue("#uuid", uuid);
-					return TaskResultEnum.Success;
+					return task.succeeded();
 				} else {
-					return TaskResultEnum.Failed;
+					return task.failed("cannot find uuid", null);
 				}
 			}
 			
@@ -127,7 +130,7 @@ public class HttpTaskUtil {
 			break;
 			
 		case asyncpoll:
-			IPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IPollProcessor.class);
+			IHttpPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IHttpPollProcessor.class);
 			SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
 			btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate),
 					tw.getSharableVariables()!=null ? tw.getSharableVariables().toArray(new String[0]) : null);
@@ -164,7 +167,7 @@ public class HttpTaskUtil {
 
 				@Override
 				public SimpleHttpAsyncPollTask createTaskInstance() {
-					IPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IPollProcessor.class);
+					IHttpPollProcessor pp = SpringContextUtil.getBean(FlowModule.FLOW_CTX, tw.getPollProcessorName(), IHttpPollProcessor.class);
 					SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
 					btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate),
 							tw.getSharableVariables()!=null ? tw.getSharableVariables().toArray(new String[0]) : null);

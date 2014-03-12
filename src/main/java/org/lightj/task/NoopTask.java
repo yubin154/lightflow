@@ -18,7 +18,7 @@ public class NoopTask<T extends FlowContext> extends ExecutableTask<T>
 	
 	@Override
 	public TaskResult execute() {
-		return result==null ? this.createTaskResult(TaskResultEnum.Success, null) : result;
+		return result==null ? this.hasResult(TaskResultEnum.Success, null) : result;
 	}
 
 	public TaskResult getResult() {

@@ -45,7 +45,7 @@ public abstract class FlowTask extends ExecutableTask {
 			return null;
 		} 
 		catch (Throwable t) {
-			return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+			return this.failed(TaskResultEnum.Failed, t.getMessage(), t);
 		}
 	}
 
@@ -73,7 +73,7 @@ public abstract class FlowTask extends ExecutableTask {
 		public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 			if (event == FlowEvent.stop) {
 				TaskResultEnum status = session.getResult().toTaskResult();
-				task.reply(task.createTaskResult(status, session.getStatus()));
+				task.reply(task.hasResult(status, session.getStatus()));
 			}
 		}
 

@@ -44,7 +44,7 @@ public class ExecutableTaskWorker<T extends ExecutableTask> extends UntypedActor
 			}
 			
 		} catch (Throwable e) {
-			reply(task.createErrorResult(TaskResultEnum.Failed, e.getMessage(), e));
+			reply(task.failed(TaskResultEnum.Failed, e.getMessage(), e));
 		}
 	}
 	

@@ -5,7 +5,6 @@ import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.util.StringUtil;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -28,14 +27,14 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 	private UrlRequest pollReq;
 	
 	/** handle specific polling logic */
-	private IPollProcessor pollProcessor;
+	private IHttpPollProcessor pollProcessor;
 	
 	/** constructor */
 	public SimpleHttpAsyncPollTask(
 			AsyncHttpClient client, 
 			ExecuteOption execOptions, 
 			MonitorOption monitorOption, 
-			IPollProcessor pollProcessor) 
+			IHttpPollProcessor pollProcessor) 
 	{
 		super(client, execOptions);
 		this.monitorOption = monitorOption;
@@ -48,11 +47,11 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 		this.sharedVariables = sharedVariables;
 	}
 	
-	public IPollProcessor getPollProcessor() {
+	public IHttpPollProcessor getPollProcessor() {
 		return pollProcessor;
 	}
 
-	public void setPollProcessor(IPollProcessor pollProcessor) {
+	public void setPollProcessor(IHttpPollProcessor pollProcessor) {
 		this.pollProcessor = pollProcessor;
 	}
 	
@@ -68,21 +67,13 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 	public TaskResult onComplete(Response response) {
 		TaskResult res = null;
 		try {
-			int sCode = response.getStatusCode();
-			if (sCode >= 200 && sCode < 300) {
-				TaskResultEnum rst = pollProcessor.preparePollTask(response, pollReq);
-				res = this.createTaskResult(rst, Integer.toString(sCode));
-				if (TaskResultEnum.Success == rst) {
-					AsyncHttpTask pollTask = createPollTask(pollReq);
-					res.setRealResult(pollTask);
-				}
-			}
-			else {
-				res = createTaskResult(TaskResultEnum.Failed, Integer.toString(sCode));
-				res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
+			res = pollProcessor.preparePollTask(this, response, pollReq);
+			if (TaskResultEnum.Success == res.getStatus()) {
+				AsyncHttpTask pollTask = createPollTask(pollReq);
+				res.setRealResult(pollTask);
 			}
 		} catch (Throwable t) {
-			res = this.createTaskResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
+			res = this.failed(t.getMessage(), t);
 		}
 		return res;
 	}
@@ -102,27 +93,19 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 			public TaskResult onComplete(Response response) {
 				TaskResult res = null;
 				try {
-					int sCode = response.getStatusCode();
-					if (sCode >= 200 && sCode < 300) {
-						TaskResultEnum rst = SimpleHttpAsyncPollTask.this.pollProcessor.checkPollProgress(response);
-						res = this.createTaskResult(rst, Integer.toString(sCode));
-						if (rst.isComplete()) {
-							res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
-						}
-					}
-					else {
-						res = createTaskResult(TaskResultEnum.Failed, Integer.toString(sCode));
-						res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
+					res = SimpleHttpAsyncPollTask.this.pollProcessor.checkPollProgress(SimpleHttpAsyncPollTask.this, response);
+					if (res != null && res.isComplete()) {
+						res.setRealResult(response.getResponseBody());
 					}
 				} catch (Throwable t) {
-					res = this.createTaskResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
+					res = this.failed(t.getMessage(), t);
 				}
-				return res;
+				return res!=null ? res : this.hasResult(TaskResultEnum.Running, null);
 			}
 
 			@Override
 			public TaskResult onThrowable(Throwable t) {
-				return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+				return this.failed(TaskResultEnum.Failed, t.getMessage(), t);
 			}
 		};
 

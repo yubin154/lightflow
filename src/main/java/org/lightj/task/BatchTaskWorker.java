@@ -168,7 +168,7 @@ public class BatchTaskWorker extends UntypedActor implements IWorker {
 	 * @param stackTrace
 	 */
 	private final void replyError(TaskResultEnum state, String msg, Throwable stackTrace) {
-		TaskResult tr = task.createErrorResult(state, msg, stackTrace);
+		TaskResult tr = task.failed(state, msg, stackTrace);
 		listener.handleTaskResult(task, tr);
 		getSender().tell(WorkerMessageType.COMPLETE_REQUEST, getSelf());
 

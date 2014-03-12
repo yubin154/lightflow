@@ -52,7 +52,7 @@ public class SkeletonFlowFactory {
 				} catch (InterruptedException e) {
 					throw new TaskExecutionException(e);
 				}
-				return this.createTaskResult(TaskResultEnum.Success, "task complete");
+				return this.hasResult(TaskResultEnum.Success, "task complete");
 				
 			}}).getFlowStep();
 	}

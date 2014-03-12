@@ -26,7 +26,7 @@ import org.lightj.task.MonitorOption;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.IPollProcessor;
+import org.lightj.task.asynchttp.IHttpPollProcessor;
 import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.UrlRequest;
 import org.lightj.task.asynchttp.UrlTemplate;
@@ -218,17 +218,27 @@ public class HelloWorldFlowFactory {
 				ArrayList<SimpleHttpAsyncPollTask> tasks = new ArrayList<SimpleHttpAsyncPollTask>();
 				for (String host : ctx.getGoodHosts()) {
 					SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, new ExecuteOption(), monitorOption, 
-							new IPollProcessor() {
+							new IHttpPollProcessor() {
 
 						@Override
-						public TaskResultEnum checkPollProgress(Response response) {
-							return TaskResultEnum.Success;
+						public TaskResult checkPollProgress(Task task, Response response) {
+							if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+								return task.succeeded();
+							}
+							else {
+								return task.failed(TaskResultEnum.Failed, Integer.toString(response.getStatusCode()), null);
+							}
 						}
 
 						@Override
-						public TaskResultEnum preparePollTask(Response response,
-								UrlRequest pollReq) {
-							return TaskResultEnum.Success;
+						public TaskResult preparePollTask(Task task, Response response, UrlRequest pollReq) 
+						{
+							if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+								return task.succeeded();
+							}
+							else {
+								return task.failed(TaskResultEnum.Failed, Integer.toString(response.getStatusCode()), null);
+							}
 						}						
 					});
 					task.setHttpParams(new UrlRequest(template).addTemplateValue("#host", host), new UrlRequest(template), "#host");
@@ -283,7 +293,7 @@ public class HelloWorldFlowFactory {
 			public TaskResult execute() {
 				if (context.isInjectFailure()) {
 					if (context.isControlledFailure()) {
-						return this.createErrorResult(TaskResultEnum.Failed, "unit test injected failure", new Exception("unit test injected failure"));
+						return this.failed(TaskResultEnum.Failed, "unit test injected failure", new Exception("unit test injected failure"));
 					}
 					else {
 						throw new RuntimeException("unit test injected runtime failure");
@@ -314,9 +324,9 @@ public class HelloWorldFlowFactory {
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
-				return this.createTaskResult(TaskResultEnum.Failed, e.getMessage());
+				return this.hasResult(TaskResultEnum.Failed, e.getMessage());
 			}
-			return result==null ? this.createTaskResult(TaskResultEnum.Success, null) : result;
+			return result==null ? this.hasResult(TaskResultEnum.Success, null) : result;
 		}
 
 		public String toString() {

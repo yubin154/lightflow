@@ -61,7 +61,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
 			public Directive apply(Throwable arg0) {
-				getSelf().tell(task.createErrorResult(TaskResultEnum.Failed, "AsyncWorker creashed", arg0), getSelf());
+				getSelf().tell(task.failed(TaskResultEnum.Failed, "AsyncWorker creashed", arg0), getSelf());
 				return SupervisorStrategy.stop();
 			}
 		});
@@ -90,7 +90,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 				switch ((InternalMessageType) message) {
 
 				case PROCESS_ON_TIMEOUT:
-					reply(task.createErrorResult(TaskResultEnum.Timeout, "RequestTimeOut", null));
+					reply(task.failed(TaskResultEnum.Timeout, "RequestTimeOut", null));
 
 					break;
 					
@@ -102,7 +102,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 			}
 		} 
 		catch (Throwable e) {
-			retry(task.createErrorResult(TaskResultEnum.Failed, e.toString(), e));
+			retry(task.failed(TaskResultEnum.Failed, e.toString(), e));
 		}
 	}
 	

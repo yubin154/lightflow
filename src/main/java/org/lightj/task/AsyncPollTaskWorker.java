@@ -71,7 +71,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 		// Other initialization
 		this.supervisorStrategy = new OneForOneStrategy(0, Duration.Inf(), new Function<Throwable, Directive>() {
 			public Directive apply(Throwable arg0) {
-				getSelf().tell(task.createErrorResult(TaskResultEnum.Failed, "AsyncPollWorker crashed", arg0), getSelf());
+				getSelf().tell(task.failed(TaskResultEnum.Failed, "AsyncPollWorker crashed", arg0), getSelf());
 				return SupervisorStrategy.stop();
 			}
 		});
@@ -327,7 +327,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 * @param stackTrace
 	 */
 	private final void replyError(TaskResultEnum state, String msg, Throwable stackTrace) {
-		TaskResult tr = task.createErrorResult(state, msg, stackTrace);
+		TaskResult tr = task.failed(state, msg, stackTrace);
 		if (!getContext().system().deadLetters().equals(sender)) {
 			sender.tell(new WorkerMessage(CallbackType.taskresult, task, tr), getSelf());
 		}

@@ -112,23 +112,23 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 			int sCode = response.getStatusCode();
 			String statusCode = Integer.toString(sCode);
 			if (sCode >= 200 && sCode < 300) {
-				res = createTaskResult(TaskResultEnum.Success, statusCode);
+				res = hasResult(TaskResultEnum.Success, statusCode);
 			}
 			else {
-				res = createTaskResult(TaskResultEnum.Failed, statusCode);
+				res = hasResult(TaskResultEnum.Failed, statusCode);
 			}
 
 			res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
 		
 		} catch (Throwable t) {
-			res = this.createTaskResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
+			res = this.hasResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
 		}
 		return res;
 	}
 
 	@Override
 	public TaskResult onThrowable(Throwable t) {
-		return this.createErrorResult(TaskResultEnum.Failed, t.getMessage(), t);
+		return this.failed(TaskResultEnum.Failed, t.getMessage(), t);
 	}
 
 	/**
