@@ -3,7 +3,6 @@ package org.lightj.task;
 import java.util.Map;
 
 import org.lightj.session.FlowContext;
-import org.lightj.session.step.StepTransition;
 
 /**
  * simple handler, does nothing
@@ -27,7 +26,7 @@ public class SimpleTaskEventHandler<T extends FlowContext> implements ITaskEvent
 	}
 
 	@Override
-	public StepTransition executeOnCompleted(T ctx,
+	public TaskResultEnum executeOnCompleted(T ctx,
 			Map<String, TaskResult> results) {
 		return null;
 	}

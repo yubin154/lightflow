@@ -3,7 +3,6 @@ package org.lightj.task;
 import java.util.Map;
 
 import org.lightj.session.FlowContext;
-import org.lightj.session.step.StepTransition;
 
 /**
  * custom logic to handle task events within a step
@@ -36,5 +35,5 @@ public interface ITaskEventHandler<T extends FlowContext> {
 	 * task completed, have access to all task result 
 	 * @param result
 	 */
-	public StepTransition executeOnCompleted(T ctx, Map<String, TaskResult> results);
+	public TaskResultEnum executeOnCompleted(T ctx, Map<String, TaskResult> results);
 }

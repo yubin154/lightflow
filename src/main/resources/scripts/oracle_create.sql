@@ -1,18 +1,3 @@
--- global semaphore tables
-drop sequence OBJECT_LOCK_ID_SEQ;
-create sequence OBJECT_LOCK_ID_SEQ start with 10000 increment by 1;
-
-drop table object_lock;
-create table object_lock (
-	lock_id	number primary key,
-	lock_key	varchar2(128),
-	lock_count	integer,
-	create_date	timestamp, 
-	last_modified_date	timestamp
- );
- 
-create unique index ol_key_NDX on object_lock (lock_key);
-
 -- flow session tables
 
 drop sequence FLOW_ID_SEQ;
@@ -60,17 +45,4 @@ create table flow_session_meta (
 );
 
 CREATE INDEX FSM_SSNID_IDX ON FLOW_SESSION_META (FLOW_ID);
-
-drop sequence FLOW_STEP_ID_SEQ;
-create sequence FLOW_STEP_ID_SEQ start with 10000 increment by 1;
-
-drop table flow_step_log
-create table flow_step_log (
-	flow_step_id	number primary key,
-	flow_id		number references flow_session(flow_id),
-	step_name	varchar2(512),
-	creation_time	timestamp,
-	result		varchar2(512),
-	details		varchar2(2000)
-);
 

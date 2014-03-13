@@ -1,14 +1,10 @@
 package org.lightj.session.eventlistener;
 
-import java.util.Date;
-
 import org.lightj.session.FlowEvent;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.IFlowEventListener;
-import org.lightj.session.dal.ISessionStepLog;
-import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepTransition;
 import org.lightj.util.StringUtil;
@@ -16,45 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes"})
 public class FlowSaver implements IFlowEventListener {
 	
 	static Logger logger = LoggerFactory.getLogger(FlowSaver.class);
 	
-	/**
-	 * save step history for the current step
-	 * @param session
-	 * @param flowStep
-	 * @param msg
-	 * @param detail
-	 */
-	public static void persistStepHistory(FlowSession session, IFlowStep flowStep, String msg, String detail) {
-		if (flowStep.getFlowStepProperties().logging()) {
-			ISessionStepLog log = SessionDataFactory.getInstance().getStepLogManager().newInstance();
-			log.setFlowId(session.getId());
-			log.setCreationDate(new Date());
-			log.setStepName(flowStep.getStepName());
-			log.setResult(msg);
-			log.setDetails(detail);
-			SessionDataFactory.getInstance().getStepLogManager().queuedSave(log);
-		}
-	}
-	
-	/**
-	 * save step history without step information
-	 * @param session
-	 * @param msg
-	 * @param rst
-	 */
-	private void persistStepHistory(FlowSession session, String msg, String rst) {
-		ISessionStepLog log = SessionDataFactory.getInstance().getStepLogManager().newInstance();
-		log.setFlowId(session.getId());
-		log.setStepName(session.getCurrentAction());
-		log.setResult(rst);
-		log.setDetails(msg);
-		SessionDataFactory.getInstance().getStepLogManager().queuedSave(log);
-	}
-
 	/**
 	 * persist a msg in session.status column for easy access
 	 * @param session
@@ -72,7 +34,6 @@ public class FlowSaver implements IFlowEventListener {
 	public void handleError(Throwable t, FlowSession session) {
 		session.getSessionContext().saveFlowError(StringUtil.getStackTrace(t, 2000));
 		persistMsgInSession(session, t.getMessage());
-		persistStepHistory(session, "Exception " + t.getClass().getName() + ": " + t.getMessage(), "Failed");
 	}
 
 	/**
@@ -83,16 +44,9 @@ public class FlowSaver implements IFlowEventListener {
 	public void handleFlowEvent(FlowEvent event, FlowSession session, String msg) {
 		// persist log ALWAYS on flow event start/stop
 		switch (event) {
-		case start:
-		case resume:
-		case log:
-		case recover:
-			persistStepHistory(session, StringUtil.firstNotNullEmpty(msg, session.getStatus(), event.getLabel()), event.getLabel());
-			break;
 		case stop:
 		case pause:
 			FlowSessionFactory.getInstance().removeSessionFromCache(session.getKey());
-			persistStepHistory(session, StringUtil.firstNotNullEmpty(msg, session.getStatus(), event.getLabel()), event.getLabel());
 			break;
 			
 		}
@@ -117,8 +71,6 @@ public class FlowSaver implements IFlowEventListener {
 	public void handleStepEvent(FlowEvent event, FlowSession session, IFlowStep flowStep, StepTransition stepTransition) {
     	String msg = stepTransition.getMsg(); 
     	boolean hasMsg = !StringUtil.isNullOrEmpty(msg);
-    	String detail = stepTransition.getDetail();
-    	boolean hasDetail = !StringUtil.isNullOrEmpty(detail);
     	FlowResult rst = stepTransition.getResultStatus();
 
     	// log to flow step log table
@@ -127,21 +79,13 @@ public class FlowSaver implements IFlowEventListener {
 			flowStep.getAndIncrementStepEntry();
 			session.getSessionContext().addStep(flowStep);
 			break;
-		case log:
-			if (hasMsg || hasDetail) persistStepHistory(session, flowStep, msg, detail);
-			break;
 		case stepBuild:
-//			persistStepHistory(session, flowStep, msg, detail);
 			break;
 		case stepExit:
 			session.getSessionContext().setStepComplete(flowStep.getStepId());
 			session.getSessionContext().prepareSave();
-        	persistStepHistory(session, flowStep, hasMsg ? msg : event.getLabel(), hasDetail ? detail : (rst != null ? rst.name() : null));
         	break;
         default:
-			if (hasMsg && hasDetail) {
-	        	persistStepHistory(session, flowStep, msg, hasDetail ? detail : (rst!=null ? rst.name() : null));
-			}
 		}
         // compare log level of result status and log it as session status if needed
         if (rst!=null && hasMsg) {

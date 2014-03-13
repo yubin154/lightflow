@@ -243,16 +243,6 @@ public class FlowModule {
 
 	static final String[] createSMDIdxSql = new String[] { "CREATE INDEX FSM_SSNID_IDX ON FLOW_SESSION_META (FLOW_ID)" };
 
-	static final String createSTLSeqSql = "create sequence FLOW_STEP_ID_SEQ start with 100 increment by 1";
-
-	static final String createSTLSql = "create table FLOW_STEP_LOG ("
-			+ "  FLOW_STEP_ID   INTEGER PRIMARY KEY,"
-			+ "  STEP_NAME      VARCHAR(128)," 
-			+ "  CREATION_TIME  DATETIME,"
-			+ "  RESULT         VARCHAR(128),"
-			+ "  FLOW_ID	    INTEGER," 
-			+ "  DETAILS        VARCHAR(4000))";
-
 	public static void setupMemTables(BaseDatabaseType dbEnum) {
 		// setup tables
 		try {
@@ -266,8 +256,6 @@ public class FlowModule {
 			for (String sql : createSMDIdxSql) {
 				ConnectionHelper.executeUpdate(dbEnum, sql);
 			}
-			ConnectionHelper.executeUpdate(dbEnum, createSTLSeqSql);
-			ConnectionHelper.executeUpdate(dbEnum, createSTLSql);
 		} 
 		catch (SQLException e) {
 			throw new Error(e);
@@ -278,8 +266,6 @@ public class FlowModule {
 	static final String deleteSDSeqSql = "drop sequence FLOW_ID_SEQ";
 	static final String deleteSMDSeqSql = "drop sequence FLOW_META_ID_SEQ";
 	static final String deleteSMDSql = "drop TABLE FLOW_SESSION_META";
-	static final String deleteSTLSeqSql = "drop sequence FLOW_STEP_ID_SEQ";
-	static final String deleteSTLSql = "drop table FLOW_STEP_LOG";
 
 	public static void cleanupMemTables(BaseDatabaseType dbEnum) {
 		try {
@@ -287,8 +273,6 @@ public class FlowModule {
 			ConnectionHelper.executeUpdate(dbEnum, deleteSDSql);
 			ConnectionHelper.executeUpdate(dbEnum, deleteSMDSeqSql);
 			ConnectionHelper.executeUpdate(dbEnum, deleteSMDSql);
-			ConnectionHelper.executeUpdate(dbEnum, deleteSTLSeqSql);
-			ConnectionHelper.executeUpdate(dbEnum, deleteSTLSql);
 		} 
 		catch (SQLException e) {
 			throw new Error(e);

@@ -18,7 +18,6 @@ import org.lightj.BaseTypeHolder;
 @SuppressWarnings("serial")
 public class BaseSequenceEnum extends BaseTypeHolder {
 	
-	public static final BaseSequenceEnum SEQ_OBJECTLOCK				= new BaseSequenceEnum("OBJECT_LOCK_ID_SEQ");
 	public static final BaseSequenceEnum SEQ_FLOW_ID				= new BaseSequenceEnum("FLOW_ID_SEQ");
 	public static final BaseSequenceEnum SEQ_FLOW_META_ID			= new BaseSequenceEnum("FLOW_META_ID_SEQ");
 	public static final BaseSequenceEnum SEQ_FLOW_STEP_ID			= new BaseSequenceEnum("FLOW_STEP_ID_SEQ");

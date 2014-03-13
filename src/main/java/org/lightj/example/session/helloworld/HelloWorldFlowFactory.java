@@ -2,7 +2,6 @@ package org.lightj.example.session.helloworld;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
@@ -21,8 +20,8 @@ import org.lightj.task.BatchOption.Strategy;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.FlowTask;
-import org.lightj.task.ITaskEventHandler;
 import org.lightj.task.MonitorOption;
+import org.lightj.task.SimpleTaskEventHandler;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
@@ -91,15 +90,7 @@ public class HelloWorldFlowFactory {
 
 		// result handler, the handler increment the counter on each child flow completion
 		StepCallbackHandler<HelloWorldFlowContext> resultHandler = new StepCallbackHandler<HelloWorldFlowContext>();
-		resultHandler.setDelegateHandler(new ITaskEventHandler<HelloWorldFlowContext>() {
-
-			@Override
-			public void executeOnCreated(HelloWorldFlowContext ctx, Task task) {
-			}
-
-			@Override
-			public void executeOnSubmitted(HelloWorldFlowContext ctx, Task task) {
-			}
+		resultHandler.setDelegateHandler(new SimpleTaskEventHandler<HelloWorldFlowContext>() {
 
 			@Override
 			public void executeOnResult(HelloWorldFlowContext ctx, Task task,
@@ -109,12 +100,6 @@ public class HelloWorldFlowFactory {
 				}
 			}
 
-			@Override
-			public StepTransition executeOnCompleted(HelloWorldFlowContext ctx,
-					Map<String, TaskResult> results) {
-				return null;
-			}
-			
 		});
 		// build the step
 		return new StepBuilder().executeTasks(tasks.toArray(new FlowTask[0])).onResult(resultHandler).getFlowStep();
@@ -165,15 +150,7 @@ public class HelloWorldFlowFactory {
 		// result handler, increment counter if task result if timeout
 		StepCallbackHandler resultHandler = new StepCallbackHandler<HelloWorldFlowContext>();
 		resultHandler.mapResultTo("asyncPollStep", TaskResultEnum.Timeout, TaskResultEnum.Success);
-		resultHandler.setDelegateHandler(new ITaskEventHandler<HelloWorldFlowContext>() {
-
-			@Override
-			public void executeOnCreated(HelloWorldFlowContext ctx, Task task) {
-			}
-
-			@Override
-			public void executeOnSubmitted(HelloWorldFlowContext ctx, Task task) {
-			}
+		resultHandler.setDelegateHandler(new SimpleTaskEventHandler<HelloWorldFlowContext>() {
 
 			@Override
 			public void executeOnResult(HelloWorldFlowContext ctx, Task task,
@@ -181,12 +158,6 @@ public class HelloWorldFlowFactory {
 				if (TaskResultEnum.Timeout == result.getStatus()) {
 					ctx.incTimeoutCount();
 				}
-			}
-
-			@Override
-			public StepTransition executeOnCompleted(HelloWorldFlowContext ctx,
-					Map<String, TaskResult> results) {
-				return null;
 			}
 
 		});

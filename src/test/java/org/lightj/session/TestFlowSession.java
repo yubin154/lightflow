@@ -22,7 +22,6 @@ import org.lightj.initialization.ShutdownException;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.asynchttp.UrlTemplate;
-import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 import org.lightj.util.ConcurrentUtil;
 import org.lightj.util.JsonUtil;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -60,22 +59,32 @@ public class TestFlowSession extends BaseTestCase {
 		tw1.setTaskType("asyncpoll");
 		tw1.setHttpClientType("httpClient");
 		tw1.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#host:12020/admin/executeCmd", HttpMethod.POST, "{\"cmd\": \"netstat\", \"params\": \"-a\"}");
-		template.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
-				.addHeader("content-type", "application/json")
-				.addHeader("AUTHZ_TOKEN", "donoevil");
+		
+		// ebay specific
+//		UrlTemplate template = new UrlTemplate("https://#host:12020/admin/executeCmd", HttpMethod.POST, "{\"cmd\": \"netstat\", \"params\": \"-a\"}");
+//		template.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
+//				.addHeader("content-type", "application/json")
+//				.addHeader("AUTHZ_TOKEN", "donoevil");
+//		tw1.setUrlTemplate(template);
+//		
+//		HashMap<String, String> tv = new HashMap<String, String>();
+//		tv.put("#host", "phx7b02c-2dac.stratus.phx.ebay.com");
+//		tw1.setTemplateValues(tv);
+//		tw1.setPollProcessorName("agentPollProcessor");
+
+		UrlTemplate template = new UrlTemplate("https://#host");
 		tw1.setUrlTemplate(template);
 		
 		HashMap<String, String> tv = new HashMap<String, String>();
-		tv.put("#host", "phx7b02c-2dac.stratus.phx.ebay.com");
+		tv.put("#host", "www.yahoo.com");
 		tw1.setTemplateValues(tv);
 
 		tw1.setMonitorOption(new MonitorOption(1000, 10000));
-		tw1.setPollTemplate(new UrlTemplate("https://#host:12020/status/#uuid"));
+		tw1.setPollTemplate(new UrlTemplate("https://#host"));
 		ArrayList<String> transferV = new ArrayList<String>();
 		transferV.add("#host");
 		tw1.setSharableVariables(transferV);
-		tw1.setPollProcessorName("agentPollProcessor");
+		tw1.setPollProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw1);
 

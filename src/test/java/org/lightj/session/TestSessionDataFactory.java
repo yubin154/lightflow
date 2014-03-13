@@ -16,8 +16,6 @@ import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.ISessionDataManager;
 import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.ISessionMetaDataManager;
-import org.lightj.session.dal.ISessionStepLog;
-import org.lightj.session.dal.ISessionStepLogManager;
 import org.lightj.session.dal.SessionDataFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -144,21 +142,6 @@ public class TestSessionDataFactory extends BaseTestCase {
 		sd.setFlowResult(FlowResult.Success);
 		sdm.save(sd);
 		Assert.assertTrue("primary key is not populated", sd.getPrimaryKey()>0);
-		long sessId = sd.getFlowId();
-
-		ISessionStepLogManager stlm = SessionDataFactory.getInstance().getStepLogManager();
-		ISessionStepLog stl = stlm.newInstance();
-		stl.setDetails("msg");
-		stl.setResult("success");
-		stl.setFlowId(sessId);
-		stl.setCreationDate(new Date());
-		stl.setStepName("step1");
-		stlm.save(stl);
-		Assert.assertTrue("primary key is not populated", stl.getPrimaryKey()>0);
-		List<ISessionStepLog> logs = stlm.findByFlowId(sessId);
-		Assert.assertEquals(stl.getStepName(), logs.get(0).getStepName());
-		stlm.delete(stl);
-		Assert.assertTrue("primary key is not cleaned up", stl.getPrimaryKey()<=0);
 
 		// cleanup
 		sdm.delete(sd);

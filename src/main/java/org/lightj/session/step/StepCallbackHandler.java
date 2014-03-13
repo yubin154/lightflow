@@ -218,39 +218,41 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 			throws FlowExecutionException 
 	{
 		StepTransition trans = null;
+		TaskResultEnum status = null;
 		if (delegateHandler != null) {
-			trans = delegateHandler.executeOnCompleted(sessionContext, results);
+			status = delegateHandler.executeOnCompleted(sessionContext, results);
 		}
-		return trans != null ? trans : processResults(results);
+		if (status == null) {
+			status = aggregateResults(results);
+		}
+		if (mapOnResults.containsKey(status)) {
+			trans = mapOnResults.get(status).execute();
+		}
+		if (trans != null) {
+			return trans;
+		} 
+		else {
+			return defResult;
+		}
+		
 	}
 	
 	/**
-	 * process all results from callbacks and determine where to go next
-	 * override this for custom logic
+	 * aggregate and find the most severe result among all
+	 * @param results
+	 * @return
 	 */
-	public StepTransition processResults(Map<String, TaskResult> results) {
-		StepTransition transition = null;
+	public TaskResultEnum aggregateResults(Map<String, TaskResult> results) {
 		TaskResult curRst = null;
 		for (Entry<String, TaskResult> entry : results.entrySet()) {
 			TaskResult result = entry.getValue();
-			TaskResultEnum status = result.getStatus();
 			if ((curRst == null || result.isMoreSevere(curRst))) {
 				curRst = result;
-				if (mapOnResults.containsKey(status)) {
-					transition = mapOnResults.get(status).execute();
-					transition.log(result.getMsg(), StringUtil.getStackTrace(result.getStackTrace()));
-				}
 			}
 		}
-		if (transition != null) {
-			return transition;
-		} else if (curRst != null && curRst.getStatus().isAnyError()) {
-			throw new FlowExecutionException(curRst.getMsg(), curRst.getStackTrace());
-		} else {
-			return defResult;
-		}
+		return curRst.getStatus();
 	}
-
+	
 	/**
 	 * add default mapping if null
 	 * @param def

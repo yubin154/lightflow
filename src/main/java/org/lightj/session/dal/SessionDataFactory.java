@@ -24,9 +24,6 @@ public class SessionDataFactory {
 	/** session meta data manager */
 	@Autowired
 	private ISessionMetaDataManager metaDataManager;
-	/** session log manager */
-	@Autowired
-	private ISessionStepLogManager stepLogManager;
 
 	private SessionDataFactory() {}
 	
@@ -38,11 +35,6 @@ public class SessionDataFactory {
 	public final ISessionMetaDataManager getMetaDataManager() {
 		return metaDataManager;
 	}
-	/** get log manager */
-	public final ISessionStepLogManager getStepLogManager() {
-		return stepLogManager;
-	}
-
 	public void setDataManager(ISessionDataManager dataManager) {
 		this.dataManager = dataManager;
 	}
@@ -51,10 +43,6 @@ public class SessionDataFactory {
 		this.metaDataManager = metaDataManager;
 	}
 
-	public void setStepLogManager(ISessionStepLogManager stepLogManager) {
-		this.stepLogManager = stepLogManager;
-	}
-	
 	public void setDbEnum(BaseDatabaseType dbEnum) {
 		if (dbEnum instanceof MongoDatabaseType) {
 			if (dataManager == null) {
@@ -64,9 +52,6 @@ public class SessionDataFactory {
 				this.metaDataManager = new org.lightj.session.dal.mongo.MongoSessionMetaDataManagerImpl();
 				((MongoSessionMetaDataManagerImpl) this.metaDataManager).setSessionDataManager((MongoSessionDataManagerImpl) this.dataManager);
 			}
-			if (stepLogManager == null) {
-				this.stepLogManager = new org.lightj.session.dal.mongo.MongoSessionStepLogManagerImpl();
-			}
 		}
 		else {
 			if (dataManager == null) {
@@ -75,13 +60,9 @@ public class SessionDataFactory {
 			if (metaDataManager == null) {
 				this.metaDataManager = org.lightj.session.dal.rdbms.SessionMetaDataManagerImpl.getInstance();
 			}
-			if (stepLogManager == null) {
-				this.stepLogManager = org.lightj.session.dal.rdbms.SessionStepLogManagerImpl.getInstance();
-			}
 		}
 		this.dataManager.setDbEnum(dbEnum);
 		this.metaDataManager.setDbEnum(dbEnum);
-		this.stepLogManager.setDbEnum(dbEnum);
 	}
 
 	/**

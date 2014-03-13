@@ -1,15 +1,3 @@
--- lock tables
-
-create table if not exists object_lock (
-	lock_id	bigint auto_increment primary key,
-	lock_key	varchar(128),
-	lock_count	integer(32),
-	create_date	timestamp, 
-	last_modified_date	timestamp
- );
- 
-create unique index ol_key_NDX on object_lock (lock_key);
-
 -- flow session tables
 
 create table if not exists flow_session (
@@ -50,13 +38,5 @@ create table if not exists flow_session_meta (
 
 CREATE INDEX FSM_SSNID_IDX ON FLOW_SESSION_META (FLOW_ID);
 
-create table if not exists flow_step_log (
-	flow_step_id	bigint auto_increment primary key,
-	flow_id		bigint references flow_session(flow_id),
-	step_name	varchar(512),
-	creation_time	timestamp,
-	result		varchar(512),
-	details		varchar(2000)
-);
 
 

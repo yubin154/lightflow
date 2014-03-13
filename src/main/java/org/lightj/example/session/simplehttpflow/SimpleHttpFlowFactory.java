@@ -15,6 +15,7 @@ import org.lightj.task.ITaskEventHandler;
 import org.lightj.task.SimpleTaskEventHandler;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
+import org.lightj.task.TaskResultEnum;
 import org.lightj.util.StringUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -66,10 +67,10 @@ public class SimpleHttpFlowFactory {
 				System.out.println(StringUtil.trimToLength((String) result.getRealResult(), 100));
 			}
 			@Override
-			public StepTransition executeOnCompleted(SimpleHttpFlowContext ctx,
+			public TaskResultEnum executeOnCompleted(SimpleHttpFlowContext ctx,
 					Map<String, TaskResult> results) {
 				ctx.incTaskIndex();
-				return null;
+				return super.executeOnCompleted(ctx, results);
 			}
 			
 		};

@@ -15,7 +15,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.lightj.dal.DataAccessException;
 import org.lightj.session.dal.ISessionData;
 import org.lightj.session.dal.ISessionMetaData;
-import org.lightj.session.dal.ISessionStepLog;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.exception.FlowExistException;
 import org.lightj.session.exception.FlowSaveException;
@@ -339,10 +338,6 @@ public class FlowSessionFactory {
 	 */
 	public void deleteSession(FlowSession session) {
 		try {
-			List<ISessionStepLog> logs = SessionDataFactory.getInstance().getStepLogManager().findByFlowId(session.getId());
-			for (ISessionStepLog log : logs) {
-				SessionDataFactory.getInstance().getStepLogManager().delete(log);
-			}
 			List<ISessionMetaData> metas = SessionDataFactory.getInstance().getMetaDataManager().findByFlowId(session.getId());
 			for (ISessionMetaData meta : metas) {
 				SessionDataFactory.getInstance().getMetaDataManager().delete(meta);
