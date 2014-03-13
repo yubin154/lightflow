@@ -2,6 +2,8 @@ package org.lightj.task;
 
 import java.io.Serializable;
 
+import org.lightj.util.StringUtil;
+
 
 /**
  * task results
@@ -94,8 +96,9 @@ public class TaskResult implements Serializable {
 		return stackTrace;
 	}
 
-	public Object getRealResult() {
-		return realResult;
+	@SuppressWarnings("unchecked")
+	public <C> C getRealResult() {
+		return (C) realResult;
 	}
 
 	public void setRealResult(Object realResult) {
@@ -109,6 +112,11 @@ public class TaskResult implements Serializable {
 	/** if one if more severe than another, status override */
 	public boolean isMoreSevere(TaskResult another) {
 		return this.status.getSeverity() > another.status.getSeverity();
+	}
+	
+	static final int STACKTRACE_LEN = 1000;
+	public String toString() {
+		return String.format("%s,%s,%s", status, msg, StringUtil.getStackTrace(stackTrace, STACKTRACE_LEN));
 	}
 
 }

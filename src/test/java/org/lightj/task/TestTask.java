@@ -11,14 +11,13 @@ import org.lightj.example.session.simplehttpflow.HttpTaskUtil.HttpTaskWrapper;
 import org.lightj.initialization.BaseModule;
 import org.lightj.session.FlowContext;
 import org.lightj.session.FlowModule;
-import org.lightj.session.step.StepTransition;
-import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
+import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.util.ConcurrentUtil;
 import org.lightj.util.SpringContextUtil;
-import org.lightj.util.StringUtil;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+@SuppressWarnings("rawtypes")
 public class TestTask extends BaseTestCase {
 	
 	/** pause lock */
@@ -28,6 +27,10 @@ public class TestTask extends BaseTestCase {
 	protected Condition cond = lock.newCondition();
 	
 
+	/**
+	 * ebay specific
+	 * @throws Exception
+	 */
 	public void testStandaloneTaskExecutor() throws Exception {
 		// 2 async http req
 		String[] sites = new String[] {"slc4b01c-9dee.stratus.slc.ebay.com","slc4b01c-accc.stratus.slc.ebay.com"};
@@ -52,26 +55,18 @@ public class TestTask extends BaseTestCase {
 		tw2.setPollProcessorName("agentPollProcessor");
 		
 		StandaloneTaskListener listener = new StandaloneTaskListener();
-		listener.setDelegateHandler(new ITaskEventHandler<FlowContext>() {
-
-			@Override
-			public void executeOnCreated(FlowContext ctx, Task task) {
-			}
-
-			@Override
-			public void executeOnSubmitted(FlowContext ctx, Task task) {
-			}
+		listener.setDelegateHandler(new SimpleTaskEventHandler<FlowContext>() {
 
 			@Override
 			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
-				System.out.print(StringUtil.trimToLength((String) result.getRealResult(), 100));
+				System.out.print(String.format("%s,%s", result, result.<String>getRealResult()));
 			}
 
 			@Override
-			public StepTransition executeOnCompleted(FlowContext ctx,
+			public TaskResultEnum executeOnCompleted(FlowContext ctx,
 					Map<String, TaskResult> results) {
 				ConcurrentUtil.signal(lock, cond);
-				return null;
+				return super.executeOnCompleted(ctx, results);
 			}
 		});
 		new StandaloneTaskExecutor(null, listener, HttpTaskUtil.buildTask(tw2)).execute();

@@ -100,6 +100,7 @@ public class HttpTaskUtil {
 				Matcher m = r.matcher(body);
 				if (m.find()) {
 					String uuid = m.group(1);
+					task.setExtTaskUuid(uuid);
 					pollReq.addTemplateValue("#uuid", uuid);
 					return task.succeeded();
 				} else {
