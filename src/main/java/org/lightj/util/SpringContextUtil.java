@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
@@ -90,7 +91,7 @@ public class SpringContextUtil {
 	}
 	
 	/**
-	 * get all registered bean type of a super class
+	 * get bean type of a super class from a context
 	 * @param beanBaseKlazz
 	 * @return
 	 */
@@ -106,5 +107,54 @@ public class SpringContextUtil {
 		}
 		return klazzes;
 	}
+	
+	/**
+	 * get all registered bean type of a super class 
+	 * @param key
+	 * @param beanBaseKlazz
+	 * @return
+	 */
+	public static <T> List<Class<? extends T>> getAllBeansClass(Class<T> beanBaseKlazz) {
+		List<Class<? extends T>> klazzes = new ArrayList<Class<? extends T>>(); 
+		for (String ctxName : ctxes.keySet()) {
+			klazzes.addAll(getBeansClass(ctxName, beanBaseKlazz));
+		}
+		return klazzes;
+	}
+	
+	/**
+	 * get bean of a class from all registered context
+	 * @param beanName
+	 * @param beanKlass
+	 * @return
+	 */
+	public static <T> T getBeanFromAllContext(Class<T> beanKlass) {
+		for (ApplicationContext ctx : ctxes.values()) {
+			try {
+				return ctx.getBean(beanKlass);
+			}
+			catch (NoSuchBeanDefinitionException e) {
+				// ignore
+			}
+		}
+		throw new NoSuchBeanDefinitionException(String.format("bean of type %s does not exist", beanKlass.getName()));
+	}
 
+	/**
+	 * get bean of a class of a name from all registered context
+	 * @param beanName
+	 * @param beanKlass
+	 * @return
+	 */
+	public static <T> T getBeanOfNameFromAllContext(String beanName, Class<T> beanKlass) {
+		for (ApplicationContext ctx : ctxes.values()) {
+			try {
+				return ctx.getBean(beanName, beanKlass);
+			}
+			catch (NoSuchBeanDefinitionException e) {
+				// ignore
+			}
+		}
+		throw new NoSuchBeanDefinitionException(String.format("%s of type %s does not exist", beanName, beanKlass.getName()));
+	}
 }

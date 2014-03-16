@@ -4,18 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.lightflow</groupId>
 	<artifactId>lightflow</artifactId>
-	<version>1.3.0</version>
+	<version>1.3.2</version>
 	<name>lightflow</name>
 	<description>LightFlow framework</description>
 	<packaging>jar</packaging>
 	<dependencies>
-		<dependency>
-			<groupId>org.jboss.spec</groupId>
-			<artifactId>jboss-javaee-6.0</artifactId>
-			<version>1.0.0.Final</version>
-			<type>pom</type>
-			<scope>provided</scope>
-		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>

@@ -42,13 +42,18 @@ public abstract class Task<T extends FlowContext> {
 	}
 	
 	/**
-	 * construct a task with a specific name
+	 * construct a task with exeucte option
 	 * @param name
 	 */
 	public Task(ExecuteOption executeOptions) {
 		this(executeOptions, null);
 	}
 	
+	/**
+	 * 
+	 * @param executeOptions
+	 * @param monitorOption
+	 */
 	public Task(ExecuteOption executeOptions, MonitorOption monitorOption) {
 		this.taskId = String.format("%s|%s", this.getClass().getSimpleName(), UUID.randomUUID().toString());
 		this.execOptions = executeOptions;

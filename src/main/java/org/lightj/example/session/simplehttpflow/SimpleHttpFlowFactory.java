@@ -2,6 +2,7 @@ package org.lightj.example.session.simplehttpflow;
 
 import java.util.Map;
 
+import org.lightj.example.task.HttpTaskBuilder;
 import org.lightj.session.FlowResult;
 import org.lightj.session.FlowState;
 import org.lightj.session.exception.FlowExecutionException;
@@ -43,7 +44,7 @@ public class SimpleHttpFlowFactory {
 			@Override
 			public StepTransition execute() throws FlowExecutionException {
 				if (sessionContext.getCurrentRequest() != null) {
-					ExecutableTask task = HttpTaskUtil.buildTask(sessionContext.getCurrentRequest());
+					ExecutableTask task = HttpTaskBuilder.buildTask(sessionContext.getCurrentRequest());
 					sessionContext.setCurrentTask(task);
 					return StepTransition.runToStep("runHttpTasks");
 				}

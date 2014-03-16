@@ -231,7 +231,7 @@ public class FlowSessionFactory {
 	 * @return
 	 */
 	public <T extends FlowSession> T createSession(Class<T> flowKlazz) {
-		return SpringContextUtil.getBean(FlowModule.FLOW_CTX, flowKlazz);
+		return SpringContextUtil.getBeanFromAllContext(flowKlazz);
 	}
 	
 	/**
@@ -244,7 +244,7 @@ public class FlowSessionFactory {
 	public FlowSession createSession(ISessionData sessionDo) {
 		FlowType type = fromFlowTypeId(sessionDo.getType());
 		if (type != null) {
-			FlowSession session = (FlowSession) SpringContextUtil.getBean(FlowModule.FLOW_CTX, type.getFlowKlass());
+			FlowSession session = (FlowSession) SpringContextUtil.getBeanFromAllContext(type.getFlowKlass());
 			// overwrite session DO 
 			session.setSessionData(sessionDo);
 			return session;

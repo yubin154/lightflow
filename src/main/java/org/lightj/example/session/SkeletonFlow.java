@@ -5,7 +5,7 @@ import java.util.concurrent.Executors;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
-import org.lightj.example.dal.SampleDatabaseEnum;
+import org.lightj.example.dal.LocalDatabaseEnum;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationProcessor;
 import org.lightj.session.FlowModule;
@@ -56,7 +56,7 @@ public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
 		
 		InitializationProcessor initializer = new InitializationProcessor(
 			new BaseModule[] {
-				new FlowModule().setDb(SampleDatabaseEnum.FLOW_MONGO)
+				new FlowModule().setDb(LocalDatabaseEnum.TESTMONGO)
 								.enableCluster()
 								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))

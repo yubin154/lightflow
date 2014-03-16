@@ -20,7 +20,7 @@ import org.junit.Test;
 import org.lightj.BaseTestCase;
 import org.lightj.example.dal.SampleDAO;
 import org.lightj.example.dal.SampleDO;
-import org.lightj.example.dal.SampleDatabaseEnum;
+import org.lightj.example.dal.LocalDatabaseEnum;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
@@ -249,7 +249,7 @@ public class TestDbFramework extends BaseTestCase {
 		List l = new ArrayList();
 		Set s = new HashSet();
 		//search method in AbstractDAO made non-static by Bin as part of DSConfig project
-		SampleDAO.getInstance().search(SampleDatabaseEnum.TEST, l, new Query().select("id").from("test_dbframework").and("col_vc", "=", "test"), Integer.class);
+		SampleDAO.getInstance().search(LocalDatabaseEnum.TESTMEMDB, l, new Query().select("id").from("test_dbframework").and("col_vc", "=", "test"), Integer.class);
 		Assert.assertEquals(2, l.size());
 		Assert.assertEquals(data.getId(), ((Integer) l.get(0)).intValue());
 		Assert.assertEquals(another.getId(), ((Integer) l.get(1)).intValue());
@@ -265,17 +265,17 @@ public class TestDbFramework extends BaseTestCase {
 	{
 		// delete db table
 		try {
-			ConnectionHelper.executeUpdate(SampleDatabaseEnum.TEST, "drop table test_dbframework if exists");
-			ConnectionHelper.executeUpdate(SampleDatabaseEnum.TEST, "drop sequence seq_test_dbframework if exists");
+			ConnectionHelper.executeUpdate(LocalDatabaseEnum.TESTMEMDB, "drop table test_dbframework if exists");
+			ConnectionHelper.executeUpdate(LocalDatabaseEnum.TESTMEMDB, "drop sequence seq_test_dbframework if exists");
 		} catch (Exception e) {
 		}
 
 		// set up test db table
 		try {
-			ConnectionHelper.executeUpdate(SampleDatabaseEnum.TEST, "create table test_dbframework " +
+			ConnectionHelper.executeUpdate(LocalDatabaseEnum.TESTMEMDB, "create table test_dbframework " +
 						"(id integer, col_vc varchar(1000), col_long bigint, col_float float, " +
 						"col_date datetime, col_clob varchar(1000), col_blob blob)");
-			ConnectionHelper.executeUpdate(SampleDatabaseEnum.TEST, "create sequence seq_test_dbframework start with 1 increment by 1");
+			ConnectionHelper.executeUpdate(LocalDatabaseEnum.TESTMEMDB, "create sequence seq_test_dbframework start with 1 increment by 1");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -290,7 +290,7 @@ public class TestDbFramework extends BaseTestCase {
 	protected BaseModule[] getDependentModules() {
 		return new BaseModule[] {
 				new DatabaseModule().addDatabases(new BaseDatabaseType[] {
-						SampleDatabaseEnum.TEST
+						LocalDatabaseEnum.TESTMEMDB
 				}).getModule()
 		};	
 	}

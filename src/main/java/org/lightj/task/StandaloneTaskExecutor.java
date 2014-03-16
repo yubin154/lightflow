@@ -18,10 +18,19 @@ import akka.actor.UntypedActorFactory;
 @SuppressWarnings("rawtypes")
 public class StandaloneTaskExecutor {
 	
+	/** batch option */
 	private BatchOption batchOption;
+	/** task listener */
 	private ITaskListener taskListener;
+	/** tasks to be executed */
 	private ExecutableTask[] tasks;
 	
+	/**
+	 * constructor
+	 * @param batchOption
+	 * @param taskListener
+	 * @param tasks
+	 */
 	public StandaloneTaskExecutor(
 			BatchOption batchOption,
 			ITaskListener taskListener,
@@ -31,6 +40,9 @@ public class StandaloneTaskExecutor {
 		this.tasks = tasks;
 	}
 
+	/**
+	 * execute tasks
+	 */
 	public void execute() {
 		
 		List<ExecutableTask> realTasks = getRealTasks();

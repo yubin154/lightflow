@@ -8,6 +8,8 @@ import akka.actor.Actor;
 import akka.actor.ActorSystem;
 import akka.actor.UntypedActorFactory;
 
+import com.typesafe.config.Config;
+
 @SuppressWarnings("rawtypes")
 public class TaskModule {
 
@@ -33,6 +35,13 @@ public class TaskModule {
 			throw new InitializationException("TaskModule not initialized");
 		}
 	}
+	
+	/** set actor system name and config */
+	public TaskModule setActorSystemConfig(String actorSystemName, Config actorSystemConfig) {
+		s_Module.actorSystemName = actorSystemName;
+		s_Module.actorSystemConfig = actorSystemConfig;
+		return this;
+	}
 
 	/** get actor system */
 	public static ActorSystem getActorSystem() {
@@ -52,18 +61,31 @@ public class TaskModule {
 
 	private static class TaskModuleInner extends BaseModule {
 		
+		private String actorSystemName;
+		private Config actorSystemConfig;
+		
 		/** create actor system */
 		private ActorSystem system;
 		private UntypedActorFactory asyncActorFactory;
 		private UntypedActorFactory asyncPollActorFctory;
 
 		private TaskModuleInner() {
+			
 			addInitializable(new BaseInitializable() {
 
 				@Override
 				protected void initialize() {
+					
 					// create actor system
-					system = ActorSystem.create();
+					if (actorSystemName == null) {
+						actorSystemName = "lightflowTaskModule";
+					}
+					if (actorSystemConfig != null) {
+						system = ActorSystem.create(actorSystemName, actorSystemConfig);
+					}
+					else  {
+						system = ActorSystem.create(actorSystemName);
+					}
 					
 					asyncActorFactory = new UntypedActorFactory() {
 						private static final long serialVersionUID = 1L;

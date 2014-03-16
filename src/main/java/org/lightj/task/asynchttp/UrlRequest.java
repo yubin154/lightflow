@@ -52,17 +52,31 @@ public class UrlRequest {
 		}
 		return this;
 	}
+	protected UrlRequest putTemplateValuesIfNull(Map<String, String> values) {
+		for (Entry<String, String> value : values.entrySet()) {
+			if (!templateValues.containsKey(value.getKey())) {
+				templateValues.put(value.getKey(), value.getValue());
+			}
+		}
+		return this;
+	}
 	public String getTemplateValue(String k) {
 		return templateValues.get(k);
 	}
 	public HashMap<String, String> getTemplateValues() {
 		return templateValues;
 	}
+	public UrlRequest setHost(String host) {
+		this.addTemplateValue("#host", host);
+		return this;
+	}
+	public String getHost() {
+		return templateValues.containsKey("#host") ? templateValues.get("#host") : null;
+	}
 
 	public ITemplateValueLookupFunction getTemplateValueLookup() {
 		return templateValueLookup;
 	}
-
 	public void setTemplateValueLookup(
 			ITemplateValueLookupFunction templateValueLookup) {
 		this.templateValueLookup = templateValueLookup;

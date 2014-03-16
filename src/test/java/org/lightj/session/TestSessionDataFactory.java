@@ -8,7 +8,7 @@ import java.util.concurrent.Executors;
 import org.junit.Assert;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
-import org.lightj.example.dal.SampleDatabaseEnum;
+import org.lightj.example.dal.LocalDatabaseEnum;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
@@ -160,7 +160,7 @@ public class TestSessionDataFactory extends BaseTestCase {
 	protected BaseModule[] getDependentModules() {
 		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
 		return new BaseModule[] {
-				new FlowModule().setDb(SampleDatabaseEnum.TEST)
+				new FlowModule().setDb(LocalDatabaseEnum.TESTMEMDB)
 								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))
 								.getModule(),

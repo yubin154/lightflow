@@ -1,7 +1,5 @@
 package org.lightj.session;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -11,11 +9,11 @@ import junit.framework.Assert;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
-import org.lightj.example.dal.SampleDatabaseEnum;
+import org.lightj.example.dal.LocalDatabaseEnum;
 import org.lightj.example.session.helloworld.HelloWorldFlow;
 import org.lightj.example.session.helloworld.HelloWorldFlowEventListener;
-import org.lightj.example.session.simplehttpflow.HttpTaskUtil.HttpTaskWrapper;
 import org.lightj.example.session.simplehttpflow.SimpleHttpFlow;
+import org.lightj.example.task.HttpTaskRequest;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.ShutdownException;
@@ -43,19 +41,17 @@ public class TestFlowSession extends BaseTestCase {
 		// 2 async http req
 		String[] sites = new String[] {"www.yahoo.com","www.facebook.com"};
 		for (int i = 0 ; i < 2; i++) {
-			HttpTaskWrapper tw = new HttpTaskWrapper();
+			HttpTaskRequest tw = new HttpTaskRequest();
 			tw.setTaskType("async");
 			tw.setHttpClientType("httpClient");
 			tw.setExecutionOption(new ExecuteOption());
 			tw.setUrlTemplate(new UrlTemplate("https://#host"));
-			HashMap<String, String> tv = new HashMap<String, String>();
-			tv.put("#host", sites[i]);
-			tw.setTemplateValues(tv);
+			tw.setHost(sites[i]);
 			flow.getSessionContext().addUserRequests(tw);
 		}
 		
 		// 1 asyncpoll http req
-		HttpTaskWrapper tw1 = new HttpTaskWrapper();
+		HttpTaskRequest tw1 = new HttpTaskRequest();
 		tw1.setTaskType("asyncpoll");
 		tw1.setHttpClientType("httpClient");
 		tw1.setExecutionOption(new ExecuteOption());
@@ -74,42 +70,33 @@ public class TestFlowSession extends BaseTestCase {
 
 		UrlTemplate template = new UrlTemplate("https://#host");
 		tw1.setUrlTemplate(template);
-		
-		HashMap<String, String> tv = new HashMap<String, String>();
-		tv.put("#host", "www.yahoo.com");
-		tw1.setTemplateValues(tv);
+		tw1.setHost("www.yahoo.com");
 
 		tw1.setMonitorOption(new MonitorOption(1000, 10000));
 		tw1.setPollTemplate(new UrlTemplate("https://#host"));
-		ArrayList<String> transferV = new ArrayList<String>();
-		transferV.add("#host");
-		tw1.setSharableVariables(transferV);
 		tw1.setPollProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw1);
 
 		// 1 async group http req
-		HttpTaskWrapper tw2 = new HttpTaskWrapper();
-		tw2.setTaskType("asyncgroup");
+		HttpTaskRequest tw2 = new HttpTaskRequest();
+		tw2.setTaskType("async");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
 		tw2.setUrlTemplate(new UrlTemplate("https://#host"));
-		tw2.setFanoutFactor("#host");
-		tw2.setFanoutValues(sites);
+		tw2.setHosts(sites);
 		flow.getSessionContext().addUserRequests(tw2);
 		
 		// 1 asyncpoll http req
-		HttpTaskWrapper tw3 = new HttpTaskWrapper();
-		tw3.setTaskType("asyncpollgroup");
+		HttpTaskRequest tw3 = new HttpTaskRequest();
+		tw3.setTaskType("asyncpoll");
 		tw3.setHttpClientType("httpClient");
 		tw3.setExecutionOption(new ExecuteOption());
 		tw3.setUrlTemplate(new UrlTemplate("https://#host"));
-		tw3.setFanoutFactor("#host");
-		tw3.setFanoutValues(sites);
+		tw3.setHosts(sites);
 
 		tw3.setMonitorOption(new MonitorOption(1000, 5000));
 		tw3.setPollTemplate(new UrlTemplate("https://#host"));
-		tw3.setSharableVariables(transferV);
 		tw3.setPollProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw3);
@@ -228,7 +215,7 @@ public class TestFlowSession extends BaseTestCase {
 	protected BaseModule[] getDependentModules() {
 		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
 		return new BaseModule[] {
-				new FlowModule().setDb(SampleDatabaseEnum.TEST)
+				new FlowModule().setDb(LocalDatabaseEnum.TESTMEMDB)
 								.enableCluster()
 								.setSpringContext(flowCtx)
 								.setExectuorService(Executors.newFixedThreadPool(5))

@@ -212,7 +212,7 @@ public class HelloWorldFlowFactory {
 							}
 						}						
 					});
-					task.setHttpParams(new UrlRequest(template).addTemplateValue("#host", host), new UrlRequest(template), "#host");
+					task.setHttpParams(new UrlRequest(template).setHost(host), new UrlRequest(template));
 					tasks.add(task);
 				}
 				ctx.addToScrapbook("asyncPollTasks", tasks);

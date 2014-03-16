@@ -31,7 +31,7 @@ public class SampleDAO extends AbstractDAO<SampleDO> {
 			Method[] getters = findGetters(javaNames);
 			Method[] setters = findSetters(javaNames, colTypes);
 			register(SampleDO.class, SampleDO.TABLENAME,
-					SampleDatabaseEnum.TEST, SampleDO.SEQNAME,
+					LocalDatabaseEnum.TESTMEMDB, SampleDO.SEQNAME,
 					colNames, colTypes, getters, setters);
 		} catch (SecurityException e) {
 			e.printStackTrace();

@@ -6,26 +6,31 @@ import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 
 /**
  * a http request template, typically immutable
+ * 
  * @author binyu
  *
  */
 public class UrlTemplate {
 	
+	/** url */
 	protected String url;
+	/** http method */
 	protected HttpMethod method;
+	/** http body */
 	protected String body;
+	/** headers */
 	protected HashMap<String, String> headers = new HashMap<String, String>();
 	
 	/** constructor */
 	public UrlTemplate() {}
 	public UrlTemplate(String url) {
-		this.url = url;
-		this.method = HttpMethod.GET;
+		this(url, HttpMethod.GET, null);
 	}
 	public UrlTemplate(String url, HttpMethod method, String body) {
 		this.url = url;
 		this.method = method;
 		this.body = body;
+		validateUrl();		
 	}
 	
 	public HttpMethod getMethod() {
@@ -47,6 +52,7 @@ public class UrlTemplate {
 
 	public UrlTemplate setUrl(String url) {
 		this.url = url;
+		validateUrl();
 		return this;
 	}
 	public void setMethod(HttpMethod method) {
@@ -60,16 +66,10 @@ public class UrlTemplate {
 		this.headers = headers;
 		return this;
 	}
-
-	public UrlRequest createRequest(String...nvp) {
-		if (nvp.length%2 != 0) {
-			throw new IllegalArgumentException("Replacement nvp has to be in pairs");
+	private void validateUrl() {
+		if (!this.url.matches("^(http|https)://#host.*")) {
+			throw new IllegalArgumentException("url must be in the format of http(s)://#host...");
 		}
-		UrlRequest another = this.createRequest();
-		for (int i = 0; i < nvp.length; i+=2) {
-			another.addTemplateValue(nvp[i], nvp[i+1]);
-		}
-		return another;
 	}
 
 }

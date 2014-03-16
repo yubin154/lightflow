@@ -1,16 +1,14 @@
 package org.lightj.task;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.lightj.BaseTestCase;
-import org.lightj.example.session.simplehttpflow.HttpTaskUtil;
-import org.lightj.example.session.simplehttpflow.HttpTaskUtil.HttpTaskWrapper;
+import org.lightj.example.task.HttpTaskBuilder;
+import org.lightj.example.task.HttpTaskRequest;
 import org.lightj.initialization.BaseModule;
 import org.lightj.session.FlowContext;
-import org.lightj.session.FlowModule;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.util.ConcurrentUtil;
@@ -32,28 +30,39 @@ public class TestTask extends BaseTestCase {
 	 * @throws Exception
 	 */
 	public void testStandaloneTaskExecutor() throws Exception {
-		// 2 async http req
-		String[] sites = new String[] {"slc4b01c-9dee.stratus.slc.ebay.com","slc4b01c-accc.stratus.slc.ebay.com"};
+		// ebay specific
+//		String[] sites = new String[] {"slc4b01c-9dee.stratus.slc.ebay.com","slc4b01c-accc.stratus.slc.ebay.com"};
+//		// 1 async group http req
+//		HttpTaskRequest tw2 = new HttpTaskRequest();
+//		tw2.setTaskType("asyncpoll");
+//		tw2.setHttpClientType("httpClient");
+//		tw2.setExecutionOption(new ExecuteOption());
+//		UrlTemplate template = new UrlTemplate("https://#host:12020/admin/executeCmd", HttpMethod.POST, "{\"cmd\": \"netstat\", \"params\": \"-a\"}");
+//		template.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
+//				.addHeader("content-type", "application/json")
+//				.addHeader("AUTHZ_TOKEN", "donoevil");
+//		tw2.setUrlTemplate(template);
+//		tw2.setHosts(sites);
+//		
+//		tw2.setMonitorOption(new MonitorOption(1000, 10000));
+//		tw2.setPollTemplate(new UrlTemplate("https://#host:12020/status/#uuid"));
+//		tw2.setPollProcessorName("agentPollProcessor");
+		
+		// general
+		String[] sites = new String[] {"www.yahoo.com","www.facebook.com"};
 		// 1 async group http req
-		HttpTaskWrapper tw2 = new HttpTaskWrapper();
-		tw2.setTaskType("asyncpollgroup");
+		HttpTaskRequest tw2 = new HttpTaskRequest();
+		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#host:12020/admin/executeCmd", HttpMethod.POST, "{\"cmd\": \"netstat\", \"params\": \"-a\"}");
-		template.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
-				.addHeader("content-type", "application/json")
-				.addHeader("AUTHZ_TOKEN", "donoevil");
+		UrlTemplate template = new UrlTemplate("https://#host");
 		tw2.setUrlTemplate(template);
-		tw2.setFanoutFactor("#host");
-		tw2.setFanoutValues(sites);
+		tw2.setHosts(sites);
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
-		tw2.setPollTemplate(new UrlTemplate("https://#host:12020/status/#uuid"));
-		ArrayList<String> transferV = new ArrayList<String>();
-		transferV.add("#host");
-		tw2.setSharableVariables(transferV);
-		tw2.setPollProcessorName("agentPollProcessor");
-		
+		tw2.setPollTemplate(new UrlTemplate("https://#host"));
+		tw2.setPollProcessorName("dummyPollProcessor");
+
 		StandaloneTaskListener listener = new StandaloneTaskListener();
 		listener.setDelegateHandler(new SimpleTaskEventHandler<FlowContext>() {
 
@@ -69,14 +78,14 @@ public class TestTask extends BaseTestCase {
 				return super.executeOnCompleted(ctx, results);
 			}
 		});
-		new StandaloneTaskExecutor(null, listener, HttpTaskUtil.buildTask(tw2)).execute();
-		ConcurrentUtil.wait(lock, cond);
+		new StandaloneTaskExecutor(null, listener, HttpTaskBuilder.buildTask(tw2)).execute();
+		ConcurrentUtil.wait(lock, cond, 10000);
 	}
 
 	@Override
 	protected BaseModule[] getDependentModules() {
-		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example");
-		SpringContextUtil.registerContext(FlowModule.FLOW_CTX, flowCtx);
+		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example.task");
+		SpringContextUtil.registerContext("TaskModule", flowCtx);
 		return new BaseModule[] {new TaskModule().getModule()};
 	}
 

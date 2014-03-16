@@ -17,11 +17,8 @@ import com.ning.http.client.Response;
  *
  * @param <T>
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes"})
 public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
-	
-	/** variables to be copied from req to poll template */
-	private String[] sharedVariables = null;
 	
 	/** pull request */
 	private UrlRequest pollReq;
@@ -41,10 +38,9 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 		this.pollProcessor = pollProcessor;
 	}
 	
-	public void setHttpParams(UrlRequest req, UrlRequest pollReq, String...sharedVariables) {
+	public void setHttpParams(UrlRequest req, UrlRequest pollReq) {
 		this.req = req;
 		this.pollReq = pollReq;
-		this.sharedVariables = sharedVariables;
 	}
 	
 	public IHttpPollProcessor getPollProcessor() {
@@ -57,8 +53,9 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 	
 	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = super.buildHttpRequest(req);
-		for (String sharableVariable : this.sharedVariables) {
-			pollReq.addTemplateValue(sharableVariable, req.getTemplateValue(sharableVariable));
+		pollReq.putTemplateValuesIfNull(req.getTemplateValues());
+		if (this.templateValueLookup != null) {
+			pollReq.setTemplateValueLookup(templateValueLookup);
 		}
 		return builder;
 	}
@@ -111,18 +108,5 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 
 	}
 	
-	/**
-	 * make a copy
-	 * @return
-	 */
-	public SimpleHttpAsyncPollTask makeCopy() {
-		SimpleHttpAsyncPollTask another = new SimpleHttpAsyncPollTask(client, execOptions, monitorOption, pollProcessor);
-		another.req = this.req;
-		another.valueFromContext = this.valueFromContext;
-		another.sharedVariables = this.sharedVariables;
-		another.pollReq = this.pollReq;
-		another.pollProcessor = this.pollProcessor;
-		return another;
-	}
 }
 

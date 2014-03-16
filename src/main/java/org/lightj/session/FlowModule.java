@@ -167,7 +167,7 @@ public class FlowModule {
 //					f = (SessionDataFactory) SpringContextUtil.getBean(FLOW_CTX, "sessionDataFactory");
 
 					// load registered flow bean classes
-					List<Class<? extends FlowSession>> flowTypes = SpringContextUtil.getBeansClass(FLOW_CTX, FlowSession.class);
+					List<Class<? extends FlowSession>> flowTypes = SpringContextUtil.getAllBeansClass(FlowSession.class);
 					for (Class<? extends FlowSession> flowType : flowTypes) {
 						FlowSessionFactory.getInstance().addFlowKlazz(flowType);
 					}
