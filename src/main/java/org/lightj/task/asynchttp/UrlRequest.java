@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 import org.lightj.util.StringUtil;
 
@@ -12,6 +14,7 @@ import org.lightj.util.StringUtil;
  * @author binyu
  *
  */
+@JsonIgnoreProperties(ignoreUnknown=true)
 public class UrlRequest {
 
 	/** nvp replacing variables in template with real values */
@@ -39,16 +42,28 @@ public class UrlRequest {
 		this.urlTemplate = urlTemplate;
 	}
 
+	/**
+	 * dont use this directly, use {@link #addTemplateValue(String, String)} or {@link #addAllTemplateValues(Map)} instead
+	 * @param templateValues
+	 */
 	public void setTemplateValues(HashMap<String, String> templateValues) {
 		this.templateValues = templateValues;
 	}
 	public UrlRequest addTemplateValue(String k, String v) {
-		this.templateValues.put(k, v);
+		String key = k.matches(UrlTemplate.VAR_PATTERN) ? k : String.format("#:%s:#", k);
+		if (urlTemplate.hasVariableKey(key)) {
+			templateValues.put(key, v);
+		}
+		else {
+			throw new IllegalArgumentException("UrlTemplate for this UrlRequest does not have variable " + k);
+		}
 		return this;
 	}
 	public UrlRequest addAllTemplateValues(Map<String, String> values) {
 		if (values != null) {
-			this.templateValues.putAll(values);
+			for (Entry<String, String> entry : values.entrySet()) {
+				this.addTemplateValue(entry.getKey(), entry.getValue());
+			}
 		}
 		return this;
 	}
@@ -67,13 +82,13 @@ public class UrlRequest {
 		return templateValues;
 	}
 	public UrlRequest setHost(String host) {
-		this.addTemplateValue("#host", host);
+		this.addTemplateValue("host", host);
 		return this;
 	}
 	public String getHost() {
-		return templateValues.containsKey("#host") ? templateValues.get("#host") : null;
+		return templateValues.containsKey("#:host:#") ? templateValues.get("#:host:#") : null;
 	}
-
+	@JsonIgnore
 	public ITemplateValueLookupFunction getTemplateValueLookup() {
 		return templateValueLookup;
 	}

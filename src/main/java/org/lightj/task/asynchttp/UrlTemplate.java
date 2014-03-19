@@ -1,16 +1,31 @@
 package org.lightj.task.asynchttp;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 
 /**
  * a http request template, typically immutable
+ * use #:...:# as delimiter for variables
  * 
  * @author binyu
  *
  */
+@JsonIgnoreProperties(ignoreUnknown=true)
 public class UrlTemplate {
+	
+	static final String URL_PATTERN = "^(http|https)://#:host:#.*";
+	static final String VAR_PATTERN = "#:(.+?):#";
+	
+	static final Pattern r = Pattern.compile(VAR_PATTERN);
+
 	
 	/** url */
 	protected String url;
@@ -66,9 +81,37 @@ public class UrlTemplate {
 		this.headers = headers;
 		return this;
 	}
+	@JsonIgnore
+	public Set<String> getVariableNames() {
+		HashSet<String> variableNames = new HashSet<String>();
+  		ArrayList<String> sources = new ArrayList<String>();
+  		sources.add(url);
+  		if (body!=null) sources.add(body);
+  		sources.addAll(headers.values());
+		for (String str : sources) {
+			Matcher m = r.matcher(str);
+			while (m.find()) {
+				variableNames.add(m.group(m.groupCount()));
+			} 
+		}
+		return variableNames;
+	}
+	@JsonIgnore
+	public boolean hasVariableKey(String key) {
+  		ArrayList<String> sources = new ArrayList<String>();
+  		sources.add(url);
+  		if (body!=null) sources.add(body);
+  		sources.addAll(headers.values());
+		for (String str : sources) {
+			if (str.matches(String.format(".*%s.*", key))) {
+				return true;
+			}
+		}
+		return false;
+	}
 	private void validateUrl() {
-		if (!this.url.matches("^(http|https)://#host.*")) {
-			throw new IllegalArgumentException("url must be in the format of http(s)://#host...");
+		if (!this.url.matches(URL_PATTERN)) {
+			throw new IllegalArgumentException("url must be in the format of http(s)://#:host:#...");
 		}
 	}
 

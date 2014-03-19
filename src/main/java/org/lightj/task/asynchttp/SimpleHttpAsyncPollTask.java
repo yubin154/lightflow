@@ -92,7 +92,7 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 				try {
 					res = SimpleHttpAsyncPollTask.this.pollProcessor.checkPollProgress(SimpleHttpAsyncPollTask.this, response);
 					if (res != null && res.isComplete()) {
-						res.setRealResult(response.getResponseBody());
+						res.setRealResult(new SimpleHttpResponse(response));
 					}
 				} catch (Throwable t) {
 					res = this.failed(t.getMessage(), t);

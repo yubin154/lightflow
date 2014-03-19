@@ -1,5 +1,8 @@
 package org.lightj.task;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
 
 
 /**
@@ -7,6 +10,7 @@ package org.lightj.task;
  * @author biyu
  *
  */
+@JsonIgnoreProperties(ignoreUnknown=true)
 public final class MonitorOption extends ExecuteOption {
 	
 	public static final long DEFAULT_MONITOR_TIMEOUT = 24 * 60 * 60 * 1000L;
@@ -38,7 +42,7 @@ public final class MonitorOption extends ExecuteOption {
 	public void setMonitorIntervalMs(long monitorIntervalMs) {
 		this.monitorIntervalMs = monitorIntervalMs;
 	}
-
+	@JsonIgnore
 	public long getScheduleNextRunAt() {
 		return System.currentTimeMillis() + this.monitorIntervalMs;
 	}

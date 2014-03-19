@@ -17,26 +17,24 @@ public class TestUrlTemplate extends TestCase {
 	public void testHttpTaskRequestJson() throws Exception {
 		String[] sites = new String[] {"slc4b01c-9dee.stratus.slc.ebay.com","slc4b01c-accc.stratus.slc.ebay.com"};
 		HttpTaskRequest tw2 = new HttpTaskRequest();
-		tw2.setTaskType("asyncpollgroup");
+		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#host:12020/admin/executeCmd", HttpMethod.POST, "{\"cmd\": \"netstat\", \"params\": \"-a\"}");
-		template.addHeader("Authorization", "Basic YWdlbnQ6dG95YWdlbnQ=")
-				.addHeader("content-type", "application/json")
-				.addHeader("AUTHZ_TOKEN", "donoevil");
+		UrlTemplate template = new UrlTemplate("https://#:host:#", HttpMethod.GET, null);
+		template.addHeader("content-type", "application/json");
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
-		tw2.setPollTemplate(new UrlTemplate("https://#host:12020/status/#uuid"));
-		tw2.setPollProcessorName("agentPollProcessor");
+		tw2.setPollTemplate(new UrlTemplate("https://#:host:#"));
+		tw2.setPollProcessorName("dummyPollProcessor");
 		String tw2Json = JsonUtil.encode(tw2);
 		System.out.println(tw2Json);
 	}
 
 	@Test
 	public void testUrlTemplateJson() throws Exception {
-		UrlTemplate template = new UrlTemplate("http://#host", HttpMethod.POST, "test");
+		UrlTemplate template = new UrlTemplate("http://#:host:#", HttpMethod.POST, "test");
 		template.addHeader("key1", "value1");
 		String urlJson = JsonUtil.encode(template);
 		System.out.println(urlJson);
@@ -46,11 +44,12 @@ public class TestUrlTemplate extends TestCase {
 
 	@Test
 	public void testUrlRequestJson() throws Exception {
-		UrlTemplate template = new UrlTemplate("http://#host", HttpMethod.GET,
-				"test");
-		template.addHeader("key1", "value1").addHeader("key2", "value2");
+		UrlTemplate template = new UrlTemplate("http://#:host:#", HttpMethod.GET, "test");
+		template.addHeader("key1", "value1").addHeader("key2", "#:var2:#");
 		UrlRequest req = new UrlRequest(template);
 		req.setHost("www.ebay.com");
+		req.addTemplateValue("var2", "value2");
+		System.out.println(template.getVariableNames());
 		String urlJson = JsonUtil.encode(req);
 		System.out.println(urlJson);
 		UrlRequest another = JsonUtil.decode(urlJson, UrlRequest.class);
@@ -61,24 +60,33 @@ public class TestUrlTemplate extends TestCase {
 	public void testHttpTaskWrapper() throws Exception {
 		
 		System.out.println("matched=" + "https://#host".matches("^(http|https)://#host.*"));
-		
-		final String uuidRegex = ".*/status/(.*)\\\".*";
-		String line = "\"/status/1b6db6f6-3d0a-49d6-949b-9a069ad86a69\"";
-		System.out.println(line.matches(uuidRegex));
+
+		String url = "http://#:host:#:12020/#:something:#?#:somethingelse:#=ok";
+		String uuidRegex = "#:(.+?):#";
+		System.out.println(url.matches(uuidRegex));
 		Pattern r = Pattern.compile(uuidRegex);
-		Matcher m = r.matcher(line);
-		if (m.find()) {
-			System.out.println("Found value: " + m.group(1));
-		} else {
-			System.out.println("NO MATCH");
-		}
+		Matcher m = r.matcher(url);
+		while (m.find()) {
+			System.out.println("Found group count: " + m.groupCount());
+			System.out.println("Found value: " + m.group(m.groupCount()));
+		} 
+//		uuidRegex = ".*/status/(.*)\\\".*";
+//		String line = "\"/status/1b6db6f6-3d0a-49d6-949b-9a069ad86a69\"";
+//		System.out.println(line.matches(uuidRegex));
+//		r = Pattern.compile(uuidRegex);
+//		m = r.matcher(line);
+//		if (m.find()) {
+//			System.out.println("Found value: " + m.group(1));
+//		} else {
+//			System.out.println("NO MATCH");
+//		}
 
 		HttpTaskRequest tw = new HttpTaskRequest();
 		tw.setTaskType("async");
 		tw.setHttpClientType("httpClient");
 		tw.setExecutionOption(new ExecuteOption());
 		tw.setMonitorOption(new MonitorOption(1000, 5000));
-		tw.setUrlTemplate(new UrlTemplate("https://#host"));
+		tw.setUrlTemplate(new UrlTemplate("https://#:host:#"));
 		tw.setHost("www.yahoo.com");
 		String twJson = JsonUtil.encode(tw);
 		System.out.println(twJson);

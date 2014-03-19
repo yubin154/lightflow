@@ -1,11 +1,15 @@
 package org.lightj.task;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
 /**
  * options for task execution, initial delay, timeout, maxRetry, retryDelay
  * 
  * @author binyu
  *
  */
+@JsonIgnoreProperties(ignoreUnknown=true)
 public class ExecuteOption {
 	
 	/** default timeout in 24 hours */
@@ -43,6 +47,7 @@ public class ExecuteOption {
 	public long getTimeoutInMs() {
 		return timeoutInMs;
 	}
+	@JsonIgnore
 	public long getTimeOutAt() {
 		return System.currentTimeMillis() + (timeoutInMs > 0 ? timeoutInMs : DEFAULT_TIMEOUT);
 	}
@@ -55,6 +60,7 @@ public class ExecuteOption {
 	public long getRetryDelayMs() {
 		return retryDelayMs;
 	}
+	@JsonIgnore
 	public boolean hasTimeout() {
 		return timeoutInMs > 0;
 	}

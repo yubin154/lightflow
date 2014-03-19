@@ -17,6 +17,7 @@ import org.lightj.task.SimpleTaskEventHandler;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
+import org.lightj.task.asynchttp.SimpleHttpResponse;
 import org.lightj.util.StringUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +66,7 @@ public class SimpleHttpFlowFactory {
 			public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
 					TaskResult result) {
 				
-				System.out.println(StringUtil.trimToLength(result.<String>getRealResult(), 100));
+				System.out.println(StringUtil.trimToLength(result.<SimpleHttpResponse>getRealResult().toString(), 100));
 			}
 			@Override
 			public TaskResultEnum executeOnCompleted(SimpleHttpFlowContext ctx,

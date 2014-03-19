@@ -8,7 +8,6 @@ import org.lightj.task.TaskExecutionRuntimeException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
 import org.lightj.task.asynchttp.UrlRequest.ITemplateValueLookupFunction;
-import org.lightj.util.StringUtil;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -64,6 +63,7 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 			req.setTemplateValueLookup(templateValueLookup);
 		}
 		String url = req.generateUrl();
+		this.setExtTaskUuid(url);
 		switch (req.getMethod()) {
 		case GET:
 			builder = client.prepareGet(url);
@@ -108,16 +108,16 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 			int sCode = response.getStatusCode();
 			String statusCode = Integer.toString(sCode);
 			if (sCode >= 200 && sCode < 300) {
-				res = hasResult(TaskResultEnum.Success, statusCode);
+				res = this.succeeded();
 			}
 			else {
 				res = hasResult(TaskResultEnum.Failed, statusCode);
 			}
 
-			res.setRealResult(response.getResponseBodyExcerpt(MSG_CONTENT_LEN));
+			res.setRealResult(new SimpleHttpResponse(response));
 		
 		} catch (Throwable t) {
-			res = this.hasResult(TaskResultEnum.Failed, StringUtil.getStackTrace(t, MSG_CONTENT_LEN));
+			res = this.failed(t.getMessage(), t);
 		}
 		return res;
 	}

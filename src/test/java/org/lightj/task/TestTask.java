@@ -10,6 +10,7 @@ import org.lightj.example.task.HttpTaskRequest;
 import org.lightj.initialization.BaseModule;
 import org.lightj.session.FlowContext;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
+import org.lightj.task.asynchttp.SimpleHttpResponse;
 import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.util.ConcurrentUtil;
 import org.lightj.util.SpringContextUtil;
@@ -55,12 +56,12 @@ public class TestTask extends BaseTestCase {
 		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#host");
+		UrlTemplate template = new UrlTemplate("https://#:host:#", HttpMethod.GET, null);
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
-		tw2.setPollTemplate(new UrlTemplate("https://#host"));
+		tw2.setPollTemplate(new UrlTemplate("https://#:host:#"));
 		tw2.setPollProcessorName("dummyPollProcessor");
 
 		StandaloneTaskListener listener = new StandaloneTaskListener();
@@ -68,7 +69,7 @@ public class TestTask extends BaseTestCase {
 
 			@Override
 			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
-				System.out.print(String.format("%s,%s", result, result.<String>getRealResult()));
+				System.out.print(String.format("%s,%s", result, result.<SimpleHttpResponse>getRealResult()));
 			}
 
 			@Override
