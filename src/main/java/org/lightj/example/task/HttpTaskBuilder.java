@@ -3,6 +3,7 @@ package org.lightj.example.task;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -129,14 +130,19 @@ public class HttpTaskBuilder {
 		
 		TaskType tt = TaskType.valueOf(tw.taskType);
 		ExecutableTask task = null;
-		boolean isGroupTask = (tw.hosts.length > 1);
+		boolean isGroupTask = (tw.hosts.length > 1 || 
+				(tw.templateValues != null && tw.templateValues.size() > 1));
 		
 		final AsyncHttpClient client = SpringContextUtil.getBeanOfNameFromAllContext(tw.httpClientType, AsyncHttpClient.class);
 		switch(tt) {
 		case async:
 			if (!isGroupTask) {
 				SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
-				atask.setReq(new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]).addAllTemplateValues(tw.templateValues));
+				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
+				if (tw.templateValues != null) {
+					urlReq.addAllTemplateValues(tw.templateValues.get(0));
+				}
+				atask.setReq(urlReq);
 				task = atask;
 			}
 			else {
@@ -145,7 +151,7 @@ public class HttpTaskBuilder {
 					@Override
 					public SimpleHttpTask createTaskInstance() {
 						SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
-						atask.setReq(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues));
+						atask.setReq(new UrlRequest(tw.urlTemplate));
 						return atask;
 					}
 
@@ -153,9 +159,19 @@ public class HttpTaskBuilder {
 					public List<SimpleHttpTask> getTasks() {
 						ArrayList<SimpleHttpTask> results = new ArrayList<SimpleHttpTask>();
 						for (String host: tw.hosts) {
-							SimpleHttpTask atask = createTaskInstance();
-							atask.getReq().setHost(host);
-							results.add(atask);
+							if (tw.templateValues != null) {
+								for (Map<String, String> tvalue : tw.templateValues) {
+									SimpleHttpTask atask = createTaskInstance();
+									atask.getReq().addAllTemplateValues(tvalue);
+									atask.getReq().setHost(host);
+									results.add(atask);
+								}
+							}
+							else {
+								SimpleHttpTask atask = createTaskInstance();
+								atask.getReq().setHost(host);
+								results.add(atask);
+							}
 						}
 						return results;
 					}
@@ -167,8 +183,12 @@ public class HttpTaskBuilder {
 		case asyncpoll:
 			if (!isGroupTask) {
 				IHttpPollProcessor pp = SpringContextUtil.getBeanOfNameFromAllContext(tw.getPollProcessorName(), IHttpPollProcessor.class);
-				SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
-				btask.setHttpParams(new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate));
+				SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);
+				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
+				if (tw.templateValues != null) {
+					urlReq.addAllTemplateValues(tw.templateValues.get(0));
+				}
+				btask.setReq(urlReq);
 				task = btask;
 			}
 			else {
@@ -178,7 +198,7 @@ public class HttpTaskBuilder {
 					public SimpleHttpAsyncPollTask createTaskInstance() {
 						IHttpPollProcessor pp = SpringContextUtil.getBeanOfNameFromAllContext(tw.getPollProcessorName(), IHttpPollProcessor.class);
 						SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
-						btask.setHttpParams(new UrlRequest(tw.urlTemplate).addAllTemplateValues(tw.templateValues), new UrlRequest(tw.pollTemplate));
+						btask.setHttpParams(new UrlRequest(tw.urlTemplate), new UrlRequest(tw.pollTemplate));
 						return btask;
 					}
 
@@ -186,9 +206,19 @@ public class HttpTaskBuilder {
 					public List<SimpleHttpAsyncPollTask> getTasks() {
 						ArrayList<SimpleHttpAsyncPollTask> results = new ArrayList<SimpleHttpAsyncPollTask>();
 						for (String host: tw.hosts) {
-							SimpleHttpAsyncPollTask atask = createTaskInstance();
-							atask.getReq().setHost(host);
-							results.add(atask);
+							if (tw.templateValues != null) {
+								for (Map<String, String> tvalue : tw.templateValues) {
+									SimpleHttpAsyncPollTask atask = createTaskInstance();
+									atask.getReq().addAllTemplateValues(tvalue);
+									atask.getReq().setHost(host);
+									results.add(atask);
+								}
+							}
+							else {
+								SimpleHttpAsyncPollTask atask = createTaskInstance();
+								atask.getReq().setHost(host);
+								results.add(atask);
+							}
 						}
 						return results;
 					}

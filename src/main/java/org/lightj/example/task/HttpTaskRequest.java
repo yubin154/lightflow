@@ -1,6 +1,8 @@
 package org.lightj.example.task;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
@@ -26,7 +28,7 @@ public class HttpTaskRequest {
 	/** for async */
 	ExecuteOption executionOption;
 	UrlTemplate urlTemplate;
-	HashMap<String, String> templateValues;
+	List<Map<String, String>> templateValues;
 	String[] hosts;
 
 	/** additional for asyncpoll */
@@ -61,12 +63,24 @@ public class HttpTaskRequest {
 	public void setUrlTemplate(UrlTemplate urlTemplate) {
 		this.urlTemplate = urlTemplate;
 	}
-	public HashMap<String, String> getTemplateValues() {
+	public List<Map<String, String>> getTemplateValues() {
 		return templateValues;
 	}
-	public void setTemplateValues(HashMap<String, String> templateValues) {
+	public void setTemplateValues(List<Map<String, String>> templateValues) {
 		this.templateValues = templateValues;
 	}
+	public void addTemplateValue(Map<String, String> value) {
+		if (templateValues == null) {
+			templateValues = new ArrayList<Map<String, String>>();
+		}
+		this.templateValues.add(value);
+	}
+	public void addAllTemplateValues(List<Map<String, String>> templateValues) {
+		if (templateValues == null) {
+			templateValues = new ArrayList<Map<String, String>>();
+		}
+		this.templateValues.addAll(templateValues);
+	}	
 	public MonitorOption getMonitorOption() {
 		return monitorOption;
 	}
