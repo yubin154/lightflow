@@ -33,7 +33,7 @@ public class HttpTaskBuilder {
 	 * ning http client
 	 * @return
 	 */
-	public @Bean @Scope("prototype") AsyncHttpClient httpClient() {
+	public @Bean @Scope("singleton") AsyncHttpClient httpClient() {
 		// create and configure async http client
 		AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
 		config.setConnectionTimeOutInMs(3000);
@@ -44,7 +44,7 @@ public class HttpTaskBuilder {
 	 * dummy poll processor
 	 * @return
 	 */
-	public @Bean @Scope("prototype") IHttpPollProcessor dummyPollProcessor() {
+	public @Bean @Scope("singleton") IHttpPollProcessor dummyPollProcessor() {
 		
 		return new IHttpPollProcessor() {
 
@@ -66,7 +66,7 @@ public class HttpTaskBuilder {
 	 * agent poll processor
 	 * @return
 	 */
-	public @Bean @Scope("prototype") IHttpPollProcessor agentPollProcessor() {
+	public @Bean @Scope("singleton") IHttpPollProcessor agentPollProcessor() {
 
 		final String successRegex = ".*\\\"progress\\\"\\s*:\\s*100.*";
 		final String failureRegex = ".*\\\"error\\\"\\s*:\\s*(.*),.*";

@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.lightflow</groupId>
 	<artifactId>lightflow</artifactId>
-	<version>1.3.2</version>
+	<version>1.3.3</version>
 	<name>lightflow</name>
 	<description>LightFlow framework</description>
 	<packaging>jar</packaging>

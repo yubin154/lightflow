@@ -6,7 +6,6 @@ import org.lightj.task.WorkerMessage.CallbackType;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
-import akka.actor.Actor;
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import akka.actor.OneForOneStrategy;
@@ -15,7 +14,6 @@ import akka.actor.Props;
 import akka.actor.SupervisorStrategy;
 import akka.actor.SupervisorStrategy.Directive;
 import akka.actor.UntypedActor;
-import akka.actor.UntypedActorFactory;
 import akka.japi.Function;
 
 
@@ -112,14 +110,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	private final void processRequest() {
 
 		if (asyncWorker == null) {
-			asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-				private static final long serialVersionUID = 1L;
-
-				public Actor create() {
-					return createRequestWorker(task);
-				}
-				
-			}));
+			asyncWorker = getContext().actorOf(new Props(TaskModule.getExecutableTaskWorkerFactory()));
 		}
 		
 		asyncWorker.tell(task, getSelf());
@@ -232,13 +223,4 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 		return result;
 	}
 
-	/**
-	 * create poll process
-	 * @param task
-	 * @return
-	 */
-	public Actor createRequestWorker(T task) {
-		return new ExecutableTaskWorker();
-	}
-	
 }

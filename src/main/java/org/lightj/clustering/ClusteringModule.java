@@ -113,14 +113,19 @@ public class ClusteringModule  {
 			try {
 				return GMSFactory.getGMSModule(group).getGroupHandle().isGroupLeader();
 			} catch (GMSNotEnabledException e) {
-				// ignore
+				// ignore, not in a cluster, is local master
+				return true;
 			} catch (GMSNotInitializedException e) {
-				// ignore
+				// ignore, not in a cluster, is local master
+				return true;
 			} catch (GMSException e) {
 				// ignore
+				return false;
 			}
 		}
-		return false;
+		else {
+			return true;
+		}
 	}
 
 	/**

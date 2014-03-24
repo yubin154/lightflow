@@ -8,6 +8,8 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 import org.lightj.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * url request
@@ -16,6 +18,9 @@ import org.lightj.util.StringUtil;
  */
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class UrlRequest {
+
+	/** logger */
+	static Logger logger = LoggerFactory.getLogger(UrlRequest.class);
 
 	/** nvp replacing variables in template with real values */
 	private HashMap<String, String> templateValues = new HashMap<String, String>();
@@ -55,7 +60,7 @@ public class UrlRequest {
 			templateValues.put(key, v);
 		}
 		else {
-			throw new IllegalArgumentException("UrlTemplate for this UrlRequest does not have variable " + k);
+			logger.warn("UrlTemplate for this UrlRequest does not have variable " + k);
 		}
 		return this;
 	}

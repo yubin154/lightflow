@@ -10,6 +10,12 @@ import akka.actor.UntypedActorFactory;
 
 import com.typesafe.config.Config;
 
+/**
+ * initialization of task exeuction framework
+ * 
+ * @author binyu
+ *
+ */
 @SuppressWarnings("rawtypes")
 public class TaskModule {
 
@@ -58,6 +64,11 @@ public class TaskModule {
 		validateInit();
 		return s_Module.asyncPollActorFctory;
 	}
+	
+	public static UntypedActorFactory getExecutableTaskWorkerFactory() {
+		validateInit();
+		return s_Module.executableTaskActorFactory;
+	}
 
 	private static class TaskModuleInner extends BaseModule {
 		
@@ -68,6 +79,7 @@ public class TaskModule {
 		private ActorSystem system;
 		private UntypedActorFactory asyncActorFactory;
 		private UntypedActorFactory asyncPollActorFctory;
+		private UntypedActorFactory executableTaskActorFactory;
 
 		private TaskModuleInner() {
 			
@@ -105,6 +117,15 @@ public class TaskModule {
 							return new AsyncPollTaskWorker<ExecutableTask>();
 						}
 
+					};
+					
+					executableTaskActorFactory = new UntypedActorFactory() {
+						private static final long serialVersionUID = 1L;
+
+						public Actor create() {
+							return new ExecutableTaskWorker();
+						}
+						
 					};
 				}
 

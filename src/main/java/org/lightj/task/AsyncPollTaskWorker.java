@@ -6,7 +6,6 @@ import org.lightj.task.WorkerMessage.CallbackType;
 
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
-import akka.actor.Actor;
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
 import akka.actor.OneForOneStrategy;
@@ -15,7 +14,6 @@ import akka.actor.Props;
 import akka.actor.SupervisorStrategy;
 import akka.actor.SupervisorStrategy.Directive;
 import akka.actor.UntypedActor;
-import akka.actor.UntypedActorFactory;
 import akka.japi.Function;
 
 
@@ -31,7 +29,6 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	private T task;
 	
 	/** intermediate result */
-	private TaskResult taskSubmissionResult;
 	private TaskResult curResult;
 	private boolean requestDone;
 	
@@ -143,14 +140,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 		}
 		
 		if (asyncWorker == null) {
-			asyncWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-				private static final long serialVersionUID = 1L;
-
-				public Actor create() {
-					return createRequestWorker();
-				}
-				
-			}));
+			asyncWorker = getContext().actorOf(new Props(TaskModule.getExecutableTaskWorkerFactory()));
 		}
 		
 		asyncWorker.tell(task, getSelf());
@@ -177,20 +167,12 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
 		}
 		else if (curResult.getStatus().isComplete()) {
-			taskSubmissionResult = curResult;
 			requestDone = true;
 			replyTask(CallbackType.submitted, task);
 			if (curResult.getRealResult() instanceof ExecutableTask) {
 
 				if (pollWorker == null) {
-					pollWorker = getContext().actorOf(new Props(new UntypedActorFactory() {
-						private static final long serialVersionUID = 1L;
-
-						public Actor create() {
-							return createPollWorker(task, taskSubmissionResult);
-						}
-						
-					}));
+					pollWorker = getContext().actorOf(new Props(TaskModule.getExecutableTaskWorkerFactory()));
 				}
 				if (pollTask == null) {
 					pollTask = (ExecutableTask) curResult.getRealResult();
@@ -346,25 +328,6 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	@Override
 	public SupervisorStrategy supervisorStrategy() {
 		return supervisorStrategy;
-	}
-	
-	/**
-	 * create poll process
-	 * @param task
-	 * @return
-	 */
-	public Actor createRequestWorker() {
-		return new ExecutableTaskWorker();
-	}
-	
-	/**
-	 * create poll request based on result of the original request
-	 * @param task
-	 * @param result
-	 * @return
-	 */
-	public Actor createPollWorker(T task, TaskResult result) {
-		return new ExecutableTaskWorker();
 	}
 	
 }
