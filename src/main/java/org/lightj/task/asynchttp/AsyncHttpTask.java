@@ -2,7 +2,6 @@ package org.lightj.task.asynchttp;
 
 import java.io.IOException;
 
-import org.lightj.session.FlowContext;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.TaskExecutionException;
@@ -20,7 +19,7 @@ import com.ning.http.client.Response;
  *
  * @param <T>
  */
-public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTask<T> {
+public abstract class AsyncHttpTask extends ExecutableTask {
 	
 	public static enum HttpMethod {
 		GET,
@@ -103,7 +102,6 @@ public abstract class AsyncHttpTask<T extends FlowContext> extends ExecutableTas
 	 * @author biyu
 	 *
 	 */
-	@SuppressWarnings("rawtypes")
 	static class HttpAsyncHandler extends AsyncCompletionHandler<TaskResult> {
 		private final AsyncHttpTask task;
 		public HttpAsyncHandler(AsyncHttpTask task) {

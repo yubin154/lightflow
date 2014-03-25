@@ -9,7 +9,7 @@ import org.lightj.session.FlowContext;
  * @author binyu
  *
  */
-@SuppressWarnings("rawtypes")
+
 public interface ITaskEventHandler<T extends FlowContext> {
 
 	/**

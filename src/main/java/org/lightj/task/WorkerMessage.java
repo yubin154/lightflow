@@ -1,6 +1,5 @@
 package org.lightj.task;
 
-@SuppressWarnings("rawtypes")
 public class WorkerMessage {
 	
 	/** callback types */

@@ -18,7 +18,7 @@ import akka.japi.Function;
 /**
  * Provides abstraction of batch operation. 
  */
-@SuppressWarnings("rawtypes")
+
 public class BatchTaskWorker extends UntypedActor implements IWorker {
 	
 	/** task */

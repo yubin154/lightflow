@@ -22,7 +22,7 @@ import akka.japi.Function;
  * 
  *  @author biyu
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"unchecked"})
 public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	
 	/** task, poll option */

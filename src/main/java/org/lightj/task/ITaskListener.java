@@ -6,7 +6,7 @@ package org.lightj.task;
  * @author biyu
  *
  */
-@SuppressWarnings("rawtypes")
+
 public interface ITaskListener {
 	
 	/**

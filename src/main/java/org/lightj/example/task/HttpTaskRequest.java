@@ -1,6 +1,7 @@
 package org.lightj.example.task;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +75,14 @@ public class HttpTaskRequest {
 			templateValues = new ArrayList<Map<String, String>>();
 		}
 		this.templateValues.add(value);
+	}
+	public void addTemplateValueAsMap(String k, String v) {
+		if (templateValues == null) {
+			templateValues = new ArrayList<Map<String, String>>();
+		}
+		HashMap<String, String> tval = new HashMap<String, String>();
+		tval.put(k, v);
+		this.templateValues.add(tval);
 	}
 	public void addAllTemplateValues(List<Map<String, String>> templateValues) {
 		if (templateValues == null) {

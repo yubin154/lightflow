@@ -1,5 +1,6 @@
 package org.lightj.task;
 
+import org.lightj.session.FlowContext;
 import org.lightj.session.FlowEvent;
 import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
@@ -34,7 +35,7 @@ public abstract class FlowTask extends ExecutableTask {
 	public TaskResult execute() {
 		try {
 			subFlow = createSubFlow();
-			long parentFlowId = context.getSessionId();
+			long parentFlowId = this.<FlowContext>getContext().getSessionId();
 			if (subFlow.getParentId() <= 0) {
 				subFlow.setParentId(parentFlowId);
 				FlowSessionFactory.getInstance().save(subFlow);

@@ -1,7 +1,5 @@
 package org.lightj.task;
 
-import org.lightj.session.FlowContext;
-
 import akka.actor.ActorRef;
 
 /**
@@ -10,7 +8,7 @@ import akka.actor.ActorRef;
  *
  * @param <T>
  */
-public abstract class ExecutableTask<T extends FlowContext> extends Task<T> {
+public abstract class ExecutableTask extends Task {
 
 	/** actor ref executing the task */
 	private ActorRef executingActor;

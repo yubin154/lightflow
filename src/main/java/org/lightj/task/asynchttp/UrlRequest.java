@@ -118,25 +118,42 @@ public class UrlRequest {
 
 	/** get real url after template replacement */
 	public String generateUrl() {
-		String urlV = urlTemplate.getUrl();
-		urlV = templateReplaceAll(urlV, templateValues);
-		urlV = templateReplaceAllByLookup(urlV);
+		String urlV = replace(urlTemplate.getUrl());
 		return urlV;
+	}
+	
+	/** real parameters */
+	public HashMap<String, String> generateParameters() {
+		HashMap<String, String> paramsReal = new HashMap<String, String>();
+		for (Entry<String, String> param : urlTemplate.getParameters().entrySet()) {
+			replaceAndSet(param, paramsReal);
+		}
+		return paramsReal;
 	}
 
 	/** get real headers after template replacement */
 	public HashMap<String, String> generateHeaders() {
 		HashMap<String, String> headersReal = new HashMap<String, String>();
 		for (Entry<String, String> header : urlTemplate.getHeaders().entrySet()) {
-			String key = header.getKey();
-			String value = header.getValue();
-			key = templateReplaceAll(key, templateValues);
-			key = templateReplaceAllByLookup(key);
-			value = templateReplaceAll(value, templateValues);
-			value = templateReplaceAllByLookup(value);
-			headersReal.put(key, value);
+			replaceAndSet(header, headersReal);
 		}
 		return headersReal;
+	}
+	
+	private String replace(String value) {
+		value = templateReplaceAll(value, templateValues);
+		value = templateReplaceAllByLookup(value);
+		return value;
+	}
+	
+	private void replaceAndSet(Entry<String, String> entry, Map<String, String> target) {
+		String key = entry.getKey();
+		String value = entry.getValue();
+		key = templateReplaceAll(key, templateValues);
+		key = templateReplaceAllByLookup(key);
+		value = templateReplaceAll(value, templateValues);
+		value = templateReplaceAllByLookup(value);
+		target.put(key, value);
 	}
 	
 	private String templateReplaceAll(String template, Map<String, String> values) {

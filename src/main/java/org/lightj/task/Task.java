@@ -8,7 +8,6 @@ package org.lightj.task;
 
 import java.util.UUID;
 
-import org.lightj.session.FlowContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @author biyu
  */
-public abstract class Task<T extends FlowContext> {
+public abstract class Task {
 	
 	/** logger */
 	static Logger logger = LoggerFactory.getLogger(Task.class);
@@ -35,7 +34,7 @@ public abstract class Task<T extends FlowContext> {
 	protected String extTaskUuid;
 	
 	/** session context */
-	protected T context;
+	private ITaskContext context;
 	
 	public Task() {
 		this(new ExecuteOption());
@@ -83,10 +82,11 @@ public abstract class Task<T extends FlowContext> {
 		return monitorOption != null;
 	}
 	
-	public T getContext() {
-		return context;
+	@SuppressWarnings("unchecked")
+	public <T extends ITaskContext> T getContext() {
+		return (T) context;
 	}
-	public void setContext(T context) {
+	public void setContext(ITaskContext context) {
 		this.context = context;
 	}
 

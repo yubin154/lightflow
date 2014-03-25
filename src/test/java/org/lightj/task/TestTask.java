@@ -14,9 +14,9 @@ import org.lightj.task.asynchttp.SimpleHttpResponse;
 import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.util.ConcurrentUtil;
 import org.lightj.util.SpringContextUtil;
+import org.lightj.util.StringUtil;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-@SuppressWarnings("rawtypes")
 public class TestTask extends BaseTestCase {
 	
 	/** pause lock */
@@ -64,12 +64,24 @@ public class TestTask extends BaseTestCase {
 		tw2.setPollTemplate(new UrlTemplate("https://#:host:#"));
 		tw2.setPollProcessorName("dummyPollProcessor");
 
+		// 1 async group http req
+		HttpTaskRequest tw3 = new HttpTaskRequest();
+		tw3.setTaskType("async");
+		tw3.setHttpClientType("httpClient");
+		tw3.setExecutionOption(new ExecuteOption());
+		template = new UrlTemplate("http://#:host:#/q?s=ebay&ql=1", HttpMethod.GET, null);
+		template.addParameters("s", "#:s:#").addParameters("ql", "1");
+		tw3.setUrlTemplate(template);
+		tw3.setHost("finance.yahoo.com");
+		tw3.addTemplateValueAsMap("s", "ebay");
+		
 		StandaloneTaskListener listener = new StandaloneTaskListener();
 		listener.setDelegateHandler(new SimpleTaskEventHandler<FlowContext>() {
 
 			@Override
 			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
-				System.out.print(String.format("%s,%s", result, result.<SimpleHttpResponse>getRealResult()));
+				System.out.print(String.format("%s,%s", result.getStatus(), 
+						StringUtil.trimToLength(result.<SimpleHttpResponse>getRealResult().getResponseBody(), 200)));
 			}
 
 			@Override
@@ -83,6 +95,37 @@ public class TestTask extends BaseTestCase {
 		ConcurrentUtil.wait(lock, cond, 10000);
 	}
 
+	public void testParameter() throws Exception {
+		HttpTaskRequest tw = new HttpTaskRequest();
+		tw.setTaskType("async");
+		tw.setHttpClientType("httpClient");
+		tw.setExecutionOption(new ExecuteOption());
+		UrlTemplate template = new UrlTemplate("https://#:host:#/q", HttpMethod.GET, null);
+		template.addParameters("s", "#:s:#").addParameters("ql", "1");
+		tw.setUrlTemplate(template);
+		tw.setHost("finance.yahoo.com");
+		tw.addTemplateValueAsMap("s", "ebay");
+		
+		StandaloneTaskListener listener = new StandaloneTaskListener();
+		listener.setDelegateHandler(new SimpleTaskEventHandler<FlowContext>() {
+
+			@Override
+			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
+				System.out.print(String.format("%s,%s", result.getStatus(), 
+						StringUtil.trimToLength(result.<SimpleHttpResponse>getRealResult().getResponseBody(), 200)));
+			}
+
+			@Override
+			public TaskResultEnum executeOnCompleted(FlowContext ctx,
+					Map<String, TaskResult> results) {
+				ConcurrentUtil.signal(lock, cond);
+				return super.executeOnCompleted(ctx, results);
+			}
+		});
+		new StandaloneTaskExecutor(null, listener, HttpTaskBuilder.buildTask(tw)).execute();
+		ConcurrentUtil.wait(lock, cond, 10000);
+	}
+	
 	@Override
 	protected BaseModule[] getDependentModules() {
 		AnnotationConfigApplicationContext flowCtx = new AnnotationConfigApplicationContext("org.lightj.example.task");

@@ -38,7 +38,6 @@ public class SkeletonFlowFactory {
 		return new StepBuilder().parkInState(StepTransition.parkInState(FlowState.Completed, FlowResult.Failed, "something wrong")).getFlowStep();
 	}
 	
-	@SuppressWarnings("rawtypes")
 	@Bean 
 	public static IFlowStep skeletonStep1() {
 		return new StepBuilder().executeTasks(new ExecutableTask() {

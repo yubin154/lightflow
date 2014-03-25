@@ -13,7 +13,6 @@ import com.ning.http.client.Response;
  * @author binyu
  *
  */
-@SuppressWarnings("rawtypes")
 public interface IHttpPollProcessor {
 
 	/**

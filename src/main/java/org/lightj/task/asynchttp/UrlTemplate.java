@@ -35,6 +35,8 @@ public class UrlTemplate {
 	protected String body;
 	/** headers */
 	protected HashMap<String, String> headers = new HashMap<String, String>();
+	/** url query sring GET, or parameters POST */
+	protected HashMap<String, String> parameters = new HashMap<String, String>();
 	
 	/** constructor */
 	public UrlTemplate() {}
@@ -64,7 +66,17 @@ public class UrlTemplate {
 		this.headers.put(k, v);
 		return this;
 	}
-
+	public HashMap<String, String> getParameters() {
+		return parameters;
+	}
+	public void setParameters(HashMap<String, String> parameters) {
+		this.parameters = parameters;
+	}
+	public UrlTemplate addParameters(String k, String v) {
+		this.parameters.put(k, v);
+		return this;
+	}
+	
 	public UrlTemplate setUrl(String url) {
 		this.url = url;
 		validateUrl();

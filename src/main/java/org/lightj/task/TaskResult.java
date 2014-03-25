@@ -10,7 +10,6 @@ import org.lightj.util.StringUtil;
  * @author biyu
  * 
  */ 
-@SuppressWarnings("rawtypes")
 public class TaskResult implements Serializable {
 	
 	/**

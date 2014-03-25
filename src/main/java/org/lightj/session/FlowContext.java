@@ -28,6 +28,7 @@ import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepErrorLog;
 import org.lightj.session.step.StepLog;
 import org.lightj.session.step.StepLog.TaskLog;
+import org.lightj.task.ITaskContext;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.util.JsonUtil;
@@ -43,7 +44,7 @@ import org.slf4j.LoggerFactory;
  * @author biyu
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class FlowContext {
+public class FlowContext implements ITaskContext {
 	
 	static final Logger logger = LoggerFactory.getLogger(FlowContext.class);
 
@@ -221,8 +222,23 @@ public class FlowContext {
 				Method getter = new PropertyDescriptor(name, this.getClass()).getReadMethod();
 				return (C) getter.invoke(this, Constants.NO_PARAMETER_VALUES);
 			} catch (Throwable t) {
-				throw new RuntimeException("cannot retrieve context value by name " + name + ": " + t.getMessage());
+				// ignore
+				return null;
 			}
+		}
+	}
+	
+	/**
+	 * set value for name
+	 * @param name
+	 * @return
+	 */
+	public <C> void setValueForName(String name, C value) {
+		try {
+			Method setter = new PropertyDescriptor(name, this.getClass()).getWriteMethod();
+			setter.invoke(this, value);
+		} catch (Throwable t) {
+			this.addToScrapbook(name, value);
 		}
 	}
 	

@@ -146,7 +146,7 @@ public class HttpTaskBuilder {
 				task = atask;
 			}
 			else {
-				GroupTask agtask = new GroupTask() {
+				GroupTask agtask = new GroupTask<SimpleHttpTask>() {
 
 					@Override
 					public SimpleHttpTask createTaskInstance() {

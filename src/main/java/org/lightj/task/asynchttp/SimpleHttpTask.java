@@ -2,7 +2,6 @@ package org.lightj.task.asynchttp;
 
 import java.util.Map.Entry;
 
-import org.lightj.session.FlowContext;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.TaskExecutionRuntimeException;
 import org.lightj.task.TaskResult;
@@ -21,7 +20,7 @@ import com.ning.http.client.Response;
  * @param <T>
  */
 
-public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
+public class SimpleHttpTask extends AsyncHttpTask {
 	
 	static int MSG_CONTENT_LEN = 2000; 
 	
@@ -86,6 +85,14 @@ public class SimpleHttpTask<T extends FlowContext> extends AsyncHttpTask<T> {
 		else {
 			for (Entry<String, String> header : req.generateHeaders().entrySet()) {
 				builder.addHeader(header.getKey(), header.getValue());
+			}
+			for (Entry<String, String> param : req.generateParameters().entrySet()) {
+				if (req.getMethod() == HttpMethod.GET) {
+					builder.addQueryParameter(param.getKey(), param.getValue());
+				}
+				else if (req.getMethod() == HttpMethod.POST) {
+					builder.addParameter(param.getKey(), param.getValue());
+				}
 			}
 			if (req.hasBody()) {
 				builder.setBody(req.generateBody());

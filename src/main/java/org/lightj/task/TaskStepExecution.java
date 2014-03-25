@@ -22,7 +22,7 @@ import akka.actor.UntypedActorFactory;
  *
  * @param <T>
  */
-@SuppressWarnings({ "rawtypes", "unchecked" })
+@SuppressWarnings({ "rawtypes"})
 public abstract class TaskStepExecution<T extends FlowContext> extends SimpleStepExecution<T> {
 	
 	/** batch option */
@@ -107,6 +107,7 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 	 * possibly fan out one group task to multiple real tasks
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	private List<ExecutableTask> getRealTasks() {
 		List<ExecutableTask> realTasks = new ArrayList<ExecutableTask>();
 		List<ExecutableTask> initialTasks = getInitialTasks();

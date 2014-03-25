@@ -12,7 +12,7 @@ import akka.actor.UntypedActor;
  * @author binyu
  *
  */
-@SuppressWarnings("rawtypes")
+
 public class MaxConcurrentStrategy extends UntypedActor implements IWorker {
 
 	/** concurrent rate */

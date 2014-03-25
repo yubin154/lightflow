@@ -2,22 +2,19 @@ package org.lightj.task;
 
 import java.util.List;
 
-import org.lightj.session.FlowContext;
-
 /**
  * at runtime fan out to a list of tasks for execution
  * @author binyu
  *
  * @param <T>
  */
-@SuppressWarnings("rawtypes")
-public abstract class GroupTask<T extends FlowContext> extends ExecutableTask<T> {
+public abstract class GroupTask<E extends ExecutableTask> extends ExecutableTask {
 
 	/** create new instance of a task */
-	public abstract <E extends ExecutableTask> E createTaskInstance();
+	public abstract E createTaskInstance();
 	
 	/** fan out to list of tasks */
-	public abstract List<ExecutableTask> getTasks();
+	public abstract List<E> getTasks();
 
 	@Override
 	public final TaskResult execute() throws TaskExecutionException {

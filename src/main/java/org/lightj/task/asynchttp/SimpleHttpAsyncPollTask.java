@@ -1,6 +1,5 @@
 package org.lightj.task.asynchttp;
 
-import org.lightj.session.FlowContext;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.TaskResult;
@@ -17,8 +16,7 @@ import com.ning.http.client.Response;
  *
  * @param <T>
  */
-@SuppressWarnings({"rawtypes"})
-public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTask<T> {
+public class SimpleHttpAsyncPollTask extends SimpleHttpTask {
 	
 	/** pull request */
 	private UrlRequest pollReq;
@@ -78,7 +76,7 @@ public class SimpleHttpAsyncPollTask<T extends FlowContext> extends SimpleHttpTa
 	/** create poll task */
 	private AsyncHttpTask createPollTask(final UrlRequest pollReq) {
 		
-		return new AsyncHttpTask<FlowContext>(client) {
+		return new AsyncHttpTask(client) {
 
 			@Override
 			public BoundRequestBuilder createRequest() {

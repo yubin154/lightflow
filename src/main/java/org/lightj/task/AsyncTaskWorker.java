@@ -23,7 +23,7 @@ import akka.japi.Function;
  *
  * @param <T>
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"unchecked"})
 public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 	
 	/** task */

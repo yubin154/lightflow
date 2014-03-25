@@ -31,7 +31,7 @@ public class TestFlowContext extends BaseTestCase {
 		test.setParam4(new HashMap<String, String>());
 		test.setParam5(new ArrayList<String>());
 		IFlowStep step = new StepImpl();
-		ExecutableTask<DummyFlowContext> task = new ExecutableTask<DummyFlowContext>(){
+		ExecutableTask task = new ExecutableTask(){
 			@Override
 			public TaskResult execute() throws TaskExecutionException {
 				return null;

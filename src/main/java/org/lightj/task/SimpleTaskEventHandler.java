@@ -10,7 +10,7 @@ import org.lightj.session.FlowContext;
  *
  * @param <T>
  */
-@SuppressWarnings("rawtypes")
+
 public class SimpleTaskEventHandler<T extends FlowContext> implements ITaskEventHandler<T> {
 
 	@Override

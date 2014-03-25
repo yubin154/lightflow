@@ -15,7 +15,6 @@ import akka.actor.UntypedActorFactory;
  * @author biyu
  *
  */
-@SuppressWarnings("rawtypes")
 public class StandaloneTaskExecutor {
 	
 	/** batch option */
@@ -84,7 +83,7 @@ public class StandaloneTaskExecutor {
 	 * possibly fan out one group task to multiple real tasks
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private List<ExecutableTask> getRealTasks() {
 		List<ExecutableTask> realTasks = new ArrayList<ExecutableTask>();
 		List<ExecutableTask> initialTasks = Arrays.asList(tasks);
