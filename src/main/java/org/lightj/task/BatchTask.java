@@ -1,6 +1,5 @@
 package org.lightj.task;
 
-import org.lightj.session.FlowContext;
 
 public class BatchTask extends Task {
 	
@@ -34,7 +33,7 @@ public class BatchTask extends Task {
 	/**
 	 * set all sub tasks with flow context
 	 */
-	public void setContext(FlowContext context) {
+	public void setContext(ITaskContext context) {
 		for (Task task : tasks) {
 			task.setContext(context);
 		}
