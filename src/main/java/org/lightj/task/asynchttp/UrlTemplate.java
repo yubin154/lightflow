@@ -113,7 +113,10 @@ public class UrlTemplate {
   		ArrayList<String> sources = new ArrayList<String>();
   		sources.add(url);
   		if (body!=null) sources.add(body);
+  		sources.addAll(headers.keySet());
   		sources.addAll(headers.values());
+  		sources.addAll(parameters.keySet());
+  		sources.addAll(parameters.values());
 		for (String str : sources) {
 			if (str.matches(String.format(".*%s.*", key))) {
 				return true;
