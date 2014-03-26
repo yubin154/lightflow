@@ -6,6 +6,7 @@ import java.util.Map.Entry;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+import org.lightj.task.IGlobalContext;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class UrlRequest {
 	private UrlTemplate urlTemplate;
 	
 	/** optionally lookup template value from external through this function */
-	private ITemplateValueLookupFunction templateValueLookup;
+	private IGlobalContext globalContext;
 	
 	/** constructor */
 	public UrlRequest() {
@@ -94,12 +95,12 @@ public class UrlRequest {
 		return templateValues.containsKey("#:host:#") ? templateValues.get("#:host:#") : null;
 	}
 	@JsonIgnore
-	public ITemplateValueLookupFunction getTemplateValueLookup() {
-		return templateValueLookup;
+	public IGlobalContext getGlobalConext() {
+		return globalContext;
 	}
-	public void setTemplateValueLookup(
-			ITemplateValueLookupFunction templateValueLookup) {
-		this.templateValueLookup = templateValueLookup;
+	public void setGlobalContext(
+			IGlobalContext templateValueLookup) {
+		this.globalContext = templateValueLookup;
 	}
 	
 	public HttpMethod getMethod() {
@@ -164,28 +165,16 @@ public class UrlRequest {
 	}
 	
 	private String templateReplaceAllByLookup(String template) {
-		if (templateValueLookup != null) {
-			String pivotValue = getTemplateValue(templateValueLookup.getPivotVariableName());
-			Map<String, String> externalTemplateValues = templateValueLookup.lookupByPivotValue(pivotValue);
-			template = templateReplaceAll(template, externalTemplateValues);
+		if (globalContext != null) {
+			String pivotValue = globalContext.getPivotValue();
+			for (String variable : urlTemplate.getVariableNames()) {
+				if (globalContext.hasName(pivotValue, variable)) {
+					String value = globalContext.<String>getValueByName(pivotValue, variable);
+					template = template.replaceAll(UrlTemplate.encodeVariableName(variable), value);
+				}
+			}
 		}
 		return template;
 	}
-	
-	/**
-	 * externally lookup template value
-	 * 
-	 * @author binyu
-	 *
-	 */
-	public interface ITemplateValueLookupFunction {
-		
-		/** what value to use to lookup externally as a key */
-		public String getPivotVariableName();
-		
-		/** additional nv pairs to replace from external */
-		public Map<String, String> lookupByPivotValue(String pivotValue);
-	}
-
 	
 }

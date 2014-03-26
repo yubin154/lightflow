@@ -6,7 +6,6 @@ import org.lightj.task.ExecuteOption;
 import org.lightj.task.TaskExecutionRuntimeException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.asynchttp.UrlRequest.ITemplateValueLookupFunction;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -27,9 +26,6 @@ public class SimpleHttpTask extends AsyncHttpTask {
 	/** keep transient materialized req and poll req */
 	protected UrlRequest req;
 	
-	/** optionally lookup template value from external through this function */
-	protected ITemplateValueLookupFunction templateValueLookup;
-	
 	/** constructor */
 	public SimpleHttpTask(AsyncHttpClient client, ExecuteOption execOptions) 
 	{
@@ -43,14 +39,6 @@ public class SimpleHttpTask extends AsyncHttpTask {
 		this.req = req;
 	}
 	
-	public ITemplateValueLookupFunction getTemplateValueLookup() {
-		return templateValueLookup;
-	}
-	public void setTemplateValueLookup(
-			ITemplateValueLookupFunction templateValueLookup) {
-		this.templateValueLookup = templateValueLookup;
-	}
-
 	/**
 	 * build a ning http request builder
 	 * @param req
@@ -58,8 +46,8 @@ public class SimpleHttpTask extends AsyncHttpTask {
 	 */
 	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = null;
-		if (this.templateValueLookup != null) {
-			req.setTemplateValueLookup(templateValueLookup);
+		if (this.hasGlobalContext()) {
+			req.setGlobalContext(this.getGlobalContext());
 		}
 		String url = req.generateUrl();
 		this.setExtTaskUuid(url);

@@ -52,8 +52,8 @@ public class SimpleHttpAsyncPollTask extends SimpleHttpTask {
 	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = super.buildHttpRequest(req);
 		pollReq.putTemplateValuesIfNull(req.getTemplateValues());
-		if (this.templateValueLookup != null) {
-			pollReq.setTemplateValueLookup(templateValueLookup);
+		if (this.hasGlobalContext()) {
+			pollReq.setGlobalContext(this.getGlobalContext());
 		}
 		return builder;
 	}

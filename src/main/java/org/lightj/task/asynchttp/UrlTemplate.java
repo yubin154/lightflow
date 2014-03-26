@@ -120,8 +120,9 @@ public class UrlTemplate {
   		sources.addAll(headers.values());
   		sources.addAll(parameters.keySet());
   		sources.addAll(parameters.values());
+  		String vName = encodeVariableName(key);
 		for (String str : sources) {
-			if (str.matches(String.format(".*%s.*", key))) {
+			if (str.indexOf(vName) >= 0) {
 				return true;
 			}
 		}
@@ -131,6 +132,10 @@ public class UrlTemplate {
 		if (!this.url.matches(URL_PATTERN)) {
 			throw new IllegalArgumentException("url must be in the format of http(s)://#:host:#...");
 		}
+	}
+	
+	public static String encodeVariableName(String name) {
+		return String.format("#:%s:#", name);
 	}
 
 }

@@ -33,8 +33,11 @@ public abstract class Task {
 	/** external task uuid */
 	protected String extTaskUuid;
 	
-	/** session context */
+	/** local context */
 	private ITaskContext context;
+	
+	/** optional global context */
+	private IGlobalContext globalContext;
 	
 	public Task() {
 		this(new ExecuteOption());
@@ -90,6 +93,15 @@ public abstract class Task {
 		this.context = context;
 	}
 
+	public IGlobalContext getGlobalContext() {
+		return globalContext;
+	}
+	public void setGlobalContext(IGlobalContext globalContext) {
+		this.globalContext = globalContext;
+	}
+	public boolean hasGlobalContext() {
+		return this.globalContext != null;
+	}
 
 	/** create an immutable success result */
 	public final TaskResult succeeded() {
