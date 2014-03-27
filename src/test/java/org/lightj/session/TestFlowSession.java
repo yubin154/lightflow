@@ -45,7 +45,7 @@ public class TestFlowSession extends BaseTestCase {
 			tw.setTaskType("async");
 			tw.setHttpClientType("httpClient");
 			tw.setExecutionOption(new ExecuteOption());
-			tw.setUrlTemplate(new UrlTemplate("https://#:host:#"));
+			tw.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 			tw.setHost(sites[i]);
 			flow.getSessionContext().addUserRequests(tw);
 		}
@@ -68,12 +68,12 @@ public class TestFlowSession extends BaseTestCase {
 //		tw1.setTemplateValues(tv);
 //		tw1.setPollProcessorName("agentPollProcessor");
 
-		UrlTemplate template = new UrlTemplate("https://#:host:#");
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"));
 		tw1.setUrlTemplate(template);
 		tw1.setHost("www.yahoo.com");
 
 		tw1.setMonitorOption(new MonitorOption(1000, 10000));
-		tw1.setPollTemplate(new UrlTemplate("https://#:host:#"));
+		tw1.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw1.setPollProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw1);
@@ -83,7 +83,7 @@ public class TestFlowSession extends BaseTestCase {
 		tw2.setTaskType("async");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		tw2.setUrlTemplate(new UrlTemplate("https://#:host:#"));
+		tw2.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw2.setHosts(sites);
 		flow.getSessionContext().addUserRequests(tw2);
 		
@@ -92,11 +92,11 @@ public class TestFlowSession extends BaseTestCase {
 		tw3.setTaskType("asyncpoll");
 		tw3.setHttpClientType("httpClient");
 		tw3.setExecutionOption(new ExecuteOption());
-		tw3.setUrlTemplate(new UrlTemplate("https://#:host:#"));
+		tw3.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw3.setHosts(sites);
 
 		tw3.setMonitorOption(new MonitorOption(1000, 5000));
-		tw3.setPollTemplate(new UrlTemplate("https://#:host:#"));
+		tw3.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw3.setPollProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw3);

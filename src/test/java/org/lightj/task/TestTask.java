@@ -56,12 +56,12 @@ public class TestTask extends BaseTestCase {
 		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#:host:#", HttpMethod.GET, null);
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET, null);
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
-		tw2.setPollTemplate(new UrlTemplate("https://#:host:#"));
+		tw2.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw2.setPollProcessorName("dummyPollProcessor");
 
 		// 1 async group http req
@@ -69,8 +69,8 @@ public class TestTask extends BaseTestCase {
 		tw3.setTaskType("async");
 		tw3.setHttpClientType("httpClient");
 		tw3.setExecutionOption(new ExecuteOption());
-		template = new UrlTemplate("http://#:host:#/q?s=ebay&ql=1", HttpMethod.GET, null);
-		template.addParameters("s", "#:s:#").addParameters("ql", "1");
+		template = new UrlTemplate(UrlTemplate.encodeAllVariables("http://host/q?s=ebay&ql=1", "host"), HttpMethod.GET, null);
+		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
 		tw3.setUrlTemplate(template);
 		tw3.setHost("finance.yahoo.com");
 		tw3.addTemplateValueAsMap("s", "ebay");
@@ -100,8 +100,8 @@ public class TestTask extends BaseTestCase {
 		tw.setTaskType("async");
 		tw.setHttpClientType("httpClient");
 		tw.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#:host:#/q", HttpMethod.GET, null);
-		template.addParameters("s", "#:s:#").addParameters("ql", "1");
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host/q", "host"), HttpMethod.GET, null);
+		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
 		tw.setUrlTemplate(template);
 		tw.setHost("finance.yahoo.com");
 		tw.addTemplateValueAsMap("s", "ebay");

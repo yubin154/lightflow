@@ -20,13 +20,13 @@ public class TestUrlTemplate extends TestCase {
 		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate("https://#:host:#", HttpMethod.GET, null);
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET, null);
 		template.addHeader("content-type", "application/json");
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
-		tw2.setPollTemplate(new UrlTemplate("https://#:host:#"));
+		tw2.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw2.setPollProcessorName("dummyPollProcessor");
 		String tw2Json = JsonUtil.encode(tw2);
 		System.out.println(tw2Json);
@@ -34,7 +34,7 @@ public class TestUrlTemplate extends TestCase {
 
 	@Test
 	public void testUrlTemplateJson() throws Exception {
-		UrlTemplate template = new UrlTemplate("http://#:host:#", HttpMethod.POST, "test");
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.POST, "test");
 		template.addHeader("key1", "value1");
 		String urlJson = JsonUtil.encode(template);
 		System.out.println(urlJson);
@@ -44,8 +44,8 @@ public class TestUrlTemplate extends TestCase {
 
 	@Test
 	public void testUrlRequestJson() throws Exception {
-		UrlTemplate template = new UrlTemplate("http://#:host:#", HttpMethod.GET, "test");
-		template.addHeader("key1", "value1").addHeader("key2", "#:var2:#");
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET, "test");
+		template.addHeader("key1", "value1").addHeader("key2", UrlTemplate.encodeIfNeeded("var2"));
 		UrlRequest req = new UrlRequest(template);
 		req.setHost("www.ebay.com");
 		req.addTemplateValue("var2", "value2");
@@ -61,8 +61,8 @@ public class TestUrlTemplate extends TestCase {
 		
 		System.out.println("matched=" + "https://#host".matches("^(http|https)://#host.*"));
 
-		String url = "http://#:host:#:12020/#:something:#?#:somethingelse:#=ok";
-		String uuidRegex = "#:(.+?):#";
+		String url = "http://<host>:12020/<something>?<somethingelse>=ok";
+		String uuidRegex = "<(.+?)>";
 		System.out.println(url.matches(uuidRegex));
 		Pattern r = Pattern.compile(uuidRegex);
 		Matcher m = r.matcher(url);
@@ -86,7 +86,7 @@ public class TestUrlTemplate extends TestCase {
 		tw.setHttpClientType("httpClient");
 		tw.setExecutionOption(new ExecuteOption());
 		tw.setMonitorOption(new MonitorOption(1000, 5000));
-		tw.setUrlTemplate(new UrlTemplate("https://#:host:#"));
+		tw.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw.setHost("www.yahoo.com");
 		String twJson = JsonUtil.encode(tw);
 		System.out.println(twJson);

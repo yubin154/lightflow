@@ -13,7 +13,7 @@ import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 
 /**
  * a http request template, typically immutable
- * use #:...:# as delimiter for variables
+ * use <> as wrapper delimiters for variables
  * 
  * @author binyu
  *
@@ -21,9 +21,8 @@ import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class UrlTemplate {
 	
-	static final String URL_PATTERN = "^(http|https)://#:host:#.*";
-	static final String VAR_PATTERN = "#:(.+?):#";
-	
+	static final String URL_PATTERN = "^(http|https)://<.+?>.*";
+	static final String VAR_PATTERN = "<(.+?)>";	
 	static final Pattern r = Pattern.compile(VAR_PATTERN);
 
 	
@@ -120,7 +119,7 @@ public class UrlTemplate {
   		sources.addAll(headers.values());
   		sources.addAll(parameters.keySet());
   		sources.addAll(parameters.values());
-  		String vName = encodeVariableName(key);
+		String vName = key.matches(UrlTemplate.VAR_PATTERN) ? key : encodeIfNeeded(key);
 		for (String str : sources) {
 			if (str.indexOf(vName) >= 0) {
 				return true;
@@ -130,12 +129,18 @@ public class UrlTemplate {
 	}
 	private void validateUrl() {
 		if (!this.url.matches(URL_PATTERN)) {
-			throw new IllegalArgumentException("url must be in the format of http(s)://#:host:#...");
+			throw new IllegalArgumentException("url must be in the format of http(s)://<host>...");
 		}
 	}
 	
-	public static String encodeVariableName(String name) {
-		return String.format("#:%s:#", name);
+	public static String encodeIfNeeded(String variableName) {
+		return variableName.matches(UrlTemplate.VAR_PATTERN) ? variableName : String.format("<%s>", variableName);
+	}
+	public static String encodeAllVariables(String source, String...variables) {
+		for (String variable : variables) {
+			source = source.replace(variable, encodeIfNeeded(variable));
+		}
+		return source;
 	}
 
 }

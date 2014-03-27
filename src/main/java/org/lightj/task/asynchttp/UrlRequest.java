@@ -56,13 +56,10 @@ public class UrlRequest {
 		this.templateValues = templateValues;
 	}
 	public UrlRequest addTemplateValue(String k, String v) {
-		String key = k.matches(UrlTemplate.VAR_PATTERN) ? k : String.format("#:%s:#", k);
-		if (urlTemplate.hasVariableKey(key)) {
-			templateValues.put(key, v);
-		}
-		else {
+		if (!urlTemplate.hasVariableKey(k)) {
 			logger.warn("UrlTemplate for this UrlRequest does not have variable " + k);
 		}
+		templateValues.put(UrlTemplate.encodeIfNeeded(k), v);
 		return this;
 	}
 	public UrlRequest addAllTemplateValues(Map<String, String> values) {
@@ -92,7 +89,8 @@ public class UrlRequest {
 		return this;
 	}
 	public String getHost() {
-		return templateValues.containsKey("#:host:#") ? templateValues.get("#:host:#") : null;
+		String encodedHost = UrlTemplate.encodeIfNeeded("host");
+		return templateValues.containsKey(encodedHost) ? templateValues.get(encodedHost) : null;
 	}
 	@JsonIgnore
 	public IGlobalContext getGlobalConext() {
@@ -170,7 +168,7 @@ public class UrlRequest {
 			for (String variable : urlTemplate.getVariableNames()) {
 				if (globalContext.hasName(pivotValue, variable)) {
 					String value = globalContext.<String>getValueByName(pivotValue, variable);
-					template = template.replaceAll(UrlTemplate.encodeVariableName(variable), value);
+					template = template.replaceAll(UrlTemplate.encodeIfNeeded(variable), value);
 				}
 			}
 		}
