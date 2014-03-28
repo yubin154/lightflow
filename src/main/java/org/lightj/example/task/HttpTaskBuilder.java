@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import org.lightj.example.task.HttpTaskRequest.TaskType;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.GroupTask;
+import org.lightj.task.IGlobalContext;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.asynchttp.IHttpPollProcessor;
@@ -134,6 +135,8 @@ public class HttpTaskBuilder {
 				(tw.templateValues != null && tw.templateValues.size() > 1));
 		
 		final AsyncHttpClient client = SpringContextUtil.getBeanOfNameFromAllContext(tw.httpClientType, AsyncHttpClient.class);
+		final IGlobalContext globalContext = tw.globalContext != null ? SpringContextUtil.getBeanOfNameFromAllContext(tw.globalContext, IGlobalContext.class) : null; 
+		
 		switch(tt) {
 		case async:
 			if (!isGroupTask) {
@@ -141,6 +144,9 @@ public class HttpTaskBuilder {
 				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
 				if (tw.templateValues != null) {
 					urlReq.addAllTemplateValues(tw.templateValues.get(0));
+				}
+				if (globalContext != null) {
+					urlReq.setGlobalContext(globalContext);
 				}
 				atask.setReq(urlReq);
 				task = atask;
@@ -151,7 +157,11 @@ public class HttpTaskBuilder {
 					@Override
 					public SimpleHttpTask createTaskInstance() {
 						SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
-						atask.setReq(new UrlRequest(tw.urlTemplate));
+						UrlRequest urlReq = new UrlRequest(tw.urlTemplate);
+						if (globalContext != null) {
+							urlReq.setGlobalContext(globalContext);
+						}
+						atask.setReq(urlReq);
 						return atask;
 					}
 
@@ -188,6 +198,9 @@ public class HttpTaskBuilder {
 				if (tw.templateValues != null) {
 					urlReq.addAllTemplateValues(tw.templateValues.get(0));
 				}
+				if (globalContext != null) {
+					urlReq.setGlobalContext(globalContext);
+				}
 				btask.setReq(urlReq);
 				task = btask;
 			}
@@ -197,8 +210,12 @@ public class HttpTaskBuilder {
 					@Override
 					public SimpleHttpAsyncPollTask createTaskInstance() {
 						IHttpPollProcessor pp = SpringContextUtil.getBeanOfNameFromAllContext(tw.getPollProcessorName(), IHttpPollProcessor.class);
-						SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);			
-						btask.setHttpParams(new UrlRequest(tw.urlTemplate), new UrlRequest(tw.pollTemplate));
+						SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);
+						UrlRequest urlReq = new UrlRequest(tw.urlTemplate);
+						if (globalContext != null) {
+							urlReq.setGlobalContext(globalContext);
+						}
+						btask.setHttpParams(urlReq, new UrlRequest(tw.pollTemplate));
 						return btask;
 					}
 

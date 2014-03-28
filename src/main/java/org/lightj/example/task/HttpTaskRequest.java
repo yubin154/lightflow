@@ -35,10 +35,13 @@ public class HttpTaskRequest {
 	/** additional for asyncpoll */
 	MonitorOption monitorOption;
 	UrlTemplate pollTemplate;
-	private String pollProcessorName;
+	String pollProcessorName;
 	
 	/** custom handler name for spring bean */
-	private String customHandler;
+	String customHandler;
+	
+	/** global context name for spring bean */
+	String globalContext;
 	
 	public String getTaskType() {
 		return taskType;
@@ -122,5 +125,11 @@ public class HttpTaskRequest {
 	}
 	public void setHost(String host) {
 		this.hosts = new String[] {host};
+	}
+	public String getGlobalContext() {
+		return globalContext;
+	}
+	public void setGlobalContext(String globalContext) {
+		this.globalContext = globalContext;
 	}
 }
