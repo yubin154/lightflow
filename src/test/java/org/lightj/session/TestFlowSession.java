@@ -46,7 +46,7 @@ public class TestFlowSession extends BaseTestCase {
 			tw.setHttpClientType("httpClient");
 			tw.setExecutionOption(new ExecuteOption());
 			tw.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
-			tw.setHost(sites[i]);
+			tw.setHosts(sites[i]);
 			flow.getSessionContext().addUserRequests(tw);
 		}
 		
@@ -70,7 +70,7 @@ public class TestFlowSession extends BaseTestCase {
 
 		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"));
 		tw1.setUrlTemplate(template);
-		tw1.setHost("www.yahoo.com");
+		tw1.setHosts("www.yahoo.com");
 
 		tw1.setMonitorOption(new MonitorOption(1000, 10000));
 		tw1.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));

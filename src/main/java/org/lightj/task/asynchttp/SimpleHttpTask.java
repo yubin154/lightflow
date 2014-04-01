@@ -109,7 +109,7 @@ public class SimpleHttpTask extends AsyncHttpTask {
 				res = hasResult(TaskResultEnum.Failed, statusCode);
 			}
 
-			res.setRealResult(new SimpleHttpResponse(response));
+			res.setRawResult(new SimpleHttpResponse(response));
 		
 		} catch (Throwable t) {
 			res = this.failed(t.getMessage(), t);

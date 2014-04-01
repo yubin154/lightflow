@@ -35,7 +35,7 @@ public abstract class FlowTask extends ExecutableTask {
 	public TaskResult execute() {
 		try {
 			subFlow = createSubFlow();
-			long parentFlowId = this.<FlowContext>getContext().getSessionId();
+			long parentFlowId = this.<FlowContext>getFlowContext().getSessionId();
 			if (subFlow.getParentId() <= 0) {
 				subFlow.setParentId(parentFlowId);
 				FlowSessionFactory.getInstance().save(subFlow);

@@ -10,6 +10,15 @@ import java.util.List;
  */
 public abstract class GroupTask<E extends ExecutableTask> extends ExecutableTask {
 
+	private BatchOption batchOption;
+	
+	public BatchOption getBatchOption() {
+		return batchOption;
+	}
+	public void setBatchOption(BatchOption batchOption) {
+		this.batchOption = batchOption;
+	}
+
 	/** create new instance of a task */
 	public abstract E createTaskInstance();
 	

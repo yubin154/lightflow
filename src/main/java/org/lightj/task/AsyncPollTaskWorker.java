@@ -169,13 +169,13 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 		else if (curResult.getStatus().isComplete()) {
 			requestDone = true;
 			replyTask(CallbackType.submitted, task);
-			if (curResult.getRealResult() instanceof ExecutableTask) {
+			if (curResult.getRawResult() instanceof ExecutableTask) {
 
 				if (pollWorker == null) {
 					pollWorker = getContext().actorOf(new Props(TaskModule.getExecutableTaskWorkerFactory()));
 				}
 				if (pollTask == null) {
-					pollTask = (ExecutableTask) curResult.getRealResult();
+					pollTask = (ExecutableTask) curResult.getRawResult();
 				}
 
 				// start polling

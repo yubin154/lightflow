@@ -1,16 +1,18 @@
 package org.lightj.example.task;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.lightj.task.BatchOption;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.asynchttp.UrlTemplate;
 
 /**
- * wrapper class of user's request
+ * wrapper class of user's request, capturing everything needed to run a http task
+ * 
  * @author binyu
  *
  */
@@ -21,15 +23,19 @@ public class HttpTaskRequest {
 		async, asyncpoll;
 	}
 
-	/** type, async, asyncpoll, async_group, asyncpoll_group*/
+	/** type, async, asyncpoll */
 	String taskType;
+	
 	/** client name used to look up for spring bean */
 	String httpClientType;
 	
-	/** for async */
+	/** for sync */
 	ExecuteOption executionOption;
 	UrlTemplate urlTemplate;
-	List<Map<String, String>> templateValues;
+	
+	/** map of host to template value(s) **/
+	Map<String, HostTemplateValues> hostTemplateValues;
+	HostTemplateValues templateValuesForAllHosts;
 	String[] hosts;
 
 	/** additional for asyncpoll */
@@ -37,99 +43,180 @@ public class HttpTaskRequest {
 	UrlTemplate pollTemplate;
 	String pollProcessorName;
 	
-	/** custom handler name for spring bean */
+	/** custom handler name for spring bean, for custom result handling */
 	String customHandler;
 	
-	/** global context name for spring bean */
+	/** global context name for spring bean, for shared information */
 	String globalContext;
 	
+	/** batch option, for fanning out multiple requests */
+	BatchOption batchOption;
+	
+	public HttpTaskRequest setSyncTaskOptions(String httpClientType, UrlTemplate urlTemplate, ExecuteOption executionOption) {
+		this.taskType = TaskType.async.name();
+		this.urlTemplate = urlTemplate;
+		this.executionOption = executionOption;
+		this.httpClientType = httpClientType;
+		return this;
+	}
+	public HttpTaskRequest setAsyncPollTaskOption(String httpClientType, UrlTemplate urlTemplate, ExecuteOption executionOption,
+			UrlTemplate pollTemplate, MonitorOption monitorOption, String pollProcessorName) {
+		this.taskType = TaskType.asyncpoll.name();
+		this.httpClientType = httpClientType;
+		this.urlTemplate = urlTemplate;
+		this.executionOption = executionOption;
+		this.pollTemplate = pollTemplate;
+		this.monitorOption = monitorOption;
+		this.pollProcessorName = pollProcessorName;
+		return this;
+	}
 	public String getTaskType() {
 		return taskType;
 	}
-	public void setTaskType(String taskType) {
+	public HttpTaskRequest setTaskType(String taskType) {
 		this.taskType = taskType;
+		return this;
 	}
 	public String getHttpClientType() {
 		return httpClientType;
 	}
-	public void setHttpClientType(String httpClientType) {
+	public HttpTaskRequest setHttpClientType(String httpClientType) {
 		this.httpClientType = httpClientType;
+		return this;
 	}
 	public ExecuteOption getExecutionOption() {
 		return executionOption;
 	}
-	public void setExecutionOption(ExecuteOption executionOption) {
+	public HttpTaskRequest setExecutionOption(ExecuteOption executionOption) {
 		this.executionOption = executionOption;
+		return this;
 	}
 	public UrlTemplate getUrlTemplate() {
 		return urlTemplate;
 	}
-	public void setUrlTemplate(UrlTemplate urlTemplate) {
+	public HttpTaskRequest setUrlTemplate(UrlTemplate urlTemplate) {
 		this.urlTemplate = urlTemplate;
+		return this;
 	}
-	public List<Map<String, String>> getTemplateValues() {
-		return templateValues;
+	
+	/** template values for hosts */
+	public Map<String, HostTemplateValues> getHostTemplateValues() {
+		return hostTemplateValues;
 	}
-	public void setTemplateValues(List<Map<String, String>> templateValues) {
-		this.templateValues = templateValues;
-	}
-	public void addTemplateValue(Map<String, String> value) {
-		if (templateValues == null) {
-			templateValues = new ArrayList<Map<String, String>>();
+	/** template values for a specific hosts */ 
+	public HttpTaskRequest addHostTemplateValues(String host, HostTemplateValues values) {
+		if (hostTemplateValues == null) {
+			hostTemplateValues = new LinkedHashMap<String, HostTemplateValues>();
 		}
-		this.templateValues.add(value);
-	}
-	public void addTemplateValueAsMap(String k, String v) {
-		if (templateValues == null) {
-			templateValues = new ArrayList<Map<String, String>>();
+		if (!hostTemplateValues.containsKey(host)) {
+			hostTemplateValues.put(host, values);
 		}
-		HashMap<String, String> tval = new HashMap<String, String>();
-		tval.put(k, v);
-		this.templateValues.add(tval);
-	}
-	public void addAllTemplateValues(List<Map<String, String>> templateValues) {
-		if (templateValues == null) {
-			templateValues = new ArrayList<Map<String, String>>();
+		else {
+			hostTemplateValues.get(host).addAllTemplateValues(values.getTemplateValues());
 		}
-		this.templateValues.addAll(templateValues);
-	}	
+		return this;
+	}
+	/** template values that apply to all hosts */ 
+	public HttpTaskRequest setTemplateValuesForAllHosts(HostTemplateValues values) {
+		if (templateValuesForAllHosts == null) {
+			templateValuesForAllHosts = values;
+		}
+		else {
+			templateValuesForAllHosts.addAllTemplateValues(values.getTemplateValues());
+		}
+		return this;
+	}
+	/** template values that apply to all hosts */ 
+	public HostTemplateValues getTemplateValuesForAllHosts() {
+		return templateValuesForAllHosts;
+	}
+	/**
+	 * generate template values for this host
+	 * @param host
+	 * @return
+	 */
+	public HostTemplateValues getHostTemplateValuesForHost(String host) {
+		HostTemplateValues result = new HostTemplateValues();
+		List<Map<String, String>> templatesForAll = null;
+		List<Map<String, String>> templatesForHost = null;
+		if (templateValuesForAllHosts != null) {
+			templatesForAll = templateValuesForAllHosts.getTemplateValues();
+		}
+		if (hostTemplateValues != null && hostTemplateValues.containsKey(host)) {
+			templatesForHost = hostTemplateValues.get(host).getTemplateValues();
+		}
+		if (templatesForAll != null) {
+			if (templatesForHost != null) {
+				for (Map<String, String> template4All : templatesForAll) {
+					for (Map<String, String> template4Host : templatesForHost) {
+						result.addNewTemplateValue(template4Host).addToCurrentTemplate(template4All);
+					}
+				}
+			}
+			else {
+				result.addAllTemplateValues(templatesForAll);
+			}
+		}
+		else if (templatesForHost != null) {
+			result.addAllTemplateValues(templatesForHost);
+		}
+		return result;
+	}
+
 	public MonitorOption getMonitorOption() {
 		return monitorOption;
 	}
-	public void setMonitorOption(MonitorOption monitorOption) {
+	public HttpTaskRequest setMonitorOption(MonitorOption monitorOption) {
 		this.monitorOption = monitorOption;
+		return this;
 	}
 	public UrlTemplate getPollTemplate() {
 		return pollTemplate;
 	}
-	public void setPollTemplate(UrlTemplate pullTemplate) {
+	public HttpTaskRequest setPollTemplate(UrlTemplate pullTemplate) {
 		this.pollTemplate = pullTemplate;
+		return this;
 	}
 	public String getPollProcessorName() {
 		return pollProcessorName;
 	}
-	public void setPollProcessorName(String pollProcessorName) {
+	public HttpTaskRequest setPollProcessorName(String pollProcessorName) {
 		this.pollProcessorName = pollProcessorName;
+		return this;
 	}
 	public String getCustomHandler() {
 		return customHandler;
 	}
-	public void setCustomHandler(String customHandler) {
+	public HttpTaskRequest setCustomHandler(String customHandler) {
 		this.customHandler = customHandler;
+		return this;
 	}
 	public String[] getHosts() {
 		return hosts;
 	}
-	public void setHosts(String[] hosts) {
+	public HttpTaskRequest setHosts(String...hosts) {
 		this.hosts = hosts;
-	}
-	public void setHost(String host) {
-		this.hosts = new String[] {host};
+		return this;
 	}
 	public String getGlobalContext() {
 		return globalContext;
 	}
-	public void setGlobalContext(String globalContext) {
+	public HttpTaskRequest setGlobalContext(String globalContext) {
 		this.globalContext = globalContext;
+		return this;
+	}
+	public BatchOption getBatchOption() {
+		return batchOption;
+	}
+	public HttpTaskRequest setBatchOption(BatchOption batchOption) {
+		this.batchOption = batchOption;
+		return this;
+	}
+	@JsonIgnore
+	public boolean isGroupTask() {
+		return (hosts.length > 1 || 
+				(hostTemplateValues != null && (hostTemplateValues.size() > 1 || 
+						hostTemplateValues.entrySet().iterator().next().getValue().hasMultiple())) ||
+				(templateValuesForAllHosts != null && templateValuesForAllHosts.hasMultiple()));
 	}
 }

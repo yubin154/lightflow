@@ -1,6 +1,7 @@
 package org.lightj.task;
 
 import java.io.Serializable;
+import java.util.HashMap;
 
 import org.lightj.util.StringUtil;
 
@@ -20,7 +21,7 @@ public class TaskResult implements Serializable {
 	/** result status */
 	protected final TaskResultEnum status;
 	
-	/** task */
+	/** reference to the task */
 	protected final Task task;
 	
 	/** result msg */
@@ -29,8 +30,11 @@ public class TaskResult implements Serializable {
 	/** stack trace */
 	protected final Throwable stackTrace;
 	
+	/** result details as map */
+	private final HashMap<String, String> details = new HashMap<String, String>();
+	
 	/** real result object */
-	private Object realResult;
+	private Object rawResult;
 
 	/**
 	 * constructor
@@ -72,7 +76,7 @@ public class TaskResult implements Serializable {
 	 * @param stackTrace
 	 */
 	public TaskResult(Task task, Object realResult, TaskResultEnum status, String msg, Throwable stackTrace) {
-		this.realResult = realResult;
+		this.rawResult = realResult;
 		this.task = task;
 		this.status = status;
 		this.msg = msg;
@@ -96,12 +100,20 @@ public class TaskResult implements Serializable {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <C> C getRealResult() {
-		return (C) realResult;
+	public <C> C getRawResult() {
+		return (C) rawResult;
 	}
 
-	public void setRealResult(Object realResult) {
-		this.realResult = realResult;
+	public void setRawResult(Object rawResult) {
+		this.rawResult = rawResult;
+	}
+	
+	public void addResultDetail(String name, String value) {
+		this.details.put(name, value);
+	}
+
+	public HashMap<String, String> getDetails() {
+		return details;
 	}
 
 	public boolean isComplete() {

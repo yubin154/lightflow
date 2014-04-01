@@ -131,8 +131,7 @@ public class HttpTaskBuilder {
 		
 		TaskType tt = TaskType.valueOf(tw.taskType);
 		ExecutableTask task = null;
-		boolean isGroupTask = (tw.hosts.length > 1 || 
-				(tw.templateValues != null && tw.templateValues.size() > 1));
+		boolean isGroupTask = tw.isGroupTask();
 		
 		final AsyncHttpClient client = SpringContextUtil.getBeanOfNameFromAllContext(tw.httpClientType, AsyncHttpClient.class);
 		final IGlobalContext globalContext = tw.globalContext != null ? SpringContextUtil.getBeanOfNameFromAllContext(tw.globalContext, IGlobalContext.class) : null; 
@@ -142,8 +141,9 @@ public class HttpTaskBuilder {
 			if (!isGroupTask) {
 				SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
 				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
-				if (tw.templateValues != null) {
-					urlReq.addAllTemplateValues(tw.templateValues.get(0));
+				HostTemplateValues hostTemplate = tw.getHostTemplateValuesForHost(tw.getHosts()[0]);
+				if (!hostTemplate.isEmpty()) {
+					urlReq.addAllTemplateValues(hostTemplate.getTemplateValues().get(0));
 				}
 				if (globalContext != null) {
 					urlReq.setGlobalContext(globalContext);
@@ -169,18 +169,19 @@ public class HttpTaskBuilder {
 					public List<SimpleHttpTask> getTasks() {
 						ArrayList<SimpleHttpTask> results = new ArrayList<SimpleHttpTask>();
 						for (String host: tw.hosts) {
-							if (tw.templateValues != null) {
-								for (Map<String, String> tvalue : tw.templateValues) {
+							HostTemplateValues hostTemplate = tw.getHostTemplateValuesForHost(host);
+							if (hostTemplate.isEmpty()) {
+								SimpleHttpTask atask = createTaskInstance();
+								atask.getReq().setHost(host);
+								results.add(atask);
+							}
+							else {
+								for (Map<String, String> tvalue : hostTemplate.getTemplateValues()) {
 									SimpleHttpTask atask = createTaskInstance();
 									atask.getReq().addAllTemplateValues(tvalue);
 									atask.getReq().setHost(host);
 									results.add(atask);
 								}
-							}
-							else {
-								SimpleHttpTask atask = createTaskInstance();
-								atask.getReq().setHost(host);
-								results.add(atask);
 							}
 						}
 						return results;
@@ -195,13 +196,14 @@ public class HttpTaskBuilder {
 				IHttpPollProcessor pp = SpringContextUtil.getBeanOfNameFromAllContext(tw.getPollProcessorName(), IHttpPollProcessor.class);
 				SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);
 				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
-				if (tw.templateValues != null) {
-					urlReq.addAllTemplateValues(tw.templateValues.get(0));
+				HostTemplateValues hostTemplate = tw.getHostTemplateValuesForHost(tw.getHosts()[0]);
+				if (!hostTemplate.isEmpty()) {
+					urlReq.addAllTemplateValues(hostTemplate.getTemplateValues().get(0));
 				}
 				if (globalContext != null) {
 					urlReq.setGlobalContext(globalContext);
 				}
-				btask.setReq(urlReq);
+				btask.setHttpParams(urlReq, new UrlRequest(tw.pollTemplate));
 				task = btask;
 			}
 			else {
@@ -223,18 +225,19 @@ public class HttpTaskBuilder {
 					public List<SimpleHttpAsyncPollTask> getTasks() {
 						ArrayList<SimpleHttpAsyncPollTask> results = new ArrayList<SimpleHttpAsyncPollTask>();
 						for (String host: tw.hosts) {
-							if (tw.templateValues != null) {
-								for (Map<String, String> tvalue : tw.templateValues) {
+							HostTemplateValues hostTemplate = tw.getHostTemplateValuesForHost(host);
+							if (hostTemplate.isEmpty()) {
+								SimpleHttpAsyncPollTask atask = createTaskInstance();
+								atask.getReq().setHost(host);
+								results.add(atask);
+							}
+							else {
+								for (Map<String, String> tvalue : hostTemplate.getTemplateValues()) {
 									SimpleHttpAsyncPollTask atask = createTaskInstance();
 									atask.getReq().addAllTemplateValues(tvalue);
 									atask.getReq().setHost(host);
 									results.add(atask);
 								}
-							}
-							else {
-								SimpleHttpAsyncPollTask atask = createTaskInstance();
-								atask.getReq().setHost(host);
-								results.add(atask);
 							}
 						}
 						return results;

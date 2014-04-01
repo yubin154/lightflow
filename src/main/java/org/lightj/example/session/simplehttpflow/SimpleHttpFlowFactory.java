@@ -66,7 +66,7 @@ public class SimpleHttpFlowFactory {
 			public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
 					TaskResult result) {
 				
-				System.out.println(StringUtil.trimToLength(result.<SimpleHttpResponse>getRealResult().toString(), 100));
+				System.out.println(StringUtil.trimToLength(result.<SimpleHttpResponse>getRawResult().toString(), 100));
 			}
 			@Override
 			public TaskResultEnum executeOnCompleted(SimpleHttpFlowContext ctx,

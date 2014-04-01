@@ -24,13 +24,13 @@ public class UrlRequest {
 	static Logger logger = LoggerFactory.getLogger(UrlRequest.class);
 
 	/** nvp replacing variables in template with real values */
-	private HashMap<String, String> templateValues = new HashMap<String, String>();
+	final HashMap<String, String> templateValues = new HashMap<String, String>();
 	
 	/** url template, typically immutable and contains variables */
-	private UrlTemplate urlTemplate;
+	UrlTemplate urlTemplate;
 	
 	/** optionally lookup template value from external through this function */
-	private IGlobalContext globalContext;
+	IGlobalContext globalContext;
 	
 	/** constructor */
 	public UrlRequest() {
@@ -39,6 +39,7 @@ public class UrlRequest {
 	/** constructor */
 	public UrlRequest(UrlTemplate urlTemplate) { 
 		this.urlTemplate = urlTemplate; 
+		
 	}
 	
 	public UrlTemplate getUrlTemplate() {
@@ -48,13 +49,10 @@ public class UrlRequest {
 		this.urlTemplate = urlTemplate;
 	}
 
-	/**
-	 * dont use this directly, use {@link #addTemplateValue(String, String)} or {@link #addAllTemplateValues(Map)} instead
-	 * @param templateValues
-	 */
-	public void setTemplateValues(HashMap<String, String> templateValues) {
-		this.templateValues = templateValues;
+	public IGlobalContext getGlobalContext() {
+		return globalContext;
 	}
+
 	public UrlRequest addTemplateValue(String k, String v) {
 		if (!urlTemplate.hasVariableKey(k)) {
 			logger.warn("UrlTemplate for this UrlRequest does not have variable " + k);
@@ -70,7 +68,8 @@ public class UrlRequest {
 		}
 		return this;
 	}
-	protected UrlRequest putTemplateValuesIfNull(Map<String, String> values) {
+	/** internal use only */
+	UrlRequest putTemplateValuesIfNull(Map<String, String> values) {
 		for (Entry<String, String> value : values.entrySet()) {
 			if (!templateValues.containsKey(value.getKey())) {
 				templateValues.put(value.getKey(), value.getValue());
@@ -79,9 +78,10 @@ public class UrlRequest {
 		return this;
 	}
 	public String getTemplateValue(String k) {
-		return templateValues.get(k);
+		return templateValues.get(UrlTemplate.encodeIfNeeded(k));
 	}
-	public HashMap<String, String> getTemplateValues() {
+	/** internal use only */
+	HashMap<String, String> getTemplateValues() {
 		return templateValues;
 	}
 	public UrlRequest setHost(String host) {
@@ -89,8 +89,7 @@ public class UrlRequest {
 		return this;
 	}
 	public String getHost() {
-		String encodedHost = UrlTemplate.encodeIfNeeded("host");
-		return templateValues.containsKey(encodedHost) ? templateValues.get(encodedHost) : null;
+		return getTemplateValue("host");
 	}
 	@JsonIgnore
 	public IGlobalContext getGlobalConext() {
@@ -164,7 +163,7 @@ public class UrlRequest {
 	
 	private String templateReplaceAllByLookup(String template) {
 		if (globalContext != null) {
-			String pivotValue = globalContext.getPivotValue();
+			String pivotValue = getTemplateValue(globalContext.getPivotKey());
 			for (String variable : urlTemplate.getVariableNames()) {
 				if (globalContext.hasName(pivotValue, variable)) {
 					String value = globalContext.<String>getValueByName(pivotValue, variable);

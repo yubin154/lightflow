@@ -11,7 +11,6 @@ import org.lightj.session.CtxProp.CtxSaveType;
 import org.lightj.session.FlowContext;
 import org.lightj.task.ExecutableTask;
 
-@SuppressWarnings("rawtypes")
 public class SimpleHttpFlowContext extends FlowContext {
 	
 	// some input as string, that gets persisted on value change

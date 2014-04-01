@@ -60,7 +60,7 @@ public class HelloWorldFlowFactory {
 		// create the task
 		ExecutableTask task = new DummyTask() {
 			public TaskResult execute() {
-				this.<HelloWorldFlowContext>getContext().incTaskCount();
+				this.<HelloWorldFlowContext>getFlowContext().incTaskCount();
 				return super.execute();
 			}			
 		};
@@ -238,7 +238,7 @@ public class HelloWorldFlowFactory {
 		for (int i = 0; i < 10; i++) {
 			tasks.add(new DummyTask() {
 				public TaskResult execute() {
-					this.<HelloWorldFlowContext>getContext().incBatchCount();
+					this.<HelloWorldFlowContext>getFlowContext().incBatchCount();
 					return super.execute();
 				}				
 			});
@@ -262,8 +262,8 @@ public class HelloWorldFlowFactory {
 		ExecutableTask task = new DummyTask() {
 			
 			public TaskResult execute() {
-				if (this.<HelloWorldFlowContext>getContext().isInjectFailure()) {
-					if (this.<HelloWorldFlowContext>getContext().isControlledFailure()) {
+				if (this.<HelloWorldFlowContext>getFlowContext().isInjectFailure()) {
+					if (this.<HelloWorldFlowContext>getFlowContext().isControlledFailure()) {
 						return this.failed(TaskResultEnum.Failed, "unit test injected failure", new Exception("unit test injected failure"));
 					}
 					else {

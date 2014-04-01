@@ -15,6 +15,6 @@ public interface ITaskContext {
 	 * @param name
 	 * @return
 	 */
-	public <C> void setValueForName(String name, C value);
+	public void setValueForName(String name, Object value);
 
 }

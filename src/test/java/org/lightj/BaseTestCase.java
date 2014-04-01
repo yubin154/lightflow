@@ -4,6 +4,7 @@ import java.io.File;
 
 import junit.framework.TestCase;
 
+import org.lightj.RuntimeContext;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationException;
 import org.lightj.initialization.InitializationProcessor;

@@ -6,8 +6,11 @@
  */
 package org.lightj.task;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
+import org.lightj.session.FlowContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +37,7 @@ public abstract class Task {
 	protected String extTaskUuid;
 	
 	/** local context */
-	private ITaskContext context;
+	private Map<String, Object> context = new HashMap<String, Object>();
 	
 	/** optional global context */
 	private IGlobalContext globalContext;
@@ -85,12 +88,23 @@ public abstract class Task {
 		return monitorOption != null;
 	}
 	
-	@SuppressWarnings("unchecked")
-	public <T extends ITaskContext> T getContext() {
-		return (T) context;
+	public Map<String, Object> getContext() {
+		return context;
 	}
-	public void setContext(ITaskContext context) {
-		this.context = context;
+	public void addContext(String name, Object value) {
+		this.context.put(name, value);
+	}
+	@SuppressWarnings("unchecked")
+	public <T> T getContextValue(String name) {
+		return (T) context.get(name);
+	}
+	static final String FLOW_CTX_NAME = "FLOW_CTX";
+	public void setFlowContext(FlowContext flowContext) {
+		this.context.put(FLOW_CTX_NAME, flowContext);
+	}
+	@SuppressWarnings("unchecked")
+	public <T extends FlowContext> T getFlowContext() {
+		return (T) context.get(FLOW_CTX_NAME);
 	}
 
 	public IGlobalContext getGlobalContext() {

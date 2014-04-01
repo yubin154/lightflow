@@ -52,8 +52,8 @@ public class SimpleHttpAsyncPollTask extends SimpleHttpTask {
 	protected BoundRequestBuilder buildHttpRequest(UrlRequest req) {
 		BoundRequestBuilder builder = super.buildHttpRequest(req);
 		pollReq.putTemplateValuesIfNull(req.getTemplateValues());
-		if (this.hasGlobalContext()) {
-			pollReq.setGlobalContext(this.getGlobalContext());
+		if (req.getGlobalConext()!=null) {
+			pollReq.setGlobalContext(req.getGlobalContext());
 		}
 		return builder;
 	}
@@ -65,7 +65,7 @@ public class SimpleHttpAsyncPollTask extends SimpleHttpTask {
 			res = pollProcessor.preparePollTask(this, response, pollReq);
 			if (TaskResultEnum.Success == res.getStatus()) {
 				AsyncHttpTask pollTask = createPollTask(pollReq);
-				res.setRealResult(pollTask);
+				res.setRawResult(pollTask);
 			}
 		} catch (Throwable t) {
 			res = this.failed(t.getMessage(), t);
@@ -90,7 +90,7 @@ public class SimpleHttpAsyncPollTask extends SimpleHttpTask {
 				try {
 					res = SimpleHttpAsyncPollTask.this.pollProcessor.checkPollProgress(SimpleHttpAsyncPollTask.this, response);
 					if (res != null && res.isComplete()) {
-						res.setRealResult(new SimpleHttpResponse(response));
+						res.setRawResult(new SimpleHttpResponse(response));
 					}
 				} catch (Throwable t) {
 					res = this.failed(t.getMessage(), t);

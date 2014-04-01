@@ -28,7 +28,6 @@ import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepErrorLog;
 import org.lightj.session.step.StepLog;
 import org.lightj.session.step.StepLog.TaskLog;
-import org.lightj.task.ITaskContext;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.util.JsonUtil;
@@ -44,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * @author biyu
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class FlowContext implements ITaskContext {
+public class FlowContext {
 	
 	static final Logger logger = LoggerFactory.getLogger(FlowContext.class);
 
@@ -233,7 +232,7 @@ public class FlowContext implements ITaskContext {
 	 * @param name
 	 * @return
 	 */
-	public <C> void setValueForName(String name, C value) {
+	public void setValueForName(String name, Object value) {
 		try {
 			Method setter = new PropertyDescriptor(name, this.getClass()).getWriteMethod();
 			setter.invoke(this, value);

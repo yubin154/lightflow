@@ -87,7 +87,7 @@ public class TestUrlTemplate extends TestCase {
 		tw.setExecutionOption(new ExecuteOption());
 		tw.setMonitorOption(new MonitorOption(1000, 5000));
 		tw.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
-		tw.setHost("www.yahoo.com");
+		tw.setHosts("www.yahoo.com");
 		String twJson = JsonUtil.encode(tw);
 		System.out.println(twJson);
 		try {

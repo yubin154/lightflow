@@ -13,7 +13,6 @@ import org.lightj.util.StringUtil;
  * @author binyu
  *
  */
-@SuppressWarnings("rawtypes")
 public class StepLog implements Serializable {
 	
 	/**

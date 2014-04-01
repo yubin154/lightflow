@@ -5,6 +5,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.lightj.BaseTestCase;
+import org.lightj.example.task.HostTemplateValues;
 import org.lightj.example.task.HttpTaskBuilder;
 import org.lightj.example.task.HttpTaskRequest;
 import org.lightj.initialization.BaseModule;
@@ -72,8 +73,8 @@ public class TestTask extends BaseTestCase {
 		template = new UrlTemplate(UrlTemplate.encodeAllVariables("http://host/q?s=ebay&ql=1", "host"), HttpMethod.GET, null);
 		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
 		tw3.setUrlTemplate(template);
-		tw3.setHost("finance.yahoo.com");
-		tw3.addTemplateValueAsMap("s", "ebay");
+		tw3.setHosts("finance.yahoo.com");
+		tw3.setTemplateValuesForAllHosts(new HostTemplateValues().addNewTemplateValue("s", "ebay"));
 		
 		StandaloneTaskListener listener = new StandaloneTaskListener();
 		listener.setDelegateHandler(new SimpleTaskEventHandler<FlowContext>() {
@@ -81,7 +82,7 @@ public class TestTask extends BaseTestCase {
 			@Override
 			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
 				System.out.print(String.format("%s,%s", result.getStatus(), 
-						StringUtil.trimToLength(result.<SimpleHttpResponse>getRealResult().getResponseBody(), 200)));
+						StringUtil.trimToLength(result.<SimpleHttpResponse>getRawResult().getResponseBody(), 200)));
 			}
 
 			@Override
@@ -97,14 +98,11 @@ public class TestTask extends BaseTestCase {
 
 	public void testParameter() throws Exception {
 		HttpTaskRequest tw = new HttpTaskRequest();
-		tw.setTaskType("async");
-		tw.setHttpClientType("httpClient");
-		tw.setExecutionOption(new ExecuteOption());
 		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host/q", "host"), HttpMethod.GET, null);
 		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
-		tw.setUrlTemplate(template);
-		tw.setHost("finance.yahoo.com");
-		tw.addTemplateValueAsMap("s", "ebay");
+		tw.setSyncTaskOptions("httpClient", template, new ExecuteOption());
+		tw.setHosts("finance.yahoo.com");
+		tw.setTemplateValuesForAllHosts(new HostTemplateValues().addNewTemplateValue("s", "ebay"));
 		
 		StandaloneTaskListener listener = new StandaloneTaskListener();
 		listener.setDelegateHandler(new SimpleTaskEventHandler<FlowContext>() {
@@ -112,7 +110,7 @@ public class TestTask extends BaseTestCase {
 			@Override
 			public void executeOnResult(FlowContext ctx, Task task, TaskResult result) {
 				System.out.print(String.format("%s,%s", result.getStatus(), 
-						StringUtil.trimToLength(result.<SimpleHttpResponse>getRealResult().getResponseBody(), 200)));
+						StringUtil.trimToLength(result.<SimpleHttpResponse>getRawResult().getResponseBody(), 200)));
 			}
 
 			@Override

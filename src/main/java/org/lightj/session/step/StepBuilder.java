@@ -132,22 +132,27 @@ public class StepBuilder {
 	 */
 	public StepBuilder executeTasksInContext(
 			final String contextName,
-			final BatchOption batchOption, 
+			final String batchOptionContextName, 
 			final IAroundExecution extraExec) 
 	{
 		this.execute(
 				
-		new TaskStepExecution(batchOption, extraExec) {
+		new TaskStepExecution(null, extraExec) {
 
 			@Override
 			public List getInitialTasks() {
+				if (batchOptionContextName != null) {
+					this.setBatchOption(sessionContext.<BatchOption>getValueByName(batchOptionContextName));
+				}
 				Object val = sessionContext.getValueByName(contextName);
 				ArrayList<ExecutableTask> ctasks = new ArrayList<ExecutableTask>();
 				if (val instanceof ExecutableTask) {
 					ctasks.add((ExecutableTask) val);
-				} else if (val instanceof ExecutableTask[]) {
+				} 
+				else if (val instanceof ExecutableTask[]) {
 					ctasks.addAll(Arrays.asList((ExecutableTask[]) val));
-				} else if (val instanceof Collection<?>) {
+				} 
+				else if (val instanceof Collection<?>) {
 					for (Object obj : (Collection) val) {
 						if (obj instanceof ExecutableTask) {
 							ctasks.add((ExecutableTask) obj);

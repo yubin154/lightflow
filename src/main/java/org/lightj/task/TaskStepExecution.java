@@ -49,6 +49,15 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 		this.extraExec = extraExec;
 	}
 	
+	public BatchOption getBatchOption() {
+		return batchOption;
+	}
+
+	public void setBatchOption(BatchOption batchOption) {
+		this.batchOption = batchOption;
+	}
+
+
 	@Override
 	public StepTransition execute() throws FlowExecutionException {
 		
@@ -66,7 +75,7 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 		
 		for (ExecutableTask task : realTasks) {
 			// inject the context
-			task.setContext(sessionContext);
+			task.setFlowContext(sessionContext);
 		}
 		
 		final BatchTask batchTask = new BatchTask(batchOption, realTasks.toArray(new ExecutableTask[0]));
@@ -112,7 +121,7 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 		List<ExecutableTask> realTasks = new ArrayList<ExecutableTask>();
 		List<ExecutableTask> initialTasks = getInitialTasks();
 		for (ExecutableTask task : initialTasks) {
-			task.setContext(sessionContext);
+			task.setFlowContext(sessionContext);
 			if (task instanceof GroupTask) {
 				realTasks.addAll(((GroupTask) task).getTasks());
 			}
