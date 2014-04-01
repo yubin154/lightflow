@@ -8,11 +8,15 @@ import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.util.StringUtil;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 /**
  * step log
  * @author binyu
  *
  */
+@JsonInclude(Include.NON_EMPTY)
 public class StepLog implements Serializable {
 	
 	/**
@@ -102,6 +106,7 @@ public class StepLog implements Serializable {
 	 * @author biyu
 	 *
 	 */
+	@JsonInclude(Include.NON_EMPTY)
 	public static class TaskLog {
 		String taskInfo;
 		String extTaskUuid;

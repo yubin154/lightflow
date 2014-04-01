@@ -5,12 +5,16 @@ import java.util.HashMap;
 
 import org.lightj.util.StringUtil;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 
 /**
  * task results
  * @author biyu
  * 
- */ 
+ */
+@JsonInclude(Include.NON_NULL)
 public class TaskResult implements Serializable {
 	
 	/**

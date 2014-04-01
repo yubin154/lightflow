@@ -6,7 +6,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import junit.framework.Assert;
 
-import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import org.lightj.BaseTestCase;
 import org.lightj.example.dal.LocalDatabaseEnum;
@@ -23,6 +22,8 @@ import org.lightj.task.asynchttp.UrlTemplate;
 import org.lightj.util.ConcurrentUtil;
 import org.lightj.util.JsonUtil;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 public class TestFlowSession extends BaseTestCase {

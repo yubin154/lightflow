@@ -4,11 +4,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.codehaus.jackson.annotate.JsonIgnore;
 import org.lightj.task.BatchOption;
 import org.lightj.task.ExecuteOption;
 import org.lightj.task.MonitorOption;
 import org.lightj.task.asynchttp.UrlTemplate;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * wrapper class of user's request, capturing everything needed to run a http task

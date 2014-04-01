@@ -184,7 +184,7 @@ public class HelloWorldFlowFactory {
 
 				// poll every second, up to 5 seconds
 				final MonitorOption monitorOption = new MonitorOption(1000, 5000);
-				final UrlTemplate template = new UrlTemplate("https://#host");
+				final UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"));
 				
 				ArrayList<SimpleHttpAsyncPollTask> tasks = new ArrayList<SimpleHttpAsyncPollTask>();
 				for (String host : ctx.getGoodHosts()) {

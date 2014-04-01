@@ -64,65 +64,6 @@ public class HttpTaskBuilder {
 	}
 	
 	/**
-	 * agent poll processor
-	 * @return
-	 */
-	public @Bean @Scope("singleton") IHttpPollProcessor agentPollProcessor() {
-
-		final String successRegex = ".*\\\"progress\\\"\\s*:\\s*100.*";
-		final String failureRegex = ".*\\\"error\\\"\\s*:\\s*(.*),.*";
-		// matching pattern "status": "/status/uuid"
-		final String uuidRegex = ".*\\\"/status/(.*?)\\\".*,";
-		final Pattern r = Pattern.compile(uuidRegex);
-		return new IHttpPollProcessor() {
-
-			@Override
-			public TaskResult checkPollProgress(Task task, Response response) throws IOException {
-				
-				int sCode = response.getStatusCode();
-				if (sCode >= 400) {
-					return task.failed(Integer.toString(sCode), null);
-				}
-				String body = response.getResponseBody();
-				if (body.matches(successRegex)) {
-					return task.succeeded();
-				}
-				else if (body.matches(failureRegex)) {
-					return task.failed(body, null);
-				}
-				return null;
-			}
-
-			@Override
-			public TaskResult preparePollTask(
-					Task task,
-					Response response,
-					UrlRequest pollReq) throws IOException 
-			{
-				int sCode = response.getStatusCode();
-				if (sCode >= 400) {
-					if (sCode == 401) {
-						// update key 
-					}
-					return task.failed(Integer.toString(sCode), null);
-				}
-				String body = response.getResponseBody();
-				Matcher m = r.matcher(body);
-				if (m.find()) {
-					String uuid = m.group(1);
-					task.setExtTaskUuid(uuid);
-					pollReq.addTemplateValue("#uuid", uuid);
-					return task.succeeded();
-				} else {
-					return task.failed("cannot find uuid", null);
-				}
-			}
-			
-		};
-		
-	}
-	
-	/**
 	 * build a real http task from http task wrapper
 	 * @param tw
 	 * @return

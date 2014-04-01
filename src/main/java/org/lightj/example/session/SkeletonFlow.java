@@ -3,8 +3,6 @@ package org.lightj.example.session;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.lightj.example.dal.LocalDatabaseEnum;
 import org.lightj.initialization.BaseModule;
 import org.lightj.initialization.InitializationProcessor;
@@ -18,6 +16,9 @@ import org.lightj.session.step.IFlowStep;
 import org.lightj.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 @FlowProperties(typeId="Skeleton", desc="Bare minimal of a flow", clustered=false, interruptible=false, timeoutInSec=0)
 public class SkeletonFlow extends FlowSession<SkeletonFlowContext> {
