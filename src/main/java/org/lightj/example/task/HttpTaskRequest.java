@@ -220,4 +220,39 @@ public class HttpTaskRequest {
 						hostTemplateValues.entrySet().iterator().next().getValue().hasMultiple())) ||
 				(templateValuesForAllHosts != null && templateValuesForAllHosts.hasMultiple()));
 	}
+	
+	public HttpTaskRequest createNew() {
+		HttpTaskRequest newReq = new HttpTaskRequest();
+		if (this.batchOption != null) {
+			newReq.batchOption = new BatchOption(this.batchOption.getConcurrentRate(), 
+					this.batchOption.getStrategy());
+		}
+		newReq.customHandler = this.customHandler;
+		if (this.executionOption != null) {
+			newReq.executionOption = new ExecuteOption(
+					executionOption.getInitialDelayMs(), 
+					executionOption.getTimeoutInMs(), 
+					executionOption.getMaxRetry(), 
+					executionOption.getRetryDelayMs());
+		}
+		newReq.globalContext = this.globalContext;
+		newReq.httpClientType = this.httpClientType;
+		if (this.monitorOption != null) {
+			newReq.monitorOption = new MonitorOption(
+					monitorOption.getInitialDelayMs(), 
+					monitorOption.getMonitorIntervalMs(), 
+					monitorOption.getTimeoutInMs(), 
+					monitorOption.getMaxRetry(), 
+					monitorOption.getRetryDelayMs());
+		}
+		newReq.pollProcessorName = this.pollProcessorName;
+		if (this.pollTemplate != null) {
+			newReq.pollTemplate = this.pollTemplate.createNew();
+		}
+		newReq.taskType = this.taskType;
+		if (this.urlTemplate != null) {
+			newReq.urlTemplate = this.urlTemplate.createNew();
+		}
+		return newReq;
+	}
 }

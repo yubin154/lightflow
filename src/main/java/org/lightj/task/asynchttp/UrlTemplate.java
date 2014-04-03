@@ -134,6 +134,16 @@ public class UrlTemplate {
 		}
 	}
 	
+	public UrlTemplate createNew() {
+		UrlTemplate newUrl = new UrlTemplate();
+		newUrl.body = this.body;
+		newUrl.headers.putAll(this.headers);
+		newUrl.method = this.method;
+		newUrl.parameters.putAll(this.parameters);
+		newUrl.url = this.url;
+		return newUrl;
+	}
+	
 	public static String encodeIfNeeded(String variableName) {
 		return variableName.matches(UrlTemplate.VAR_PATTERN) ? variableName : String.format("<%s>", variableName);
 	}
