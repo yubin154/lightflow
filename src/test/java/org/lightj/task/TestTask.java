@@ -63,7 +63,7 @@ public class TestTask extends BaseTestCase {
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
 		tw2.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
-		tw2.setPollProcessorName("dummyPollProcessor");
+		tw2.setResProcessorName("dummyPollProcessor");
 
 		// 1 async group http req
 		HttpTaskRequest tw3 = new HttpTaskRequest();
@@ -100,7 +100,7 @@ public class TestTask extends BaseTestCase {
 		HttpTaskRequest tw = new HttpTaskRequest();
 		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host/q", "host"), HttpMethod.GET, null);
 		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
-		tw.setSyncTaskOptions("httpClient", template, new ExecuteOption());
+		tw.setSyncTaskOptions("httpClient", template, new ExecuteOption(), null);
 		tw.setHosts("finance.yahoo.com");
 		tw.setTemplateValuesForAllHosts(new HostTemplateValues().addNewTemplateValue("s", "ebay"));
 		

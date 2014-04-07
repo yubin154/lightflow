@@ -42,7 +42,7 @@ public class HttpTaskRequest {
 	/** additional for asyncpoll */
 	MonitorOption monitorOption;
 	UrlTemplate pollTemplate;
-	String pollProcessorName;
+	String resProcessorName;
 	
 	/** custom handler name for spring bean, for custom result handling */
 	String customHandler;
@@ -53,22 +53,23 @@ public class HttpTaskRequest {
 	/** batch option, for fanning out multiple requests */
 	BatchOption batchOption;
 	
-	public HttpTaskRequest setSyncTaskOptions(String httpClientType, UrlTemplate urlTemplate, ExecuteOption executionOption) {
+	public HttpTaskRequest setSyncTaskOptions(String httpClientType, UrlTemplate urlTemplate, ExecuteOption executionOption, String resProcessorName) {
 		this.taskType = TaskType.async.name();
 		this.urlTemplate = urlTemplate;
 		this.executionOption = executionOption;
 		this.httpClientType = httpClientType;
+		this.resProcessorName = resProcessorName;
 		return this;
 	}
 	public HttpTaskRequest setAsyncPollTaskOption(String httpClientType, UrlTemplate urlTemplate, ExecuteOption executionOption,
-			UrlTemplate pollTemplate, MonitorOption monitorOption, String pollProcessorName) {
+			UrlTemplate pollTemplate, MonitorOption monitorOption, String resProcessorName) {
 		this.taskType = TaskType.asyncpoll.name();
 		this.httpClientType = httpClientType;
 		this.urlTemplate = urlTemplate;
 		this.executionOption = executionOption;
 		this.pollTemplate = pollTemplate;
 		this.monitorOption = monitorOption;
-		this.pollProcessorName = pollProcessorName;
+		this.resProcessorName = resProcessorName;
 		return this;
 	}
 	public String getTaskType() {
@@ -178,11 +179,11 @@ public class HttpTaskRequest {
 		this.pollTemplate = pullTemplate;
 		return this;
 	}
-	public String getPollProcessorName() {
-		return pollProcessorName;
+	public String getResProcessorName() {
+		return resProcessorName;
 	}
-	public HttpTaskRequest setPollProcessorName(String pollProcessorName) {
-		this.pollProcessorName = pollProcessorName;
+	public HttpTaskRequest setResProcessorName(String pollProcessorName) {
+		this.resProcessorName = pollProcessorName;
 		return this;
 	}
 	public String getCustomHandler() {
@@ -220,6 +221,10 @@ public class HttpTaskRequest {
 						hostTemplateValues.entrySet().iterator().next().getValue().hasMultiple())) ||
 				(templateValuesForAllHosts != null && templateValuesForAllHosts.hasMultiple()));
 	}
+	@JsonIgnore
+	public boolean isNoopTask() {
+		return (hosts.length == 0);
+	}
 	
 	public HttpTaskRequest createNew() {
 		HttpTaskRequest newReq = new HttpTaskRequest();
@@ -245,7 +250,7 @@ public class HttpTaskRequest {
 					monitorOption.getMaxRetry(), 
 					monitorOption.getRetryDelayMs());
 		}
-		newReq.pollProcessorName = this.pollProcessorName;
+		newReq.resProcessorName = this.resProcessorName;
 		if (this.pollTemplate != null) {
 			newReq.pollTemplate = this.pollTemplate.createNew();
 		}

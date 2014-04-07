@@ -139,12 +139,18 @@ public class UrlRequest {
 		return headersReal;
 	}
 	
+	/** replace all variable in a string template */
 	private String replace(String value) {
 		value = templateReplaceAll(value, templateValues);
 		value = templateReplaceAllByLookup(value);
 		return value;
 	}
 	
+	/**
+	 * replace all variables in a map entry, and put values in a new map
+	 * @param entry
+	 * @param target
+	 */
 	private void replaceAndSet(Entry<String, String> entry, Map<String, String> target) {
 		String key = entry.getKey();
 		String value = entry.getValue();

@@ -75,7 +75,7 @@ public class TestFlowSession extends BaseTestCase {
 
 		tw1.setMonitorOption(new MonitorOption(1000, 10000));
 		tw1.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
-		tw1.setPollProcessorName("dummyPollProcessor");
+		tw1.setResProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw1);
 
@@ -98,7 +98,7 @@ public class TestFlowSession extends BaseTestCase {
 
 		tw3.setMonitorOption(new MonitorOption(1000, 5000));
 		tw3.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
-		tw3.setPollProcessorName("dummyPollProcessor");
+		tw3.setResProcessorName("dummyPollProcessor");
 
 		flow.getSessionContext().addUserRequests(tw3);
 

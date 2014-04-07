@@ -1,14 +1,19 @@
-package org.lightj.task;
+package org.lightj.session.step;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.exception.FlowExecutionException;
-import org.lightj.session.step.IAroundExecution;
-import org.lightj.session.step.SimpleStepExecution;
-import org.lightj.session.step.StepCallbackHandler;
-import org.lightj.session.step.StepTransition;
+import org.lightj.task.BatchOption;
+import org.lightj.task.BatchTask;
+import org.lightj.task.BatchTaskWorker;
+import org.lightj.task.ExecutableTask;
+import org.lightj.task.ExecuteOption;
+import org.lightj.task.GroupTask;
+import org.lightj.task.NoopTask;
+import org.lightj.task.TaskModule;
+import org.lightj.task.WorkerMessageType;
 
 import akka.actor.Actor;
 import akka.actor.ActorRef;
@@ -109,7 +114,7 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 			}
 		}));
 		
-		batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
+		batchWorker.tell(WorkerMessageType.REPROCESS_REQUEST, null);
 	}
 	
 	/**

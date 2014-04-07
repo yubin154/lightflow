@@ -6,10 +6,10 @@ import java.util.Collection;
 import java.util.List;
 
 import org.lightj.session.FlowResult;
+import org.lightj.session.step.TaskFactoryStepExecution.IFlowContextTaskFactory;
 import org.lightj.task.BatchOption;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.TaskStepExecution;
 
 /**
  * build a flow step
@@ -172,7 +172,7 @@ public class StepBuilder {
 	 * @return
 	 */
 	public StepBuilder executeTasks(final ExecutableTask...tasks) {
-		return this.executeTasks(null, null, tasks);
+		return this.executeTasks(null, tasks);
 	}
 	
 	/**
@@ -183,12 +183,11 @@ public class StepBuilder {
 	 */
 	public StepBuilder executeTasks(
 			final BatchOption batchOption,
-			final IAroundExecution extraExec,
 			final ExecutableTask...tasks) 
 	{
 		this.execute(
 				
-			new TaskStepExecution(batchOption, extraExec) {
+			new TaskStepExecution(batchOption, null) {
 
 				@Override
 				public List getInitialTasks() {
@@ -199,7 +198,19 @@ public class StepBuilder {
 		
 		return this;
 	}
-	
+
+	/**
+	 * execute tasks from task factory
+	 * 
+	 * @param taskFactory
+	 * @return
+	 */
+	public StepBuilder executeTasks(final IFlowContextTaskFactory taskFactory) 
+	{
+		this.execute(new TaskFactoryStepExecution(taskFactory));
+		return this;
+	}
+
 	/**
 	 * convenient method
 	 * @return

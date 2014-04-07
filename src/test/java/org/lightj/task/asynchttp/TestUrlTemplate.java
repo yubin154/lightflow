@@ -27,7 +27,7 @@ public class TestUrlTemplate extends TestCase {
 		
 		tw2.setMonitorOption(new MonitorOption(1000, 10000));
 		tw2.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
-		tw2.setPollProcessorName("dummyPollProcessor");
+		tw2.setResProcessorName("dummyPollProcessor");
 		String tw2Json = JsonUtil.encode(tw2);
 		System.out.println(tw2Json);
 	}

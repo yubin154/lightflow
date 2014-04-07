@@ -62,11 +62,28 @@ public class SimpleHttpAsyncPollTask extends SimpleHttpTask {
 	public TaskResult onComplete(Response response) {
 		TaskResult res = null;
 		try {
-			res = pollProcessor.preparePollTask(this, response, pollReq);
+			if (pollProcessor != null) {
+				res = pollProcessor.preparePollTask(this, response, pollReq);
+			}
+			if (res == null) {
+				int sCode = response.getStatusCode();
+				String statusCode = Integer.toString(sCode);
+				if (sCode >= 400) {
+					res = this.hasResult(TaskResultEnum.Failed, statusCode);
+				}
+				else {
+					res = this.succeeded();
+				}
+			}
+			
 			if (TaskResultEnum.Success == res.getStatus()) {
 				AsyncHttpTask pollTask = createPollTask(pollReq);
 				res.setRawResult(pollTask);
 			}
+			else {
+				res.setRawResult(new SimpleHttpResponse(response));
+			}
+			
 		} catch (Throwable t) {
 			res = this.failed(t.getMessage(), t);
 		}

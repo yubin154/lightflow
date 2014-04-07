@@ -1,10 +1,8 @@
 package org.lightj.task.asynchttp;
 
-import java.io.IOException;
 import java.util.Map.Entry;
 
 import org.lightj.task.ExecuteOption;
-import org.lightj.task.Task;
 import org.lightj.task.TaskExecutionRuntimeException;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
@@ -63,6 +61,7 @@ public class SimpleHttpTask extends AsyncHttpTask {
 			req.setGlobalContext(this.getGlobalContext());
 		}
 		String url = req.generateUrl();
+		this.addContext("host", req.getHost());
 		this.setExtTaskUuid(url);
 		switch (req.getMethod()) {
 		case GET:
@@ -112,50 +111,33 @@ public class SimpleHttpTask extends AsyncHttpTask {
 	@Override
 	public TaskResult onComplete(Response response) {
 		
+		TaskResult res = null;
 		try {
-			return resProcessor != null ? resProcessor.processHttpReponse(this, response) : 
-				new HttpResponseProcessor().processHttpReponse(this, response);
-		} catch (IOException e) {
-			return this.failed(e.getMessage(), e);
-		}
+			if (resProcessor != null) {
+				res = resProcessor.processHttpReponse(this, response);
+			}
+			if (res == null) {
+				int sCode = response.getStatusCode();
+				String statusCode = Integer.toString(sCode);
+				if (sCode >= 400) {
+					res = this.hasResult(TaskResultEnum.Failed, statusCode);
+				}
+				else {
+					res = this.succeeded();
+				}
+			}
+			res.setRawResult(new SimpleHttpResponse(response));
 		
+		} catch (Throwable t) {
+			res = this.failed(t.getMessage(), t);
+		}
+		return res;
+
 	}
 
 	@Override
 	public TaskResult onThrowable(Throwable t) {
 		return this.failed(TaskResultEnum.Failed, t.getMessage(), t);
 	}
-	
-	/**
-	 * default http response processor
-	 * @author biyu
-	 *
-	 */
-	static class HttpResponseProcessor implements IHttpProcessor {
-
-		@Override
-		public TaskResult processHttpReponse(Task task, Response response)
-				throws IOException {
-			TaskResult res = null;
-			try {
-				int sCode = response.getStatusCode();
-				String statusCode = Integer.toString(sCode);
-				if (sCode >= 200 && sCode < 300) {
-					res = task.succeeded();
-				}
-				else {
-					res = task.hasResult(TaskResultEnum.Failed, statusCode);
-				}
-
-				res.setRawResult(new SimpleHttpResponse(response));
-			
-			} catch (Throwable t) {
-				res = task.failed(t.getMessage(), t);
-			}
-			return res;
-		}
-		
-	}
-	
 }
 

@@ -8,7 +8,7 @@ import akka.actor.UntypedActor;
  * @author binyu
  *
  */
-public class UnlimitedStrategy extends UntypedActor implements IWorker {
+public class UnlimitedStrategy extends UntypedActor {
 
 	@Override
 	public void onReceive(Object message) throws Exception {

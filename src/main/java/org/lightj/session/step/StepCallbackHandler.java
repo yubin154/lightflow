@@ -217,14 +217,26 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	public synchronized StepTransition executeOnCompleted(Task task)
 			throws FlowExecutionException 
 	{
-		StepTransition trans = null;
 		TaskResultEnum status = null;
 		if (delegateHandler != null) {
 			status = delegateHandler.executeOnCompleted(sessionContext, results);
 		}
-		if (status == null) {
+		if (status == TaskResultEnum.Running) {
+			return StepTransition.CALLBACK;
+		}
+		else if (status == null) {
 			status = aggregateResults(results);
 		}
+		return mapStatus2Transition(status);
+	}
+	
+	/**
+	 * map status to result
+	 * @param status
+	 * @return
+	 */
+	public StepTransition mapStatus2Transition(TaskResultEnum status) {
+		StepTransition trans = null;
 		if (mapOnResults.containsKey(status)) {
 			trans = mapOnResults.get(status).execute();
 		}
@@ -234,7 +246,6 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		else {
 			return defResult;
 		}
-		
 	}
 	
 	/**

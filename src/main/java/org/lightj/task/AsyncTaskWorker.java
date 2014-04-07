@@ -49,7 +49,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 
 	/** internal message type for handling exception, result, and timeout */
 	private enum InternalMessageType {
-		PROCESS_ON_TIMEOUT
+		PROCESS_ON_TIMEOUT, RETRY_REQUEST
 	}
 	
 	/** constructor */
@@ -90,6 +90,11 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 				case PROCESS_ON_TIMEOUT:
 					reply(task.failed(TaskResultEnum.Timeout, "RequestTimeOut", null));
 
+					break;
+					
+				case RETRY_REQUEST:
+					processRequest();
+					
 					break;
 					
 				}
@@ -165,7 +170,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 					.system()
 					.scheduler()
 					.scheduleOnce(Duration.create(task.getExecOptions().getRetryDelayMs(), TimeUnit.MILLISECONDS), getSelf(),
-							"PROCESS_REQUEST", getContext().system().dispatcher());
+							InternalMessageType.RETRY_REQUEST, getContext().system().dispatcher());
 		} 
 		else {
 			// We have exceeded all retries, reply back to sender

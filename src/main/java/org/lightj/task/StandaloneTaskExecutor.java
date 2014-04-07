@@ -76,7 +76,7 @@ public class StandaloneTaskExecutor {
 			}
 		}));
 		
-		batchWorker.tell(IWorker.WorkerMessageType.REPROCESS_REQUEST, null);
+		batchWorker.tell(WorkerMessageType.REPROCESS_REQUEST, null);
 	}
 
 	/**

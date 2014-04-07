@@ -247,7 +247,6 @@ public class HelloWorldFlowFactory {
 		// build execution with batching option of max concurrency of 5 tasks
 		return new StepBuilder().executeTasks(
 				new BatchOption(10, Strategy.MAX_CONCURRENT_RATE_SLIDING),
-				null,
 				tasks.toArray(new ExecutableTask[0])).getFlowStep();
 	}
 

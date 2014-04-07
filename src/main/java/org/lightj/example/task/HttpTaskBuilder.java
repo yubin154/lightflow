@@ -1,19 +1,18 @@
 package org.lightj.example.task;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.lightj.example.task.HttpTaskRequest.TaskType;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.GroupTask;
 import org.lightj.task.IGlobalContext;
+import org.lightj.task.NoopTask;
 import org.lightj.task.Task;
 import org.lightj.task.TaskResult;
 import org.lightj.task.asynchttp.IHttpPollProcessor;
+import org.lightj.task.asynchttp.IHttpProcessor;
 import org.lightj.task.asynchttp.SimpleHttpAsyncPollTask;
 import org.lightj.task.asynchttp.SimpleHttpTask;
 import org.lightj.task.asynchttp.UrlRequest;
@@ -72,6 +71,11 @@ public class HttpTaskBuilder {
 		
 		TaskType tt = TaskType.valueOf(tw.taskType);
 		ExecutableTask task = null;
+		
+		if (tw.isNoopTask()) {
+			return new NoopTask();
+		}
+
 		boolean isGroupTask = tw.isGroupTask();
 		
 		final AsyncHttpClient client = SpringContextUtil.getBeanOfNameFromAllContext(tw.httpClientType, AsyncHttpClient.class);
@@ -79,6 +83,8 @@ public class HttpTaskBuilder {
 		
 		switch(tt) {
 		case async:
+			final IHttpProcessor processor = tw.getResProcessorName() != null ?
+						SpringContextUtil.getBeanOfNameFromAllContext(tw.getResProcessorName(), IHttpProcessor.class) : null;
 			if (!isGroupTask) {
 				SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
 				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
@@ -88,6 +94,9 @@ public class HttpTaskBuilder {
 				}
 				if (globalContext != null) {
 					urlReq.setGlobalContext(globalContext);
+				}
+				if (processor != null) {
+					atask.setResProcessor(processor);
 				}
 				atask.setReq(urlReq);
 				task = atask;
@@ -114,6 +123,9 @@ public class HttpTaskBuilder {
 							if (hostTemplate.isEmpty()) {
 								SimpleHttpTask atask = createTaskInstance();
 								atask.getReq().setHost(host);
+								if (processor != null) {
+									atask.setResProcessor(processor);
+								}
 								results.add(atask);
 							}
 							else {
@@ -121,6 +133,9 @@ public class HttpTaskBuilder {
 									SimpleHttpTask atask = createTaskInstance();
 									atask.getReq().addAllTemplateValues(tvalue);
 									atask.getReq().setHost(host);
+									if (processor != null) {
+										atask.setResProcessor(processor);
+									}
 									results.add(atask);
 								}
 							}
@@ -133,8 +148,9 @@ public class HttpTaskBuilder {
 			break;
 			
 		case asyncpoll:
+			final IHttpPollProcessor pp = tw.getResProcessorName() != null ?
+					SpringContextUtil.getBeanOfNameFromAllContext(tw.getResProcessorName(), IHttpPollProcessor.class) : null;
 			if (!isGroupTask) {
-				IHttpPollProcessor pp = SpringContextUtil.getBeanOfNameFromAllContext(tw.getPollProcessorName(), IHttpPollProcessor.class);
 				SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);
 				UrlRequest urlReq = new UrlRequest(tw.urlTemplate).setHost(tw.hosts[0]);
 				HostTemplateValues hostTemplate = tw.getHostTemplateValuesForHost(tw.getHosts()[0]);
@@ -152,7 +168,6 @@ public class HttpTaskBuilder {
 
 					@Override
 					public SimpleHttpAsyncPollTask createTaskInstance() {
-						IHttpPollProcessor pp = SpringContextUtil.getBeanOfNameFromAllContext(tw.getPollProcessorName(), IHttpPollProcessor.class);
 						SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);
 						UrlRequest urlReq = new UrlRequest(tw.urlTemplate);
 						if (globalContext != null) {

@@ -13,7 +13,7 @@ import akka.actor.UntypedActor;
  *
  */
 
-public class MaxConcurrentStrategy extends UntypedActor implements IWorker {
+public class MaxConcurrentStrategy extends UntypedActor {
 
 	/** concurrent rate */
 	private final AtomicInteger concurrentRate = new AtomicInteger(0);

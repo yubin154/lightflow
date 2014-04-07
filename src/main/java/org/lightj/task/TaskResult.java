@@ -1,7 +1,6 @@
 package org.lightj.task;
 
 import java.io.Serializable;
-import java.util.HashMap;
 
 import org.lightj.util.StringUtil;
 
@@ -33,9 +32,6 @@ public class TaskResult implements Serializable {
 	
 	/** stack trace */
 	protected final Throwable stackTrace;
-	
-	/** result details as map */
-	private final HashMap<String, String> details = new HashMap<String, String>();
 	
 	/** real result object */
 	private Object rawResult;
@@ -113,11 +109,10 @@ public class TaskResult implements Serializable {
 	}
 	
 	public void addResultDetail(String name, String value) {
-		this.details.put(name, value);
+		this.task.addContext(name, value);
 	}
-
-	public HashMap<String, String> getDetails() {
-		return details;
+	public String getResultDetail(String name) {
+		return this.task.<String>getContextValue(name);
 	}
 
 	public boolean isComplete() {
