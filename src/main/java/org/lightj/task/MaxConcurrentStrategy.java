@@ -43,7 +43,7 @@ public class MaxConcurrentStrategy extends UntypedActor {
 			else if (message instanceof RateSettingMessage) {
 				maxConcurrentRate = ((RateSettingMessage) message).getMaxRate();
 			}
-			else if (message == WorkerMessageType.COMPLETE_TASK) {
+			else if (message == WorkerMessage.Type.COMPLETE_TASK) {
 				
 				concurrentRate.decrementAndGet();
 				getSender().tell(taskQ.take(), getSelf());

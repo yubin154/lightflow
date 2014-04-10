@@ -13,7 +13,7 @@ import org.lightj.task.ExecuteOption;
 import org.lightj.task.GroupTask;
 import org.lightj.task.NoopTask;
 import org.lightj.task.TaskModule;
-import org.lightj.task.WorkerMessageType;
+import org.lightj.task.WorkerMessage;
 
 import akka.actor.Actor;
 import akka.actor.ActorRef;
@@ -73,7 +73,7 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 		List<ExecutableTask> realTasks = getRealTasks();
 		
 		if (realTasks.isEmpty()) {
-			realTasks.add(new NoopTask(new ExecuteOption(1000, 0, 0, 0)));
+			realTasks.add(new NoopTask(new ExecuteOption().setInitDelaySec(1)));
 		}
 		
 		final StepCallbackHandler chandler = this.flowStep.getResultHandler();
@@ -114,7 +114,7 @@ public abstract class TaskStepExecution<T extends FlowContext> extends SimpleSte
 			}
 		}));
 		
-		batchWorker.tell(WorkerMessageType.REPROCESS_REQUEST, null);
+		batchWorker.tell(WorkerMessage.Type.PROCESS_REQUEST, null);
 	}
 	
 	/**

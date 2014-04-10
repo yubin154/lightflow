@@ -2,6 +2,10 @@ package org.lightj.task;
 
 public class WorkerMessage {
 	
+	public static enum Type {
+		PROCESS_REQUEST, COMPLETE_TASK, COMPLETE_REQUEST
+	}
+	
 	/** callback types */
 	public static enum CallbackType {
 		created, submitted, taskresult

@@ -1,8 +1,6 @@
 package org.lightj.session.step;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 import org.lightj.session.FlowResult;
@@ -121,48 +119,6 @@ public class StepBuilder {
 	public StepBuilder onException(String step) {
 		StepErrorHandler handler = new StepErrorHandler(StepTransition.runToStep(step).withResult(FlowResult.Failed));
 		flowStep.setErrorHandler(handler);
-		return this;
-	}
-	
-	/**
-	 * pick up tasks from context and execute
-	 * @param contextName
-	 * @param batchOption
-	 * @return
-	 */
-	public StepBuilder executeTasksInContext(
-			final String contextName,
-			final String batchOptionContextName, 
-			final IAroundExecution extraExec) 
-	{
-		this.execute(
-				
-		new TaskStepExecution(null, extraExec) {
-
-			@Override
-			public List getInitialTasks() {
-				if (batchOptionContextName != null) {
-					this.setBatchOption(sessionContext.<BatchOption>getValueByName(batchOptionContextName));
-				}
-				Object val = sessionContext.getValueByName(contextName);
-				ArrayList<ExecutableTask> ctasks = new ArrayList<ExecutableTask>();
-				if (val instanceof ExecutableTask) {
-					ctasks.add((ExecutableTask) val);
-				} 
-				else if (val instanceof ExecutableTask[]) {
-					ctasks.addAll(Arrays.asList((ExecutableTask[]) val));
-				} 
-				else if (val instanceof Collection<?>) {
-					for (Object obj : (Collection) val) {
-						if (obj instanceof ExecutableTask) {
-							ctasks.add((ExecutableTask) obj);
-						}
-					}
-				}
-				return ctasks;
-			}
-		});
-
 		return this;
 	}
 	

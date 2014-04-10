@@ -7,7 +7,6 @@ import org.lightj.session.FlowSession;
 import org.lightj.session.FlowSessionFactory;
 import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.DelayedEnclosure;
-import org.lightj.session.step.IAroundExecution;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.RetryEnclosure;
 import org.lightj.session.step.SimpleStepExecution;
@@ -15,6 +14,8 @@ import org.lightj.session.step.StepBuilder;
 import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepExecution;
 import org.lightj.session.step.StepTransition;
+import org.lightj.session.step.TaskFactoryStepExecution.IFlowContextTaskFactory;
+import org.lightj.session.step.TaskFactoryStepExecution.TaskInFlow;
 import org.lightj.task.BatchOption;
 import org.lightj.task.BatchOption.Strategy;
 import org.lightj.task.ExecutableTask;
@@ -145,7 +146,17 @@ public class HelloWorldFlowFactory {
 	public @Bean @Scope("prototype") IFlowStep helloWorldTimeoutStep() 
 	{
 		// task
-		DummyTask task = new DummyTask(new ExecuteOption(0, 100));
+		DummyTask task = new DummyTask(new ExecuteOption().setTimeOutSec(1)) {
+			@Override
+			public TaskResult execute() {
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					// ignore
+				}
+				return super.execute();
+			}
+		};
 		
 		// result handler, increment counter if task result if timeout
 		StepCallbackHandler resultHandler = new StepCallbackHandler<HelloWorldFlowContext>();
@@ -172,57 +183,60 @@ public class HelloWorldFlowFactory {
 	 */
 	public @Bean @Scope("prototype") IFlowStep helloWorldAsyncPollStep()
 	{
-		return new StepBuilder().executeTasksInContext("asyncPollTasks", null, new IAroundExecution<HelloWorldFlowContext>() {
+		return new StepBuilder().executeTasks(
+				new IFlowContextTaskFactory<HelloWorldFlowContext>() {
 
-			@Override
-			public void preExecute(HelloWorldFlowContext ctx)
-					throws FlowExecutionException {
-				// create and configure async http client
-				AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
-				config.setConnectionTimeOutInMs(3000);
-				final AsyncHttpClient client = new AsyncHttpClient(config);
-
-				// poll every second, up to 5 seconds
-				final MonitorOption monitorOption = new MonitorOption(1000, 5000);
-				final UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"));
+					@Override
+					public TaskInFlow<HelloWorldFlowContext> createTaskInFlow(
+							HelloWorldFlowContext context, int sequence) {
 				
-				ArrayList<SimpleHttpAsyncPollTask> tasks = new ArrayList<SimpleHttpAsyncPollTask>();
-				for (String host : ctx.getGoodHosts()) {
-					SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, new ExecuteOption(), monitorOption, 
-							new IHttpPollProcessor() {
+						AsyncHttpClientConfigBean config = new AsyncHttpClientConfigBean();
+						config.setConnectionTimeOutInMs(3000);
+						final AsyncHttpClient client = new AsyncHttpClient(config);
 
-						@Override
-						public TaskResult checkPollProgress(Task task, Response response) {
-							if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
-								return task.succeeded();
+						// poll every second, up to 5 seconds
+						final MonitorOption monitorOption = new MonitorOption(1, 5);
+						final UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"));
+				
+						IHttpPollProcessor pollProcessor = new IHttpPollProcessor() {
+
+							@Override
+							public TaskResult checkPollProgress(Task task, Response response) {
+								if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+									return task.succeeded();
+								}
+								else {
+									return task.failed(TaskResultEnum.Failed, Integer.toString(response.getStatusCode()), null);
+								}
 							}
-							else {
-								return task.failed(TaskResultEnum.Failed, Integer.toString(response.getStatusCode()), null);
-							}
+
+							@Override
+							public TaskResult preparePollTask(Task task, Response response, UrlRequest pollReq) 
+							{
+								if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+									return task.succeeded();
+								}
+								else {
+									return task.failed(TaskResultEnum.Failed, Integer.toString(response.getStatusCode()), null);
+								}
+							}						
+						};
+				
+						ArrayList<SimpleHttpAsyncPollTask> tasks = new ArrayList<SimpleHttpAsyncPollTask>();
+						for (String host : context.getGoodHosts()) {
+							SimpleHttpAsyncPollTask task = new SimpleHttpAsyncPollTask(client, 
+																				new ExecuteOption(), 
+																				monitorOption, 
+																				pollProcessor);
+					
+							task.setHttpParams(new UrlRequest(template).setHost(host), new UrlRequest(template));
+							tasks.add(task);
 						}
 
-						@Override
-						public TaskResult preparePollTask(Task task, Response response, UrlRequest pollReq) 
-						{
-							if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
-								return task.succeeded();
-							}
-							else {
-								return task.failed(TaskResultEnum.Failed, Integer.toString(response.getStatusCode()), null);
-							}
-						}						
-					});
-					task.setHttpParams(new UrlRequest(template).setHost(host), new UrlRequest(template));
-					tasks.add(task);
-				}
-				ctx.addToScrapbook("asyncPollTasks", tasks);
-			}
-
-			@Override
-			public void postExecute(HelloWorldFlowContext ctx)
-					throws FlowExecutionException {
-			}
-
+						return new TaskInFlow<HelloWorldFlowContext>(
+								null, null, tasks.toArray(new SimpleHttpAsyncPollTask[0]));
+					}
+			
 		}).getFlowStep();
 	}
 
@@ -286,16 +300,15 @@ public class HelloWorldFlowFactory {
 	static class DummyTask extends ExecutableTask {
 		
 		TaskResult result;
-		DummyTask() {super();}
-		DummyTask(ExecuteOption option) { super(option); }
+		DummyTask() { 
+			this(new ExecuteOption().setInitDelaySec(1)); 
+		}
+		DummyTask(ExecuteOption option) { 
+			super(option); 
+		}
 		
 		@Override
 		public TaskResult execute() {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				return this.hasResult(TaskResultEnum.Failed, e.getMessage());
-			}
 			return result==null ? this.hasResult(TaskResultEnum.Success, null) : result;
 		}
 

@@ -9,8 +9,9 @@ import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.SimpleStepExecution;
 import org.lightj.session.step.StepBuilder;
-import org.lightj.session.step.StepCallbackHandler;
 import org.lightj.session.step.StepTransition;
+import org.lightj.session.step.TaskFactoryStepExecution.IFlowContextTaskFactory;
+import org.lightj.session.step.TaskFactoryStepExecution.TaskInFlow;
 import org.lightj.task.ExecutableTask;
 import org.lightj.task.ITaskEventHandler;
 import org.lightj.task.SimpleTaskEventHandler;
@@ -23,7 +24,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
-@SuppressWarnings("rawtypes")
 @Configuration
 public class SimpleHttpFlowFactory {
 	
@@ -61,26 +61,35 @@ public class SimpleHttpFlowFactory {
 	@Bean 
 	@Scope("prototype")
 	public static IFlowStep runHttpTasksStep() {
-		ITaskEventHandler<SimpleHttpFlowContext> myHandler = new SimpleTaskEventHandler<SimpleHttpFlowContext>() {
+		
+		return new StepBuilder().executeTasks(new IFlowContextTaskFactory<SimpleHttpFlowContext>(){
+
 			@Override
-			public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
-					TaskResult result) {
+			public TaskInFlow<SimpleHttpFlowContext> createTaskInFlow(
+					SimpleHttpFlowContext context, int sequence) 
+			{
+				// task
+				ExecutableTask task = context.getCurrentTask();
 				
-				System.out.println(StringUtil.trimToLength(result.<SimpleHttpResponse>getRawResult().toString(), 100));
-			}
-			@Override
-			public TaskResultEnum executeOnCompleted(SimpleHttpFlowContext ctx,
-					Map<String, TaskResult> results) {
-				ctx.incTaskIndex();
-				return super.executeOnCompleted(ctx, results);
+				// handler
+				ITaskEventHandler<SimpleHttpFlowContext> myHandler = new SimpleTaskEventHandler<SimpleHttpFlowContext>() {
+					@Override
+					public void executeOnResult(SimpleHttpFlowContext ctx, Task task,
+							TaskResult result) {
+						System.out.println(StringUtil.trimToLength(result.<SimpleHttpResponse>getRawResult().toString(), 100));
+					}
+					@Override
+					public TaskResultEnum executeOnCompleted(SimpleHttpFlowContext ctx,
+							Map<String, TaskResult> results) {
+						ctx.incTaskIndex();
+						return super.executeOnCompleted(ctx, results);
+					}
+					
+				};
+				return new TaskInFlow<SimpleHttpFlowContext>(null, myHandler, task);
 			}
 			
-		};
-		StepCallbackHandler callbackHandler = new StepCallbackHandler<SimpleHttpFlowContext>("buildHttpTasks").setDelegateHandler(myHandler);
-		return new StepBuilder()
-				.executeTasksInContext("currentTask", null, null)
-				.onResult(callbackHandler)
-				.getFlowStep();
+		}).onSuccess("buildHttpTasks").getFlowStep();
 	}
 
 }

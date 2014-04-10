@@ -1,6 +1,5 @@
 package org.lightj.task;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
@@ -12,68 +11,57 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class ExecuteOption {
 	
-	/** default timeout in 24 hours */
-	private static long DEFAULT_TIMEOUT = 24 * 60 * 60 * 1000L;
-
 	/** timeout delta from now, 0 - infinite */
-	private long timeoutInMs;
+	private long timeOutSec;
 	
 	/** initial delay in millisecond, 0 - right away */
-	private long initialDelayMs;
+	private long initDelaySec;
 	
 	/** execution retry on failure */
 	private int maxRetry;
 	
 	/** retry delay */
-	private long retryDelayMs;
+	private long retryDelaySec;
 	
+	/** default constructor */
 	public ExecuteOption() {
-		this(0,0,0,0);
 	}
-		
-	public ExecuteOption(long initialDelayMs, long timeoutInMs, int execRetry, long retryDelayMs) 
+	
+	/** full constructor */
+	public ExecuteOption(long initDelaySec, long timeOutSec, int maxRetry, long retryDelaySec) 
 	{
-		this.initialDelayMs = initialDelayMs;
-		this.timeoutInMs = timeoutInMs;
-		this.maxRetry = execRetry;
-		this.retryDelayMs = retryDelayMs;
+		this.initDelaySec = initDelaySec;
+		this.timeOutSec = timeOutSec;
+		this.maxRetry = maxRetry;
+		this.retryDelaySec = retryDelaySec;
 	}
 
-	public ExecuteOption(long initialDelayMs, long timeoutInMs) 
-	{
-		this(initialDelayMs, timeoutInMs, 0, 0);
+	public long getTimeOutSec() {
+		return timeOutSec;
 	}
-
-	public long getTimeoutInMs() {
-		return timeoutInMs;
-	}
-	@JsonIgnore
-	public long getTimeOutAt() {
-		return System.currentTimeMillis() + (timeoutInMs > 0 ? timeoutInMs : DEFAULT_TIMEOUT);
-	}
-	public long getInitialDelayMs() {
-		return initialDelayMs;
+	public long getInitDelaySec() {
+		return initDelaySec;
 	}
 	public int getMaxRetry() {
 		return maxRetry;
 	}
-	public long getRetryDelayMs() {
-		return retryDelayMs;
+	public long getRetryDelaySec() {
+		return retryDelaySec;
 	}
-	@JsonIgnore
-	public boolean hasTimeout() {
-		return timeoutInMs > 0;
+	public ExecuteOption setTimeOutSec(long timeOutSec) {
+		this.timeOutSec = timeOutSec;
+		return this;
 	}
-	public void setTimeoutInMs(long timeoutInMs) {
-		this.timeoutInMs = timeoutInMs;
+	public ExecuteOption setInitDelaySec(long initDelaySec) {
+		this.initDelaySec = initDelaySec;
+		return this;
 	}
-	public void setInitialDelayMs(long initialDelayMs) {
-		this.initialDelayMs = initialDelayMs;
-	}
-	public void setMaxRetry(int maxRetry) {
+	public ExecuteOption setMaxRetry(int maxRetry) {
 		this.maxRetry = maxRetry;
+		return this;
 	}
-	public void setRetryDelayMs(long retryDelayMs) {
-		this.retryDelayMs = retryDelayMs;
+	public ExecuteOption setRetryDelaySec(long retryDelaySec) {
+		this.retryDelaySec = retryDelaySec;
+		return this;
 	}
 }

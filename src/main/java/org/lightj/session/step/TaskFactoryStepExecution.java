@@ -3,8 +3,6 @@ package org.lightj.session.step;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.lightj.session.FlowContext;
 import org.lightj.session.exception.FlowExecutionException;
@@ -20,8 +18,7 @@ import org.lightj.task.Task;
 import org.lightj.task.TaskModule;
 import org.lightj.task.TaskResult;
 import org.lightj.task.TaskResultEnum;
-import org.lightj.task.WorkerMessageType;
-import org.lightj.util.ConcurrentUtil;
+import org.lightj.task.WorkerMessage;
 
 import akka.actor.Actor;
 import akka.actor.ActorRef;
@@ -36,10 +33,11 @@ import akka.actor.UntypedActorFactory;
  * @param <T>
  */
 @SuppressWarnings({ "rawtypes"})
-public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepExecution<T> {
+public class TaskFactoryStepExecution<T extends FlowContext> extends StepExecution<T> {
 	
 	/** user provide taskFactory */
 	private IFlowContextTaskFactory<T> taskFactory;
+	private int sequence = 0;
 	
 	/** constructor */
 	public TaskFactoryStepExecution(IFlowContextTaskFactory<T> taskFactory) 
@@ -53,42 +51,41 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepE
 	public StepTransition execute() throws FlowExecutionException {
 
 		TaskInFlow<T> taskInFlow = null; 
-		ReentrantLock lock = new ReentrantLock();
-		Condition cond = lock.newCondition();
-		TaskResultEnum latestStatus = TaskResultEnum.Running;
-		int sequence = 0;
 		
-		do {
+		taskInFlow = taskFactory.createTaskInFlow(sessionContext, sequence++);
+		
+		if (taskInFlow != null) {
 			
-			taskInFlow = taskFactory.createTaskInFlow(sessionContext, sequence++);
-
+			// has task to run, run it
 			List<ExecutableTask> realTasks = new ArrayList<ExecutableTask>();
-			if (taskInFlow.task != null) {
-				realTasks.addAll(getRealTasks(taskInFlow.task));
+			if (taskInFlow.tasks != null) {
+				realTasks.addAll(getRealTasks(taskInFlow.tasks));
 			}
 			if (realTasks.isEmpty()) {
-				realTasks.add(new NoopTask(new ExecuteOption(1000, 0, 0, 0)));
+				realTasks.add(new NoopTask(new ExecuteOption().setInitDelaySec(1)));
 			}
 			for (ExecutableTask task : realTasks) {
 				// inject the context
 				task.setFlowContext(sessionContext);
 			}
 
-			final StepCallbackHandler chandler = this.flowStep.getResultHandler();
-			TaskEventHandlerWrapper handler = new TaskEventHandlerWrapper(taskInFlow.taskEventHandler, lock, cond);
-			chandler.setDelegateHandler(handler);
-
 			final BatchTask batchTask = new BatchTask(taskInFlow.batchOption,
 					realTasks.toArray(new ExecutableTask[0]));
-			
+
+			final StepCallbackHandler chandler = this.flowStep.getResultHandler();
+			TaskEventHandlerWrapper handler = new TaskEventHandlerWrapper(taskInFlow.taskEventHandler);
+			chandler.setDelegateHandler(handler);
+
 			fire(batchTask, chandler);
 			
-			ConcurrentUtil.wait(lock, cond);
-			latestStatus = handler.latestStatus;
-				
-		} while (latestStatus == TaskResultEnum.Running && taskInFlow != null);
-		
-		return this.flowStep.getResultHandler().mapStatus2Transition(latestStatus);
+			// always wait for callback
+			return StepTransition.CALLBACK;
+		}
+		else {
+			// no more task to run, go to next step
+			return this.flowStep.getResultHandler().mapStatus2Transition(null);
+		}
+
 	}
 	
 	/**
@@ -112,7 +109,7 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepE
 			}
 		}));
 		
-		batchWorker.tell(WorkerMessageType.REPROCESS_REQUEST, null);
+		batchWorker.tell(WorkerMessage.Type.PROCESS_REQUEST, null);
 	}
 	
 	/**
@@ -120,14 +117,16 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepE
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	private List<ExecutableTask> getRealTasks(ExecutableTask initialTask) {
+	private List<ExecutableTask> getRealTasks(ExecutableTask... initialTasks) {
 		List<ExecutableTask> realTasks = new ArrayList<ExecutableTask>();
-		initialTask.setFlowContext(sessionContext);
-		if (initialTask instanceof GroupTask) {
-			realTasks.addAll(((GroupTask) initialTask).getTasks());
-		}
-		else {
-			realTasks.add(initialTask);
+		for (ExecutableTask initialTask : initialTasks) {
+			initialTask.setFlowContext(sessionContext);
+			if (initialTask instanceof GroupTask) {
+				realTasks.addAll(((GroupTask) initialTask).getTasks());
+			}
+			else {
+				realTasks.add(initialTask);
+			}
 		}
 		return realTasks;
 	}
@@ -156,13 +155,14 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepE
 	 *
 	 * @param <T>
 	 */
-	public static class TaskInFlow<T extends FlowContext> {
-		public ExecutableTask task;
+	public static class TaskInFlow<T extends FlowContext> 
+	{
+		public ExecutableTask[] tasks;
 		public BatchOption batchOption;
 		public ITaskEventHandler taskEventHandler;
 		public TaskInFlow() {}
-		public TaskInFlow(ExecutableTask task, BatchOption batchOption, ITaskEventHandler handler) {
-			this.task = task;
+		public TaskInFlow(BatchOption batchOption, ITaskEventHandler handler, ExecutableTask... tasks) {
+			this.tasks = tasks;
 			this.batchOption = batchOption;
 			this.taskEventHandler = handler;
 		}
@@ -174,19 +174,12 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepE
 	 *
 	 */
 	@SuppressWarnings("unchecked")
-	static class TaskEventHandlerWrapper implements ITaskEventHandler {
+	class TaskEventHandlerWrapper implements ITaskEventHandler 
+	{
 		ITaskEventHandler delegate;
-		ReentrantLock lock;
-		Condition cond;
-		TaskResultEnum latestStatus;
-		public TaskEventHandlerWrapper(
-				ITaskEventHandler delegate, 
-				ReentrantLock lock,
-				Condition cond) 
+		public TaskEventHandlerWrapper(ITaskEventHandler delegate) 
 		{
 			this.delegate = delegate;
-			this.lock = lock;
-			this.cond = cond;
 		}
 		
 		@Override
@@ -214,12 +207,14 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends SimpleStepE
 		@Override
 		public TaskResultEnum executeOnCompleted(FlowContext ctx, Map results) {
 			if (delegate != null) {
-				latestStatus = delegate.executeOnCompleted(ctx, results);
+				TaskResultEnum result = delegate.executeOnCompleted(ctx, results);
+				if (result == TaskResultEnum.Running) {
+					// launch more tasks
+					TaskFactoryStepExecution.this.execute();
+				}
+				return result;
 			}
-			if (lock!=null && cond!=null) {
-				ConcurrentUtil.signalAll(lock, cond);
-			}
-			return TaskResultEnum.Running;
+			return null;
 		}
 	}
 	

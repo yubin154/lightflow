@@ -53,7 +53,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 
 	/** internal message type */
 	private enum InternalMessageType {
-		RETRY_REQUEST, PROCESS_ON_TIMEOUT, POLL_PROGRESS, PROCESS_REQUEST_RESULT, PROCESS_POLL_RESULT
+		PROCESS_REQUEST, RETRY_REQUEST, PROCESS_ON_TIMEOUT, POLL_PROGRESS, PROCESS_REQUEST_RESULT, PROCESS_POLL_RESULT
 	}
 
 	/**
@@ -83,17 +83,34 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 				
 				task = (T) message;
 				sender = getSender();
-				processRequest();
 				if (tryCount == 0) {
 					replyTask(CallbackType.created, task);
 				}
-			
+				
+				// task have initial delay, schedule it
+				if (task.getExecOptions().getInitDelaySec() > 0) {
+					retryMessageCancellable = getContext()
+							.system()
+							.scheduler()
+							.scheduleOnce(Duration.create(task.getExecOptions().getInitDelaySec(), TimeUnit.SECONDS), getSelf(),
+									InternalMessageType.PROCESS_REQUEST, getContext().system().dispatcher());
+				} 
+				// run right away
+				else {
+					processRequest();
+				}
+				
 			}
+			
 			// Internal messages
 			else if (message instanceof InternalMessageType) {
 				
 				switch ((InternalMessageType) message) {
 				
+				case PROCESS_REQUEST:
+					processRequest();
+					break;
+					
 				case RETRY_REQUEST:
 					processRequest();
 					break;
@@ -134,6 +151,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 */
 	private final void processRequest() 
 	{
+
 		if (task.getMonitorOption() == null) {
 			replyError(TaskResultEnum.Failed, "monitor option missing", null);
 			return;
@@ -146,8 +164,8 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 		asyncWorker.tell(task, getSelf());
 
 		// asynchronous, set timeout
-		if (tryCount == 0 && task.getExecOptions().hasTimeout()) {
-			timeoutDuration = Duration.create(task.getExecOptions().getTimeoutInMs(), TimeUnit.MILLISECONDS);
+		if (tryCount == 0 && task.getExecOptions().getTimeOutSec()>0) {
+			timeoutDuration = Duration.create(task.getExecOptions().getTimeOutSec(), TimeUnit.SECONDS);
 			timeoutMessageCancellable = getContext()
 					.system()
 					.scheduler()
@@ -218,7 +236,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			pollMessageCancellable = getContext()
 					.system()
 					.scheduler()
-					.scheduleOnce(Duration.create(task.getMonitorOption().getMonitorIntervalMs(), TimeUnit.MILLISECONDS), getSelf(),
+					.scheduleOnce(Duration.create(task.getMonitorOption().getIntervalSec(), TimeUnit.SECONDS), getSelf(),
 							InternalMessageType.POLL_PROGRESS, getContext().system().dispatcher());
 		}
 		else {
@@ -259,7 +277,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 				retryMessageCancellable = getContext()
 						.system()
 						.scheduler()
-						.scheduleOnce(Duration.create(task.getExecOptions().getRetryDelayMs(), TimeUnit.MILLISECONDS), getSelf(),
+						.scheduleOnce(Duration.create(task.getExecOptions().getRetryDelaySec(), TimeUnit.SECONDS), getSelf(),
 								InternalMessageType.RETRY_REQUEST, getContext().system().dispatcher());
 				retried = true;
 			} 

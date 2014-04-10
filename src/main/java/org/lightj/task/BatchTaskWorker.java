@@ -53,11 +53,11 @@ public class BatchTaskWorker extends UntypedActor {
 	public void onReceive(Object message) throws Exception 
 	{
 		try {
-			if (message instanceof WorkerMessageType) {
+			if (message instanceof WorkerMessage.Type) {
 				
-				switch ((WorkerMessageType) message) {
+				switch ((WorkerMessage.Type) message) {
 				
-				case REPROCESS_REQUEST:
+				case PROCESS_REQUEST:
 					processRequest();
 					break;
 				}
@@ -145,10 +145,10 @@ public class BatchTaskWorker extends UntypedActor {
 			listener.taskSubmitted(workerMsg.getTask());
 			break;
 		case taskresult:
-			batchingStrategy.tell(WorkerMessageType.COMPLETE_TASK, getSelf());
+			batchingStrategy.tell(WorkerMessage.Type.COMPLETE_TASK, getSelf());
 			int remaining = listener.handleTaskResult(workerMsg.getTask(), workerMsg.getResult());
 			if (remaining == 0) {
-				getSender().tell(WorkerMessageType.COMPLETE_REQUEST, getSelf());
+				getSender().tell(WorkerMessage.Type.COMPLETE_REQUEST, getSelf());
 
 				// Self-terminate
 				getSelf().tell(PoisonPill.getInstance(), null);
@@ -168,7 +168,7 @@ public class BatchTaskWorker extends UntypedActor {
 	private final void replyError(TaskResultEnum state, String msg, Throwable stackTrace) {
 		TaskResult tr = task.failed(state, msg, stackTrace);
 		listener.handleTaskResult(task, tr);
-		getSender().tell(WorkerMessageType.COMPLETE_REQUEST, getSelf());
+		getSender().tell(WorkerMessage.Type.COMPLETE_REQUEST, getSelf());
 
 		// Self-terminate
 		getSelf().tell(PoisonPill.getInstance(), null);

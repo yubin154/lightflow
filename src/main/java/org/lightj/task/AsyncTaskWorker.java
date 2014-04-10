@@ -49,7 +49,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 
 	/** internal message type for handling exception, result, and timeout */
 	private enum InternalMessageType {
-		PROCESS_ON_TIMEOUT, RETRY_REQUEST
+		PROCESS_REQUEST, PROCESS_ON_TIMEOUT, RETRY_REQUEST
 	}
 	
 	/** constructor */
@@ -73,28 +73,44 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 			if (message instanceof Task) {
 				task = (T) message;
 				sender = getSender();
-				processRequest();
 				if (tryCount == 0) {
 					replyTask(CallbackType.created, task);
 				}
+				// task have initial delay, schedule it
+				if (task.getExecOptions().getInitDelaySec() > 0) {
+					retryMessageCancellable = getContext()
+							.system()
+							.scheduler()
+							.scheduleOnce(Duration.create(task.getExecOptions().getInitDelaySec(), TimeUnit.SECONDS), getSelf(),
+									InternalMessageType.PROCESS_REQUEST, getContext().system().dispatcher());
+				} 
+				// run right away
+				else {
+					processRequest();
+				}
+				
 			}
+
 			// task result
 			else if (message instanceof TaskResult) {
 				final TaskResult r = (TaskResult) message;
 				processRequestResult(r);
 			} 
+
 			// internal message for timeout
 			else if (message instanceof InternalMessageType) {
 				switch ((InternalMessageType) message) {
 
+				case PROCESS_REQUEST:
+					processRequest();
+					break;
+					
 				case PROCESS_ON_TIMEOUT:
 					reply(task.failed(TaskResultEnum.Timeout, "RequestTimeOut", null));
-
 					break;
 					
 				case RETRY_REQUEST:
 					processRequest();
-					
 					break;
 					
 				}
@@ -121,8 +137,8 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 		asyncWorker.tell(task, getSelf());
 		
 		// asynchronous, set timeout
-		if (tryCount == 0 && task.getExecOptions().hasTimeout()) {
-			timeoutDuration = Duration.create(task.getExecOptions().getTimeoutInMs(), TimeUnit.MILLISECONDS);
+		if (tryCount == 0 && task.getExecOptions().getTimeOutSec()>0) {
+			timeoutDuration = Duration.create(task.getExecOptions().getTimeOutSec(), TimeUnit.SECONDS);
 			timeoutMessageCancellable = getContext()
 					.system()
 					.scheduler()
@@ -169,7 +185,7 @@ public class AsyncTaskWorker<T extends ExecutableTask> extends UntypedActor {
 			retryMessageCancellable = getContext()
 					.system()
 					.scheduler()
-					.scheduleOnce(Duration.create(task.getExecOptions().getRetryDelayMs(), TimeUnit.MILLISECONDS), getSelf(),
+					.scheduleOnce(Duration.create(task.getExecOptions().getRetryDelaySec(), TimeUnit.SECONDS), getSelf(),
 							InternalMessageType.RETRY_REQUEST, getContext().system().dispatcher());
 		} 
 		else {

@@ -47,7 +47,7 @@ public class StandaloneTaskExecutor {
 		List<ExecutableTask> realTasks = getRealTasks();
 		
 		if (realTasks.isEmpty()) {
-			realTasks.add(new NoopTask(new ExecuteOption(1000, 0, 0, 0)));
+			realTasks.add(new NoopTask(new ExecuteOption().setInitDelaySec(1)));
 		}
 		
 		final BatchTask batchTask = new BatchTask(batchOption, realTasks.toArray(new ExecutableTask[0]));
@@ -76,7 +76,7 @@ public class StandaloneTaskExecutor {
 			}
 		}));
 		
-		batchWorker.tell(WorkerMessageType.REPROCESS_REQUEST, null);
+		batchWorker.tell(WorkerMessage.Type.PROCESS_REQUEST, null);
 	}
 
 	/**

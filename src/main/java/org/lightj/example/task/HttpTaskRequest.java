@@ -235,20 +235,20 @@ public class HttpTaskRequest {
 		newReq.customHandler = this.customHandler;
 		if (this.executionOption != null) {
 			newReq.executionOption = new ExecuteOption(
-					executionOption.getInitialDelayMs(), 
-					executionOption.getTimeoutInMs(), 
+					executionOption.getInitDelaySec(), 
+					executionOption.getTimeOutSec(), 
 					executionOption.getMaxRetry(), 
-					executionOption.getRetryDelayMs());
+					executionOption.getRetryDelaySec());
 		}
 		newReq.globalContext = this.globalContext;
 		newReq.httpClientType = this.httpClientType;
 		if (this.monitorOption != null) {
 			newReq.monitorOption = new MonitorOption(
-					monitorOption.getInitialDelayMs(), 
-					monitorOption.getMonitorIntervalMs(), 
-					monitorOption.getTimeoutInMs(), 
+					monitorOption.getInitDelaySec(), 
+					monitorOption.getIntervalSec(), 
+					monitorOption.getTimeOutSec(), 
 					monitorOption.getMaxRetry(), 
-					monitorOption.getRetryDelayMs());
+					monitorOption.getRetryDelaySec());
 		}
 		newReq.resProcessorName = this.resProcessorName;
 		if (this.pollTemplate != null) {

@@ -25,7 +25,7 @@ public class TestUrlTemplate extends TestCase {
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
-		tw2.setMonitorOption(new MonitorOption(1000, 10000));
+		tw2.setMonitorOption(new MonitorOption(1, 10));
 		tw2.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw2.setResProcessorName("dummyPollProcessor");
 		String tw2Json = JsonUtil.encode(tw2);
@@ -85,7 +85,7 @@ public class TestUrlTemplate extends TestCase {
 		tw.setTaskType("async");
 		tw.setHttpClientType("httpClient");
 		tw.setExecutionOption(new ExecuteOption());
-		tw.setMonitorOption(new MonitorOption(1000, 5000));
+		tw.setMonitorOption(new MonitorOption(1, 5));
 		tw.setUrlTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw.setHosts("www.yahoo.com");
 		String twJson = JsonUtil.encode(tw);

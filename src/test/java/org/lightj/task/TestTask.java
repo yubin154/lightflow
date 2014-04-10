@@ -61,7 +61,7 @@ public class TestTask extends BaseTestCase {
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
-		tw2.setMonitorOption(new MonitorOption(1000, 10000));
+		tw2.setMonitorOption(new MonitorOption(1, 10));
 		tw2.setPollTemplate(new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host")));
 		tw2.setResProcessorName("dummyPollProcessor");
 
