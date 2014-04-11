@@ -1,11 +1,10 @@
 package org.lightj.session;
 
 import java.beans.PropertyDescriptor;
-import java.io.IOException;
-import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,7 +19,6 @@ import org.lightj.session.CtxProp.CtxSaveType;
 import org.lightj.session.dal.ISessionMetaData;
 import org.lightj.session.dal.SessionDataFactory;
 import org.lightj.session.exception.FlowContextException;
-import org.lightj.session.exception.FlowExecutionException;
 import org.lightj.session.step.IFlowStep;
 import org.lightj.session.step.StepErrorLog;
 import org.lightj.session.step.StepLog;
@@ -31,10 +29,6 @@ import org.lightj.util.JsonUtil;
 import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 
 
 /**
@@ -99,7 +93,7 @@ public class FlowContext {
 			for (Field field : klazz.getDeclaredFields()) {
 				try {
 					CtxProp prop = field.getAnnotation(CtxProp.class);
-					if (prop != null && prop.saveType() != CtxSaveType.NoSave) {
+					if (prop != null) {
 						String name = field.getName();
 						Method setter = new PropertyDescriptor(name, klazz).getWriteMethod();
 						Method getter = new PropertyDescriptor(name, klazz).getReadMethod();
@@ -185,60 +179,21 @@ public class FlowContext {
 	
 	/**
 	 * lazy load session context only when called upon
-	 *
 	 */
 	private synchronized void lazyLoad() {
 		if (!loaded && sessionId > 0) {
 			try {
 				List<ISessionMetaData> metas = SessionDataFactory.getInstance().getMetaDataManager().findByFlowId(this.sessionId);
-				load(metas);
+				for (ISessionMetaData meta : metas) {
+					if (!StringUtil.isNullOrEmpty(meta.getStrValue()) || meta.getBlobValue() != null) {
+						context.put(meta.getName(), meta);
+						initField(meta);
+					}
+				}
 				loaded = true;
 			} catch (DataAccessException e) {
 				logger.error("Error loading context", e);
 			}
-		}
-	}
-	
-	/**
-	 * property name set
-	 * @return
-	 */
-	public Set<String> getNames(){
-		return context.keySet();
-	}
-	
-
-	/**
-	 * get value by name with reflection
-	 * @param name
-	 * @return
-	 */
-	public <C> C getValueByName(String name) {
-		if (hasScrapbookKey(name)) {
-			return (C) getFromScrapbook(name);
-		}
-		else {
-			try {
-				Method getter = new PropertyDescriptor(name, this.getClass()).getReadMethod();
-				return (C) getter.invoke(this, Constants.NO_PARAMETER_VALUES);
-			} catch (Throwable t) {
-				// ignore
-				return null;
-			}
-		}
-	}
-	
-	/**
-	 * set value for name
-	 * @param name
-	 * @return
-	 */
-	public void setValueForName(String name, Object value) {
-		try {
-			Method setter = new PropertyDescriptor(name, this.getClass()).getWriteMethod();
-			setter.invoke(this, value);
-		} catch (Throwable t) {
-			this.addToScrapbook(name, value);
 		}
 	}
 	
@@ -309,98 +264,6 @@ public class FlowContext {
 	}
 
 	/**
-	 * get json based property value
-	 * @param name
-	 * @param typeRef
-	 * @return
-	 */
-	public <T> T getJsonParam(String name, TypeReference<T> typeRef) {
-		if (context != null && context.containsKey(name)) {
-			String jsonValue = (String) context.get(name).getBlobValue();
-			try {
-				return JsonUtil.decode(jsonValue, typeRef);
-			} catch (Exception e) {
-				logger.error(e.getMessage(), e);
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * set string property value
-	 * @param name
-	 * @param value
-	 */
-	protected void setStringMeta(String name, String value) {
-		if (context.containsKey(name)) {
-			// is update
-			context.get(name).setStrValue(value);
-			context.get(name).setDirty(true);
-		}
-		else {
-			// new meta
-			ISessionMetaData managerMeta = SessionDataFactory.getInstance().getMetaDataManager().newInstance();
-			// session id is set when it is being saved
-			managerMeta.setName(name);
-			managerMeta.setStrValue(value);
-			managerMeta.setDirty(true);
-			context.put(name, managerMeta);
-		}
-	}
-	
-	
-	/**
-	 * set blob property value
-	 * @param name
-	 * @param value
-	 */
-	public void setJsonParam(String name, Object value) {
-		try {
-			String jsonValue = JsonUtil.encode(value);
-			if (context.containsKey(name)) {
-				// is update
-				context.get(name).setBlobValue(jsonValue);
-				context.get(name).setDirty(true);
-			}
-			else {
-				ISessionMetaData managerMeta = SessionDataFactory.getInstance().getMetaDataManager().newInstance();
-				// session id is set when it is being saved
-				managerMeta.setName(name);
-				managerMeta.setBlobValue(jsonValue);
-				managerMeta.setDirty(true);
-				context.put(name, managerMeta);
-			}
-		} catch (JsonGenerationException e) {
-			throw new FlowExecutionException(e);
-		} catch (JsonMappingException e) {
-			throw new FlowExecutionException(e);
-		} catch (IOException e) {
-			throw new FlowExecutionException(e);
-		}
-	}
-
-	/**
-	 * set blob property value
-	 * @param name
-	 * @param value
-	 */
-	public void setBlobParam(String name, Serializable value) {
-		if (context.containsKey(name)) {
-			// is update
-			context.get(name).setBlobValue(value);
-			context.get(name).setDirty(true);
-		}
-		else {
-			ISessionMetaData managerMeta = SessionDataFactory.getInstance().getMetaDataManager().newInstance();
-			// session id is set when it is being saved
-			managerMeta.setName(name);
-			managerMeta.setBlobValue(value);
-			managerMeta.setDirty(true);
-			context.put(name, managerMeta);
-		}
-	}
-	
-	/**
 	 * get properties changed since last time saved
 	 * @return
 	 */
@@ -415,47 +278,64 @@ public class FlowContext {
 	}
 	
 	/**
-	 * load properties from db
-	 * @param metas
-	 */
-	void load(List<ISessionMetaData> metas) {
-		for (ISessionMetaData meta : metas) {
-			if (!StringUtil.isNullOrEmpty(meta.getStrValue()) || meta.getBlobValue() != null) {
-				context.put(meta.getName(), meta);
-				initField(meta);
-			}
-		}
-	}
-	
-	/**
-	 * set dirty flag
-	 * @param name
-	 */
-	protected void setDirty(String name, boolean isDirty) {
-		if (exist(name)) {
-			context.get(name).setDirty(isDirty);
-		}
-	}
-	
-	/**
 	 * if a property with specified name exists
 	 * @param name
 	 * @return
 	 */
 	public boolean exist(String name) {
-		return context.containsKey(name);
+		return context.containsKey(name) || hasScrapbookKey(name);
 	}
 	
 	/**
-	 * searchable context
+	 * property name set
+	 * @return
+	 */
+	public Set<String> getContextNames(){
+		return Collections.unmodifiableSet(context.keySet());
+	}
+
+	/**
+	 * get value by name with reflection
+	 * @param name
+	 * @return
+	 */
+	public <C> C getValueByName(String name) {
+		try {
+			Method getter = new PropertyDescriptor(name, this.getClass()).getReadMethod();
+			return (C) getter.invoke(this, Constants.NO_PARAMETER_VALUES);
+		} catch (Throwable t) {
+			// no getter found, try load from scrapbook
+			if (hasScrapbookKey(name)) {
+				return (C) getFromScrapbook(name);
+			}
+			return null;
+		}
+	}
+	
+	/**
+	 * set value for name
+	 * @param name
+	 * @return
+	 */
+	public void setValueForName(String name, Object value) {
+		try {
+			Method setter = new PropertyDescriptor(name, this.getClass()).getWriteMethod();
+			setter.invoke(this, value);
+		} catch (Throwable t) {
+			// no setter found, save to scrapbook
+			this.addToScrapbook(name, value);
+		}
+	}
+	
+	/**
+	 * non blob type persistent context
 	 * @return
 	 */
 	public HashMap<String, String> getSearchableContext() {
 		HashMap<String, String> result = new HashMap<String, String>();
 		for (Entry<String, CtxPropWrapper> entry : field2Prop.entrySet()) {
 			CtxPropWrapper ctxProp = entry.getValue();
-			if (ctxProp.ctxProp.saveType() != CtxProp.CtxSaveType.NoSave && 
-					ctxProp.ctxProp.dbType() == CtxProp.CtxDbType.VARCHAR) {
+			if (ctxProp.ctxProp.dbType() == CtxProp.CtxDbType.VARCHAR) {
 				try {
 					Object v = ctxProp.getter.invoke(this, Constants.NO_PARAMETER_VALUES);
 					result.put(entry.getKey(), v!=null ? v.toString() : null);
@@ -553,6 +433,7 @@ public class FlowContext {
 	}
 	
 	/////////////// flow pct complete ////////////////
+	
 	public int getPctComplete() {
 		return pctComplete;
 	}
@@ -560,7 +441,7 @@ public class FlowContext {
 		this.pctComplete = pctComplete;
 	}
 	
-	/////////////// execution exceptions ////////////////
+	/////////////// context property wrapper ////////////////
 
 	static class CtxPropWrapper {
 		CtxProp ctxProp;

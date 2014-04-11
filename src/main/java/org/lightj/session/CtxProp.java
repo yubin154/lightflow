@@ -25,6 +25,6 @@ public @interface CtxProp {
 	}
 	
 	public static enum CtxSaveType {
-		SaveOnChange, AutoSave, NoSave
+		SaveOnChange, AutoSave
 	}
 }

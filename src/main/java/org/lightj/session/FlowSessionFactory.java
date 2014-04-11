@@ -99,7 +99,8 @@ public class FlowSessionFactory {
 	 * save session meta, used when persist from {@link FlowDriver}
 	 * @param manager
 	 */
-	public void saveMeta(FlowSession manager) {
+	public void saveMeta(FlowSession manager) 
+	{
 		FlowContext ctx = manager.getSessionContext();
 		for (ISessionMetaData managerMeta : ctx.getDirtyMetas()) {
 			if (managerMeta.getFlowId() <= 0) managerMeta.setFlowId(ctx.getSessionId());
@@ -232,6 +233,18 @@ public class FlowSessionFactory {
 	 */
 	public <T extends FlowSession> T createSession(Class<T> flowKlazz) {
 		return SpringContextUtil.getBeanFromAllContext(flowKlazz);
+	}
+	
+	/**
+	 * create a new flow of flow type id
+	 * @param flowTypeId
+	 * @return
+	 */
+	public <T extends FlowSession> T createSession(String flowTypeId) {
+		if (flowTypes.containsKey(flowTypeId)) {
+			return createSession((Class<T>) flowTypes.get(flowTypeId).getFlowKlass());
+		}
+		throw new IllegalArgumentException("Invalid flow type " + flowTypeId);
 	}
 	
 	/**
@@ -454,5 +467,13 @@ public class FlowSessionFactory {
 	 */
 	FlowType fromFlowClass(Class flowClass) {
 		return flowClassTypes.get(flowClass);
+	}
+	
+	/**
+	 * all registered flow types
+	 * @return
+	 */
+	Collection<FlowType> getAllFlowTypes() {
+		return flowTypes.values();
 	}
 }

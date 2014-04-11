@@ -106,6 +106,14 @@ public class FlowModule {
 	}
 	
 	/**
+	 * all registered flow types
+	 * @return
+	 */
+	public static FlowType[] getRegisteredFlowTypes() {
+		return FlowSessionFactory.getInstance().getAllFlowTypes().toArray(new FlowType[0]);
+	}
+	
+	/**
 	 * real init
 	 * @author biyu
 	 *
