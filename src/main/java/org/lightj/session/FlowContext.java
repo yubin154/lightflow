@@ -75,6 +75,9 @@ public class FlowContext {
 	@CtxProp(dbType= CtxDbType.VARCHAR, saveType=CtxSaveType.SaveOnChange)
 	private int pctComplete;
 	
+	@CtxProp(dbType= CtxDbType.BLOB, saveType=CtxSaveType.SaveOnChange)
+	private Map<String, Object> userData = new LinkedHashMap<String, Object>();
+	
 	/**
 	 * Constructor
 	 * @param sm
@@ -139,6 +142,10 @@ public class FlowContext {
 				String propName = prop.getKey();
 				CtxPropWrapper wrapper = prop.getValue();
 				boolean needSave = false;
+				if (wrapper.ctxProp.saveType() == CtxSaveType.NoSave) {
+					continue;
+				}
+
 				Object newV = prop.getValue().getter.invoke(this, Constants.NO_PARAMETER_VALUES);
 				if (wrapper.ctxProp.saveType() == CtxSaveType.AutoSave) {
 					needSave = true;
@@ -440,7 +447,54 @@ public class FlowContext {
 	public void setPctComplete(int pctComplete) {
 		this.pctComplete = pctComplete;
 	}
+
+	////////////// user data ///////////
+	public Map<String, Object> getUserData() {
+		return Collections.unmodifiableMap(userData);
+	}
+
+	public void setUserData(Map<String, Object> userData) {
+		this.userData = userData;
+		if (userData != null) {
+			for (Entry<String, ? extends Object> entry : userData.entrySet()) {
+				this.setValueForName(entry.getKey(), entry.getValue());
+			}
+		}
+	}
 	
+	public void addUserData(String key, Object value) {
+		this.userData.put(key, value);
+		this.setValueForName(key, value);
+	}
+	
+	public void addUserData(Map<String, ? extends Object> userData) {
+		if (userData != null) {
+			this.userData.putAll(userData);
+			for (Entry<String, ? extends Object> entry : userData.entrySet()) {
+				this.setValueForName(entry.getKey(), entry.getValue());
+			}
+		}
+	}
+	
+	public <T> T getUserData(String key) {
+		return (T) userData.get(key);
+	}
+	
+	/**
+	 * return required user data and its sample value (if any)
+	 * @return
+	 */
+	public Map<String, String> getUserDataInfo() {
+		HashMap<String, String> userDataInfo = new HashMap<String, String>();
+		for (Entry<String, CtxPropWrapper> prop : field2Prop.entrySet()) {
+			CtxProp ctxProp = prop.getValue().ctxProp;
+			if (ctxProp.isUserData()) {
+				userDataInfo.put(prop.getKey(), ctxProp.sampleUserDataValue());
+			}
+		}
+		return userDataInfo;
+	}
+
 	/////////////// context property wrapper ////////////////
 
 	static class CtxPropWrapper {

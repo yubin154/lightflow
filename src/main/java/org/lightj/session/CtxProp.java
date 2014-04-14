@@ -14,6 +14,12 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface CtxProp {
 	
+	/** if this property is from user input */
+	boolean isUserData() default false;
+	
+	/** sample data for user input data */
+	String sampleUserDataValue() default "";
+	
 	/** when to save this property */
 	CtxSaveType saveType()	default CtxSaveType.SaveOnChange;
 	
@@ -25,6 +31,6 @@ public @interface CtxProp {
 	}
 	
 	public static enum CtxSaveType {
-		SaveOnChange, AutoSave
+		SaveOnChange, AutoSave, NoSave
 	}
 }
