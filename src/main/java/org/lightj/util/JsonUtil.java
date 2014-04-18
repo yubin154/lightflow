@@ -3,7 +3,6 @@ package org.lightj.util;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -29,6 +28,10 @@ public class JsonUtil {
 		return mapper.writeValueAsString(value);
  	}
 	
+	public static final String encodePretty(Object value) throws JsonGenerationException, JsonMappingException, IOException {
+		return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value);
+ 	}
+
 	public static final <T> T decode(String jsonStr, TypeReference<T> typeRef) throws JsonParseException, JsonMappingException, IOException {
 		return "null".equalsIgnoreCase(jsonStr) ? null : mapper.<T>readValue(jsonStr, typeRef);
 	}
@@ -37,8 +40,5 @@ public class JsonUtil {
 		return "null".equalsIgnoreCase(jsonStr) ? null : mapper.readValue(jsonStr, klazz);
 	}
 
-	public static final <T> T decode(Map<String, String> jsonMap, Class<T> klazz) throws JsonParseException, JsonMappingException, IOException {
-		return mapper.convertValue(jsonMap, klazz);
-	}
 }
 

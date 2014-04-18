@@ -384,16 +384,8 @@ public class FlowContext {
 		}
 		LinkedHashMap<String, StepLog> _execLogs = new LinkedHashMap<String, StepLog>(executionLogs.size());
 		for(String key : executionLogs.keySet()) {
-			Object o = executionLogs.get(key);
-			if(o instanceof Map) {
-				try {
-					_execLogs.put(key, (StepLog) JsonUtil.decode((Map)o, StepLog.class));
-				} catch (Exception e) {
-					throw new RuntimeException("Couldn't convert step log", e);
-				}
-			} else {
-				_execLogs.put(key, (StepLog)o);
-			}
+			StepLog o = executionLogs.get(key);
+			_execLogs.put(key, o);
 		}
 		this.executionLogs = _execLogs;
 	}

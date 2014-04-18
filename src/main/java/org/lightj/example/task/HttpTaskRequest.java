@@ -258,6 +258,10 @@ public class HttpTaskRequest {
 		if (this.urlTemplate != null) {
 			newReq.urlTemplate = this.urlTemplate.createNew();
 		}
+		if (hosts != null) {
+			newReq.hosts = new String[hosts.length];
+			System.arraycopy(hosts, 0, newReq.hosts, 0, hosts.length);
+		}
 		return newReq;
 	}
 }
