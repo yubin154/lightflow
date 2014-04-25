@@ -57,7 +57,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	}
 
 	/**
-	 * constructor with single task
+	 * constructor
 	 * @param task
 	 * @param monitorOptions
 	 * @param listener
@@ -131,6 +131,8 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			}
 			
 			// task result
+			// can be result from original task, where the raw result object is another task used for polling, or
+			// can be result from polling task, where the result will be passed back to sender
 			else if (message instanceof TaskResult) {
 				final TaskResult r = (TaskResult) message;
 				handleWorkerResponse(r);
@@ -140,6 +142,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 			else {
 				unhandled(message);
 			}
+			
 		} 
 		catch (Throwable e) {
 			retry(TaskResultEnum.Failed, e.toString(), e);

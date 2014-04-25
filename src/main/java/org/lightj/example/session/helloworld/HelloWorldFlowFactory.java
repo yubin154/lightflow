@@ -59,10 +59,12 @@ public class HelloWorldFlowFactory {
 	public @Bean @Scope("prototype") IFlowStep helloWorldAsyncTaskStep() {
 		
 		// create the task
-		ExecutableTask task = new DummyTask() {
+		ExecutableTask task = new ExecutableTask() {
+			
+			@Override
 			public TaskResult execute() {
 				this.<HelloWorldFlowContext>getFlowContext().incTaskCount();
-				return super.execute();
+				return this.succeeded();
 			}			
 		};
 		
@@ -146,7 +148,7 @@ public class HelloWorldFlowFactory {
 	public @Bean @Scope("prototype") IFlowStep helloWorldTimeoutStep() 
 	{
 		// task
-		DummyTask task = new DummyTask(new ExecuteOption().setTimeOutSec(1)) {
+		ExecutableTask task = new ExecutableTask(new ExecuteOption().setTimeOutSec(1)) {
 			@Override
 			public TaskResult execute() {
 				try {
@@ -154,7 +156,7 @@ public class HelloWorldFlowFactory {
 				} catch (InterruptedException e) {
 					// ignore
 				}
-				return super.execute();
+				return this.succeeded();
 			}
 		};
 		
@@ -250,10 +252,12 @@ public class HelloWorldFlowFactory {
 		// build tasks
 		List<ExecutableTask> tasks = new ArrayList<ExecutableTask>();
 		for (int i = 0; i < 10; i++) {
-			tasks.add(new DummyTask() {
+			tasks.add(new ExecutableTask() {
+				
+				@Override
 				public TaskResult execute() {
 					this.<HelloWorldFlowContext>getFlowContext().incBatchCount();
-					return super.execute();
+					return this.succeeded();
 				}				
 			});
 		}
@@ -272,8 +276,9 @@ public class HelloWorldFlowFactory {
 	public @Bean @Scope("prototype") IFlowStep helloWorldTestFailureStep() {
 		
 		// task
-		ExecutableTask task = new DummyTask() {
+		ExecutableTask task = new ExecutableTask() {
 			
+			@Override
 			public TaskResult execute() {
 				if (this.<HelloWorldFlowContext>getFlowContext().isInjectFailure()) {
 					if (this.<HelloWorldFlowContext>getFlowContext().isControlledFailure()) {
@@ -283,38 +288,12 @@ public class HelloWorldFlowFactory {
 						throw new RuntimeException("unit test injected runtime failure");
 					}
 				}
-				return super.execute();
+				return this.succeeded();
 			}
 			
 		};
 		
 		return new StepBuilder().executeTasks(task).getFlowStep();
 		
-	}
-
-	/**
-	 * dummy task
-	 * @author biyu
-	 *
-	 */
-	static class DummyTask extends ExecutableTask {
-		
-		TaskResult result;
-		DummyTask() { 
-			this(new ExecuteOption().setInitDelaySec(1)); 
-		}
-		DummyTask(ExecuteOption option) { 
-			super(option); 
-		}
-		
-		@Override
-		public TaskResult execute() {
-			return result==null ? this.hasResult(TaskResultEnum.Success, null) : result;
-		}
-
-		public String toString() {
-			return "dummy exeutable task";
-		}
-
 	}
 }

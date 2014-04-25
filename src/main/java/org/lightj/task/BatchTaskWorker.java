@@ -53,6 +53,7 @@ public class BatchTaskWorker extends UntypedActor {
 	public void onReceive(Object message) throws Exception 
 	{
 		try {
+			// signal to start processing original task from sender
 			if (message instanceof WorkerMessage.Type) {
 				
 				switch ((WorkerMessage.Type) message) {
@@ -63,17 +64,23 @@ public class BatchTaskWorker extends UntypedActor {
 				}
 			
 			}
+			
+			// send individual task to next level worker
 			else if (message instanceof Task) {
 				
 				processTask((Task) message);
 				
 			}
+			
+			// handle msg from next level worker
 			else if (message instanceof WorkerMessage) {
 				
 				final WorkerMessage r = (WorkerMessage) message;
 				handleWorkerMessage(r);
 			
 			} 
+			
+			// invalid msg
 			else {
 				unhandled(message);
 			}
@@ -147,6 +154,7 @@ public class BatchTaskWorker extends UntypedActor {
 		case taskresult:
 			batchingStrategy.tell(WorkerMessage.Type.COMPLETE_TASK, getSelf());
 			int remaining = listener.handleTaskResult(workerMsg.getTask(), workerMsg.getResult());
+			// if listener confirm there's no more result, terminate actor chain 
 			if (remaining == 0) {
 				getSender().tell(WorkerMessage.Type.COMPLETE_REQUEST, getSelf());
 

@@ -2,7 +2,12 @@ package org.lightj.task;
 
 import org.lightj.session.FlowContext;
 
-
+/**
+ * represent a list of tasks that will be submitted to BatchTaskWorker
+ * 
+ * @author biyu
+ *
+ */
 public class BatchTask extends Task {
 	
 	/** batch of tasks */

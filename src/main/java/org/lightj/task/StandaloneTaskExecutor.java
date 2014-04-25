@@ -10,7 +10,7 @@ import akka.actor.Props;
 import akka.actor.UntypedActorFactory;
 
 /**
- * standalone task executor util
+ * standalone task executor util, execute task 
  * 
  * @author biyu
  *

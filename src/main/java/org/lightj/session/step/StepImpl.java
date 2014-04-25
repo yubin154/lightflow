@@ -22,7 +22,7 @@ public class StepImpl implements IFlowStep {
 	
 	static Logger logger = LoggerFactory.getLogger(StepImpl.class);
 	
-	/** unique step id */
+	/** part of a unique step id */
 	private final String uid = UUID.randomUUID().toString();
 	
 	/**
@@ -55,11 +55,7 @@ public class StepImpl implements IFlowStep {
 	 */
 	protected FlowStepProperties flowStepProperties;
 	
-	/**
-	 * locatable key
-	 */
-	protected String key;
-	
+
 	/** how many times flow entered this step */
 	private AtomicInteger stepEntry = new AtomicInteger(0);
 	

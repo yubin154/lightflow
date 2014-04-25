@@ -37,6 +37,8 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends StepExecuti
 	
 	/** user provide taskFactory */
 	private IFlowContextTaskFactory<T> taskFactory;
+	
+	/** sequence, for sequentially executing multiple task per step */
 	private int sequence = 0;
 	
 	/** constructor */
@@ -76,6 +78,11 @@ public class TaskFactoryStepExecution<T extends FlowContext> extends StepExecuti
 			TaskEventHandlerWrapper handler = new TaskEventHandlerWrapper(taskInFlow.taskEventHandler);
 			chandler.setDelegateHandler(handler);
 
+			// reset callback listeners if not the first time this Step is run
+			if (sequence > 1) {
+				this.flowStep.getResultHandler().reset();
+			}
+			
 			fire(batchTask, chandler);
 			
 			// always wait for callback

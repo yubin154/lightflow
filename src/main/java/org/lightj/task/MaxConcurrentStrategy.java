@@ -31,6 +31,7 @@ public class MaxConcurrentStrategy extends UntypedActor {
 		
 		try {
 			
+			// throttle a task
 			if (message instanceof Task) {
 				if (concurrentRate.incrementAndGet() <= maxConcurrentRate) {
 					getSender().tell(message, getSelf());
@@ -40,16 +41,25 @@ public class MaxConcurrentStrategy extends UntypedActor {
 				}
 				
 			}
+			
+			// initialize the strategy with RateSettingMessage
 			else if (message instanceof RateSettingMessage) {
 				maxConcurrentRate = ((RateSettingMessage) message).getMaxRate();
 			}
+			
+			// one task complete, launch more 
 			else if (message == WorkerMessage.Type.COMPLETE_TASK) {
-				
-				concurrentRate.decrementAndGet();
-				getSender().tell(taskQ.take(), getSelf());
-				concurrentRate.incrementAndGet();
-				
-			} 
+
+				if (!taskQ.isEmpty()) {
+					getSender().tell(taskQ.take(), getSelf());
+				}
+				else {
+					concurrentRate.decrementAndGet();
+				}
+				// do nothing when queue is empty
+			}
+			
+			// invalid msg
 			else {
 				unhandled(message);
 			}

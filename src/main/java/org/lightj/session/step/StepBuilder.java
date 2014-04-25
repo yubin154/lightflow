@@ -167,11 +167,4 @@ public class StepBuilder {
 		return this;
 	}
 
-	/**
-	 * convenient method
-	 * @return
-	 */
-	public static StepBuilder newBuilder() {
-		return new StepBuilder();
-	}
 }

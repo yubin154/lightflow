@@ -5,7 +5,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
- * simple branching enclosure
+ * delay enclosure, to put a proxy around actual step to provide delay execution behavior
+ * 
  * @author binyu
  *
  */

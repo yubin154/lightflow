@@ -23,34 +23,34 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * An execution aspect of a flow step to handle asynchronous callback
+ * An execution aspect of a flow step to handle callback from task worker actor system
  * 
  * @author biyu
  *
  */
 @SuppressWarnings("rawtypes")
-public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T> implements ITaskListener {
+public final class StepCallbackHandler<T extends FlowContext> extends StepExecution<T> implements ITaskListener {
 	
 	/** logger */
 	static Logger logger = LoggerFactory.getLogger(StepCallbackHandler.class.getName());
 
-	/** all results */
-	protected ConcurrentMap<String, TaskResult> results = 
+	/** all results, task id to result map */
+	private ConcurrentMap<String, TaskResult> results = 
 			new ConcurrentHashMap<String, TaskResult>();
 	
-	/** map a result status to a flow step result */
-	protected HashMap<TaskResultEnum, StepExecution> mapOnResults = 
+	/** map a result status to an edge in flow state machine (where flow goes next) */
+	private HashMap<TaskResultEnum, StepExecution> mapOnResults = 
 			new HashMap<TaskResultEnum, StepExecution>();
 	
-	/** number of tasks for tracking */
-	protected AtomicInteger numOfTasks = new AtomicInteger(0);
-	protected AtomicInteger numOfTaskResults = new AtomicInteger(0);
+	/** number of tasks to track */
+	private int numOfTasks;
+	private AtomicInteger numOfTaskResults = new AtomicInteger(0);
 	
-	/** custom handling logic */
-	protected ITaskEventHandler<T> delegateHandler;
+	/** additional handling logic */
+	private ITaskEventHandler<T> delegateHandler;
 	
 	/**
-	 * constructor with no defaul transition
+	 * constructor with no default transition
 	 * @param transition
 	 */
 	public StepCallbackHandler() {
@@ -58,7 +58,7 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	}
 
 	/**
-	 * constructor with no defaul transition
+	 * constructor with default transition
 	 * @param transition
 	 */
 	public StepCallbackHandler(String runTo) {
@@ -84,11 +84,12 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 
 	/**
 	 * result handle task completed event
+	 * one task is allowed to have only one result
 	 */
-	public final int handleTaskResult(Task task, TaskResult result) 
+	public int handleTaskResult(Task task, TaskResult result) 
 	{
 		// if this is the last result expected
-		int resultRemaining = (task instanceof BatchTask) ? 0 : (numOfTasks.get() - numOfTaskResults.incrementAndGet()); 
+		int resultRemaining = (task instanceof BatchTask) ? 0 : (numOfTasks - numOfTaskResults.incrementAndGet()); 
 		
 		try {
 			// handle result
@@ -96,7 +97,12 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 				results.put(task.getTaskId(), result);
 				sessionContext.saveTaskResult(flowStep.getStepId(), task, result);
 			}
-			executeOnResult(task, result);
+			publishStepEvent(FlowEvent.stepOngoing, StepTransition.newLog(
+					String.format("%s: %s", result.getStatus(), result.getMsg()), 
+					StringUtil.getStackTrace(result.getStackTrace())));
+			if (delegateHandler != null) {
+				delegateHandler.executeOnResult(sessionContext, task, result);
+			}
 		} catch (Throwable t) {
 			this.flowStep.resume(t);
 		}
@@ -124,7 +130,10 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		if (task != null) {
 			sessionContext.addTask(flowStep.getStepId(), task);
 			try {
-				executeOnSubmitted(task);
+				this.publishStepEvent(FlowEvent.stepOngoing, StepTransition.newLog(task.getExtTaskUuid(), null));
+				if (delegateHandler != null) {
+					delegateHandler.executeOnSubmitted(sessionContext, task);
+				}
 			} catch (Throwable t) {
 				this.flowStep.resume(t);
 			}
@@ -138,7 +147,9 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 		if (task != null) {
 			sessionContext.addTask(flowStep.getStepId(), task);
 			try {
-				executeOnCreated(task);
+				if (delegateHandler != null) {
+					delegateHandler.executeOnCreated(sessionContext, task);
+				}
 			} catch (Throwable t) {
 				this.flowStep.resume(t);
 			}
@@ -149,63 +160,6 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 	public final StepTransition execute() throws FlowExecutionException {
 		// noop
 		return null;
-	}
-	
-	/** convert {@link ICallableResult} status to {@link FlowResult} */
-	protected FlowResult convertStatus(TaskResult result) {
-		switch(result.getStatus()) {
-		case Success:
-			return FlowResult.Success;
-		case Failed:
-			return FlowResult.Failed;
-		case Timeout:
-			return FlowResult.Timeout;
-		case Canceled:
-			return FlowResult.Canceled;
-		}
-		return FlowResult.Unknown;
-	}
-	
-	/**
-	 * do the work when task submitted
-	 * @param task
-	 * @return
-	 * @throws FlowExecutionException
-	 */
-	public void executeOnSubmitted(Task task) throws FlowExecutionException {
-		this.publishStepEvent(FlowEvent.stepOngoing, StepTransition.newLog(task.getExtTaskUuid(), null));
-		if (delegateHandler != null) {
-			delegateHandler.executeOnSubmitted(sessionContext, task);
-		}
-	}
-
-	/**
-	 * do the work when task is created
-	 * @param task
-	 * @return
-	 * @throws FlowExecutionException
-	 */
-	public void executeOnCreated(Task task) throws FlowExecutionException {
-		if (delegateHandler != null) {
-			delegateHandler.executeOnCreated(sessionContext, task);
-		}
-	}
-
-	/**
-	 * do the work when task generates some result
-	 * move the flow to the transitions predefined in the result to transition map,
-	 * or to default transition if nothing matches
-	 * @param result
-	 * @return
-	 * @throws FlowExecutionException
-	 */
-	public synchronized void executeOnResult(Task task, TaskResult result) throws FlowExecutionException {
-		publishStepEvent(FlowEvent.stepOngoing, StepTransition.newLog(
-				String.format("%s: %s", result.getStatus(), result.getMsg()), 
-				StringUtil.getStackTrace(result.getStackTrace())));
-		if (delegateHandler != null) {
-			delegateHandler.executeOnResult(sessionContext, task, result);
-		}
 	}
 
 	/**
@@ -218,10 +172,13 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 			throws FlowExecutionException 
 	{
 		TaskResultEnum status = null;
+		// run additional handling logic
 		if (delegateHandler != null) {
 			status = delegateHandler.executeOnCompleted(sessionContext, results);
 		}
+		
 		if (status == TaskResultEnum.Running) {
+			// there are more tasks fired, reset myself for set of new task results
 			return StepTransition.CALLBACK;
 		}
 		else if (status == null) {
@@ -333,7 +290,16 @@ public class StepCallbackHandler<T extends FlowContext> extends StepExecution<T>
 
 	@Override
 	public void setExpectedResultCount(int numOfTasks) {
-		this.numOfTasks.addAndGet(numOfTasks);
+		this.numOfTasks = numOfTasks;
+	}
+	
+	/**
+	 * reset this callback listener internal data structure for a new set of tasks
+	 */
+	public synchronized void reset() {
+		results.clear();
+		numOfTasks = 0;
+		numOfTaskResults.set(0);
 	}
 	
 	/**

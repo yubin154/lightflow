@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
- * retry enclosure
+ * retry enclosure, to create a proxy around an actual step to have retry behavior
+ * 
  * @author binyu
  *
  */

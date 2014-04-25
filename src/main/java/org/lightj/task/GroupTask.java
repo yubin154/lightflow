@@ -3,21 +3,14 @@ package org.lightj.task;
 import java.util.List;
 
 /**
- * at runtime fan out to a list of tasks for execution
+ * a container task that at runtime fan out to a list of tasks for execution
+ * this task should never be executed itself for real
+ * 
  * @author binyu
  *
  * @param <T>
  */
 public abstract class GroupTask<E extends ExecutableTask> extends ExecutableTask {
-
-	private BatchOption batchOption;
-	
-	public BatchOption getBatchOption() {
-		return batchOption;
-	}
-	public void setBatchOption(BatchOption batchOption) {
-		this.batchOption = batchOption;
-	}
 
 	/** create new instance of a task */
 	public abstract E createTaskInstance();

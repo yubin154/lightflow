@@ -345,7 +345,7 @@ public class FlowContext {
 			if (ctxProp.ctxProp.dbType() == CtxProp.CtxDbType.VARCHAR) {
 				try {
 					Object v = ctxProp.getter.invoke(this, Constants.NO_PARAMETER_VALUES);
-					result.put(entry.getKey(), v!=null ? v.toString() : null);
+					result.put(entry.getKey(), v!=null ? JsonUtil.encode(v) : null);
 				} catch (Throwable t) {
 					logger.error(t.getMessage(), t);
 				}

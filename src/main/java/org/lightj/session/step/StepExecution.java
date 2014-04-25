@@ -25,11 +25,6 @@ public abstract class StepExecution<T extends FlowContext> {
 	protected IFlowStep flowStep;
 	
 	/**
-	 * a locatable key that can be used to reinstantiate the execution later
-	 */
-	protected String key;
-	
-	/**
 	 * session context
 	 */
 	protected T sessionContext;

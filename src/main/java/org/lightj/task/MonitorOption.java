@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 /**
- * how the task monitoring is done
+ * how the polling task is done
  * @author biyu
  *
  */
