@@ -6,7 +6,6 @@ import java.util.Map.Entry;
 
 import org.lightj.task.IGlobalContext;
 import org.lightj.task.asynchttp.AsyncHttpTask.HttpMethod;
-import org.lightj.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,14 +104,15 @@ public class UrlRequest {
 		return urlTemplate.getMethod();
 	}
 	public boolean hasBody() {
-		return !StringUtil.isNullOrEmpty(urlTemplate.getBody());
+		return !urlTemplate.getBody().isEmpty();
 	}
 	/** get real body after replacing template */
-	public String generateBody() {
-		String bodyV = urlTemplate.getBody();
-		bodyV = templateReplaceAll(bodyV, templateValues);
-		bodyV = templateReplaceAllByLookup(bodyV);
-		return bodyV;
+	public HashMap<String, String> generateBody() {
+		HashMap<String, String> bodyReal = new HashMap<String, String>();
+		for (Entry<String, String> param : urlTemplate.getBody().entrySet()) {
+			replaceAndSet(param, bodyReal);
+		}
+		return bodyReal;
 	}
 
 	/** get real url after template replacement */

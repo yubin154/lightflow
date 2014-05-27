@@ -20,7 +20,7 @@ public class TestUrlTemplate extends TestCase {
 		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET, null);
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET);
 		template.addHeader("content-type", "application/json");
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
@@ -34,7 +34,8 @@ public class TestUrlTemplate extends TestCase {
 
 	@Test
 	public void testUrlTemplateJson() throws Exception {
-		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.POST, "test");
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.POST);
+		template.addBodyParam("test", "value");
 		template.addHeader("key1", "value1");
 		String urlJson = JsonUtil.encode(template);
 		System.out.println(urlJson);
@@ -44,7 +45,8 @@ public class TestUrlTemplate extends TestCase {
 
 	@Test
 	public void testUrlRequestJson() throws Exception {
-		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET, "test");
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET);
+		template.addBodyParam("test", "value");
 		template.addHeader("key1", "value1").addHeader("key2", UrlTemplate.encodeIfNeeded("var2"));
 		UrlRequest req = new UrlRequest(template);
 		req.setHost("www.ebay.com");

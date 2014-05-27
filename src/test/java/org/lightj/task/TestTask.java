@@ -57,7 +57,7 @@ public class TestTask extends BaseTestCase {
 		tw2.setTaskType("asyncpoll");
 		tw2.setHttpClientType("httpClient");
 		tw2.setExecutionOption(new ExecuteOption());
-		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET, null);
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host", "host"), HttpMethod.GET);
 		tw2.setUrlTemplate(template);
 		tw2.setHosts(sites);
 		
@@ -70,7 +70,7 @@ public class TestTask extends BaseTestCase {
 		tw3.setTaskType("async");
 		tw3.setHttpClientType("httpClient");
 		tw3.setExecutionOption(new ExecuteOption());
-		template = new UrlTemplate(UrlTemplate.encodeAllVariables("http://host/q?s=ebay&ql=1", "host"), HttpMethod.GET, null);
+		template = new UrlTemplate(UrlTemplate.encodeAllVariables("http://host/q?s=ebay&ql=1", "host"), HttpMethod.GET);
 		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
 		tw3.setUrlTemplate(template);
 		tw3.setHosts("finance.yahoo.com");
@@ -98,7 +98,7 @@ public class TestTask extends BaseTestCase {
 
 	public void testParameter() throws Exception {
 		HttpTaskRequest tw = new HttpTaskRequest();
-		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host/q", "host"), HttpMethod.GET, null);
+		UrlTemplate template = new UrlTemplate(UrlTemplate.encodeAllVariables("https://host/q", "host"), HttpMethod.GET);
 		template.addParameters("s", UrlTemplate.encodeIfNeeded("s")).addParameters("ql", "1");
 		tw.setSyncTaskOptions("httpClient", template, new ExecuteOption(), null);
 		tw.setHosts("finance.yahoo.com");

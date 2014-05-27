@@ -12,9 +12,6 @@ import java.util.List;
  */
 public abstract class GroupTask<E extends ExecutableTask> extends ExecutableTask {
 
-	/** create new instance of a task */
-	public abstract E createTaskInstance();
-	
 	/** fan out to list of tasks */
 	public abstract List<E> getTasks();
 

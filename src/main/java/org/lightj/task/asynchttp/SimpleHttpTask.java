@@ -1,5 +1,6 @@
 package org.lightj.task.asynchttp;
 
+import java.util.HashMap;
 import java.util.Map.Entry;
 
 import org.lightj.task.ExecuteOption;
@@ -95,7 +96,27 @@ public class SimpleHttpTask extends AsyncHttpTask {
 				}
 			}
 			if (req.hasBody()) {
-				builder.setBody(req.generateBody());
+				StringBuffer body = new StringBuffer("{");
+				HashMap<String, String> bodyParts = req.generateBody();
+				boolean first = true;
+				for (Entry<String, String> bodyPart : bodyParts.entrySet()) {
+					String bodyV = bodyPart.getValue();
+					if (first) {
+						first = false;
+					}
+					else {
+						body.append(",");
+					}
+					if ((bodyV.startsWith("[") && bodyV.endsWith("]"))
+							|| (bodyV.startsWith("{") && bodyV.endsWith("}"))) {
+						body.append(String.format("\"%s\": %s", bodyPart.getKey(), bodyPart.getValue()));
+
+					} else {
+						body.append(String.format("\"%s\": \"%s\"", bodyPart.getKey(), bodyPart.getValue()));
+					}
+				}
+				body.append("}");
+				builder.setBody(body.toString());
 			}
 		}
 		return builder;

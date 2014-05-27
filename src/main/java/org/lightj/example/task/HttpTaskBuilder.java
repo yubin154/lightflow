@@ -104,8 +104,7 @@ public class HttpTaskBuilder {
 			else {
 				GroupTask agtask = new GroupTask<SimpleHttpTask>() {
 
-					@Override
-					public SimpleHttpTask createTaskInstance() {
+					private SimpleHttpTask createTaskInstance() {
 						SimpleHttpTask atask = new SimpleHttpTask(client, tw.executionOption);
 						UrlRequest urlReq = new UrlRequest(tw.urlTemplate);
 						if (globalContext != null) {
@@ -166,8 +165,7 @@ public class HttpTaskBuilder {
 			else {
 				GroupTask bgtask = new GroupTask() {
 
-					@Override
-					public SimpleHttpAsyncPollTask createTaskInstance() {
+					private SimpleHttpAsyncPollTask createTaskInstance() {
 						SimpleHttpAsyncPollTask btask = new SimpleHttpAsyncPollTask(client, tw.executionOption, tw.monitorOption, pp);
 						UrlRequest urlReq = new UrlRequest(tw.urlTemplate);
 						if (globalContext != null) {

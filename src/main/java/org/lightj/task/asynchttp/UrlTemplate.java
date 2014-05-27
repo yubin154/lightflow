@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 /**
  * a http request template, typically immutable
  * use <> as wrapper delimiters for variables
+ * this class abstracts a RESTful http request, with url, method, parameter, body, headers 
  * 
  * @author binyu
  *
@@ -32,7 +33,7 @@ public class UrlTemplate {
 	/** http method */
 	protected HttpMethod method;
 	/** http body */
-	protected String body;
+	protected HashMap<String, String> body = new HashMap<String, String>();
 	/** headers */
 	protected HashMap<String, String> headers = new HashMap<String, String>();
 	/** url query sring GET, or parameters POST */
@@ -41,20 +42,23 @@ public class UrlTemplate {
 	/** constructor */
 	public UrlTemplate() {}
 	public UrlTemplate(String url) {
-		this(url, HttpMethod.GET, null);
+		this(url, HttpMethod.GET);
 	}
-	public UrlTemplate(String url, HttpMethod method, String body) {
+	public UrlTemplate(String url, HttpMethod method) {
 		this.url = url;
 		this.method = method;
-		this.body = body;
 		validateUrl();		
 	}
 	
 	public HttpMethod getMethod() {
 		return method;
 	}
-	public String getBody() {
+	public HashMap<String, String> getBody() {
 		return this.body;
+	}
+	public UrlTemplate addBodyParam(String k, String v) {
+		this.body.put(k, v);
+		return this;
 	}
 	public String getUrl() {
 		return this.url;
@@ -85,7 +89,7 @@ public class UrlTemplate {
 	public void setMethod(HttpMethod method) {
 		this.method = method;
 	}
-	public UrlTemplate setBody(String body) {
+	public UrlTemplate setBody(HashMap<String, String> body) {
 		this.body = body;
 		return this;
 	}
@@ -98,7 +102,8 @@ public class UrlTemplate {
 		HashSet<String> variableNames = new HashSet<String>();
   		ArrayList<String> sources = new ArrayList<String>();
   		sources.add(url);
-  		if (body!=null) sources.add(body);
+  		sources.addAll(body.keySet());
+  		sources.addAll(body.values());
   		sources.addAll(headers.keySet());
   		sources.addAll(headers.values());
   		sources.addAll(parameters.keySet());
@@ -115,7 +120,8 @@ public class UrlTemplate {
 	public boolean hasVariableKey(String key) {
   		ArrayList<String> sources = new ArrayList<String>();
   		sources.add(url);
-  		if (body!=null) sources.add(body);
+  		sources.addAll(body.keySet());
+  		sources.addAll(body.values());
   		sources.addAll(headers.keySet());
   		sources.addAll(headers.values());
   		sources.addAll(parameters.keySet());
