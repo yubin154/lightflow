@@ -13,7 +13,7 @@ public enum TaskResultEnum {
 	;
 	
 	private int severity;
-	protected int getSeverity() {
+	public int getSeverity() {
 		return severity;
 	}
 	private TaskResultEnum(int severity) {

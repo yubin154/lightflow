@@ -1,7 +1,6 @@
 package org.lightj.util;
 
 import java.io.IOException;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -15,15 +14,16 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 public class JsonUtil {
 
-	static final ObjectMapper mapper = new ObjectMapper();
+	static final ObjectMapper mapper = customMapper("yyyy-MM-dd HH:mm:ss.SSSZZZ");
 	
-	static {
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-		mapper.setDateFormat(dateFormat);
+	public static final ObjectMapper customMapper(String dateFormat) {
+		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 		mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		mapper.setSerializationInclusion(Include.NON_NULL);
+		mapper.setDateFormat(new SimpleDateFormat(dateFormat));
+		return mapper;
 	}
 
 	public static final String encode(Object value) throws JsonGenerationException, JsonMappingException, IOException {
