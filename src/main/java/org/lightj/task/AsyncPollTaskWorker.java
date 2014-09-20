@@ -226,23 +226,24 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 	 */
 	private final void processPollResult() {
 		
-		boolean scheduleNextPoll = false;
-		if (curResult.getStatus().isAnyError()) {
-			scheduleNextPoll = retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
-		}
-		else if (!curResult.getStatus().isComplete()) {
-			scheduleNextPoll = true;
+		boolean needSchedule = (!curResult.getStatus().isComplete());
+		boolean needRetry = curResult.getStatus().isAnyError();
+		
+		if (needRetry) {
+			// schedule or reply may be done here
+			needSchedule = retry(curResult.getStatus(), curResult.getMsg(), curResult.getStackTrace());
 		}
 
-		if (scheduleNextPoll) {
-			// Schedule next poll
+		if (needSchedule) {
+			// Schedule 
 			pollMessageCancellable = getContext()
 					.system()
 					.scheduler()
 					.scheduleOnce(Duration.create(task.getMonitorOption().getIntervalSec(), TimeUnit.SECONDS), getSelf(),
 							InternalMessageType.POLL_PROGRESS, getContext().system().dispatcher());
 		}
-		else {
+		else if (!needRetry) {
+			// no retry or schedule, then reply
 			reply(curResult);
 		}
 		
@@ -288,7 +289,7 @@ public class AsyncPollTaskWorker<T extends ExecutableTask> extends UntypedActor 
 		if (!retried) {
 			// We have exceeded all retries, reply back to sender
 			// with the error message
-			replyError(status, (requestDone ? "request" : "poll") + " retry limit reached, last error: " + errorMessage, stackTrace);
+			replyError(status, (requestDone ? "poll" : "request") + " retry limit reached, last error: " + errorMessage, stackTrace);
 		}
 		return retried;
 	}
