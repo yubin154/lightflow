@@ -148,6 +148,7 @@ public class UrlRequest {
 	
 	/**
 	 * replace all variables in a map entry, and put values in a new map
+	 * skip an entry if it still have unreplaced variable after all replacement
 	 * @param entry
 	 * @param target
 	 */
@@ -158,7 +159,10 @@ public class UrlRequest {
 		key = templateReplaceAllByLookup(key);
 		value = templateReplaceAll(value, templateValues);
 		value = templateReplaceAllByLookup(value);
-		target.put(key, value);
+		if (!UrlTemplate.containVariable(key) && !UrlTemplate.containVariable(value)) {
+			// skip if still have variables after all possible replacement
+			target.put(key, value);
+		}
 	}
 	
 	private String templateReplaceAll(String template, Map<String, String> values) {

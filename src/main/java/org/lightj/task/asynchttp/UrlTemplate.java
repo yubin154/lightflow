@@ -153,11 +153,16 @@ public class UrlTemplate {
 	public static String encodeIfNeeded(String variableName) {
 		return variableName.matches(UrlTemplate.VAR_PATTERN) ? variableName : String.format("<%s>", variableName);
 	}
+	
 	public static String encodeAllVariables(String source, String...variables) {
 		for (String variable : variables) {
 			source = source.replace(variable, encodeIfNeeded(variable));
 		}
 		return source;
+	}
+	
+	public static boolean containVariable(String source) {
+		return source.matches(UrlTemplate.VAR_PATTERN);
 	}
 
 }
