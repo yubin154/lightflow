@@ -178,7 +178,9 @@ public class UrlRequest {
 			for (String variable : urlTemplate.getVariableNames()) {
 				if (globalContext.hasName(pivotValue, variable)) {
 					String value = globalContext.<String>getValueByName(pivotValue, variable);
-					template = template.replaceAll(UrlTemplate.encodeIfNeeded(variable), value);
+					if (value != null) {
+						template = template.replaceAll(UrlTemplate.encodeIfNeeded(variable), value);
+					}
 				}
 			}
 		}
