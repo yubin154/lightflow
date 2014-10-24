@@ -67,7 +67,8 @@ public abstract class AsyncHttpTask extends ExecutableTask {
 	@Override
 	public final TaskResult execute() throws TaskExecutionException {
 		BoundRequestBuilder request = createRequest();
-		targetUrl = request.build().getUrl();
+		targetUrl = client.getConfig().isUseRawUrl() ? 
+				request.build().getRawUrl() : request.build().getUrl();
 		try {
 			request.execute(new HttpAsyncHandler(this));
 		} catch (IOException e) {
